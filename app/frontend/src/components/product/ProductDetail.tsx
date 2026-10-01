@@ -286,10 +286,7 @@ export function ProductDetail({ product, related }: { product: Product; related:
                 )}
               </div>
 
-              <p className="font-body text-xs text-ink-3">Inclusive of all taxes</p>
-              <p className="font-body text-xs text-ink-2">
-                <strong>EMI options available</strong> · Free pan-India shipping on orders over ₹499
-              </p>
+              <p className="font-body text-xs text-ink-3">Inclusive of all taxes · Free pan-India delivery on orders over ₹499</p>
             </div>
 
             {/* Fragrance specification callout */}
@@ -303,53 +300,6 @@ export function ProductDetail({ product, related }: { product: Product; related:
                 </span>
               </div>
             )}
-
-            {/* Offers Box in Dev Creation Theme */}
-            <div className="space-y-2.5 border-b border-line pb-4">
-              <div className="flex items-center gap-2">
-                <span className="font-util text-[0.62rem] font-bold uppercase tracking-[0.2em] text-gold-dk">
-                  🏷️ Available Offers
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div className="rounded-xl border border-line bg-surface p-3 shadow-2xs hover:border-gold transition-colors">
-                  <span className="font-util text-[0.6rem] font-bold uppercase tracking-wider text-ink block mb-1">
-                    Bank Offer
-                  </span>
-                  <p className="font-body text-xs text-body leading-relaxed line-clamp-2">
-                    10% instant discount on UPI and select cards.
-                  </p>
-                  <span className="mt-2 block font-util text-[0.58rem] text-gold uppercase tracking-wider font-semibold">
-                    Code: DEV10
-                  </span>
-                </div>
-
-                <div className="rounded-xl border border-line bg-surface p-3 shadow-2xs hover:border-gold transition-colors">
-                  <span className="font-util text-[0.6rem] font-bold uppercase tracking-wider text-ink block mb-1">
-                    Gift Offer
-                  </span>
-                  <p className="font-body text-xs text-body leading-relaxed line-clamp-2">
-                    Complimentary aroma wax melt with orders above ₹799.
-                  </p>
-                  <span className="mt-2 block font-util text-[0.58rem] text-gold uppercase tracking-wider font-semibold">
-                    Auto-applied
-                  </span>
-                </div>
-
-                <div className="rounded-xl border border-line bg-surface p-3 shadow-2xs hover:border-gold transition-colors">
-                  <span className="font-util text-[0.6rem] font-bold uppercase tracking-wider text-ink block mb-1">
-                    Pack Savings
-                  </span>
-                  <p className="font-body text-xs text-body leading-relaxed line-clamp-2">
-                    Buy 2 or more packs to unlock bulk gifting discount.
-                  </p>
-                  <span className="mt-2 block font-util text-[0.58rem] text-gold uppercase tracking-wider font-semibold">
-                    Save extra
-                  </span>
-                </div>
-              </div>
-            </div>
 
             {/* 4 Trust Icons in Brand Style */}
             <div className="grid grid-cols-4 gap-2 border-b border-line py-3.5 text-center">
