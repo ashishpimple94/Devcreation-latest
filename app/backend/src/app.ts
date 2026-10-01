@@ -10,6 +10,7 @@ import { env } from '@/config/env';
 import { logger } from '@/utils/logger';
 import { apiLimiter } from '@/middleware/rateLimiter';
 import { errorHandler, notFound } from '@/middleware/error';
+import { corsOriginHandler } from '@/config/cors';
 import routes from '@/routes';
 import { storageService } from '@/services/storage.service';
 
@@ -27,7 +28,7 @@ export function createApp() {
 
   app.use(
     cors({
-      origin: env.corsOrigins,
+      origin: corsOriginHandler,
       credentials: true,
     }),
   );

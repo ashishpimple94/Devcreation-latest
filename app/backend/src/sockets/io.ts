@@ -1,9 +1,9 @@
 import type { Server as HttpServer } from 'node:http';
 import { Server as SocketIOServer } from 'socket.io';
-import { env } from '@/config/env';
 import { verifyAccessToken } from '@/utils/jwt';
 import { STAFF_ROLES, SOCKET_ROOMS } from '@/constants';
 import { logger } from '@/utils/logger';
+import { corsOriginHandler } from '@/config/cors';
 
 let io: SocketIOServer | null = null;
 
@@ -14,7 +14,7 @@ let io: SocketIOServer | null = null;
  */
 export function initSocket(httpServer: HttpServer): SocketIOServer {
   io = new SocketIOServer(httpServer, {
-    cors: { origin: env.corsOrigins, credentials: true },
+    cors: { origin: corsOriginHandler, credentials: true },
   });
 
   io.use((socket, next) => {
