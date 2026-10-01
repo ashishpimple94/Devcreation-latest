@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: devcreation-backend
+    env: node
+    plan: free
+    buildCommand: cd app/backend && npm install && npm run build
+    startCommand: cd app/backend && npm start

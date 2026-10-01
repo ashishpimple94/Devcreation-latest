@@ -1,0 +1,9 @@
+{
+  "name": "devcreation",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd app/backend && npm install && npm run build",
+    "start": "cd app/backend && npm start"
+  }
+}
