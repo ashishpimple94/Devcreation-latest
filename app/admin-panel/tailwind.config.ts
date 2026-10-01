@@ -41,7 +41,12 @@ const config: Config = {
       },
       boxShadow: {
         card: '0 14px 34px -12px rgba(28,20,16,.15)',
+        'card-hover': '0 24px 48px -14px rgba(184,148,63,.18)',
         rule: '0 12px 32px -10px rgba(28,20,16,.12)',
+      },
+      transitionTimingFunction: {
+        spring: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        luxury: 'cubic-bezier(0.25, 1, 0.5, 1)',
       },
     },
   },

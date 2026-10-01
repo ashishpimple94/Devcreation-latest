@@ -56,32 +56,96 @@ export default function AdminProductsPage() {
   const columns: Column<Product>[] = [
     {
       key: 'product',
-      header: 'Product',
-      render: (p) => (
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded border border-line bg-surface-2">
-            {p.images[0] && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.images[0].url} alt="" className="h-full w-full object-cover" />
+      header: 'Product & Fragrance',
+      render: (p) => {
+        const isPack =
+          p.weight?.toLowerCase().includes('pack') ||
+          p.type.toLowerCase().includes('set') ||
+          p.name.toLowerCase().includes('set');
+
+        return (
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl border border-line bg-surface-2">
+              {p.images[0] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.images[0].url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-[0.6rem] text-ink-3">
+                  No Pic
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium text-xs text-ink hover:text-gold cursor-pointer" onClick={() => router.push(`/products/${p._id}`)}>
+                  {p.name}
+                </span>
+                {isPack && (
+                  <span className="rounded bg-gold/15 px-1.5 py-0.2 font-util text-[0.55rem] font-bold text-gold-dk">
+                    🎁 {p.weight || 'Gift Set'}
+                  </span>
+                )}
+              </div>
+              <span className="text-[0.7rem] text-ink-3">
+                {p.fragrance ? `Fragrance: ${p.fragrance}` : p.type} · SKU: {p.sku}
+              </span>
+            </div>
+          </div>
+        );
+      },
+    },
+    { key: 'type', header: 'Type', render: (p) => <span className="font-util text-xs text-ink-2">{p.type}</span> },
+    {
+      key: 'price',
+      header: 'Offer & Price',
+      render: (p) => {
+        const hasDiscount = (p.compareAtPrice && p.compareAtPrice > p.price) || (p.discountPercent && p.discountPercent > 0);
+
+        return (
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className="font-body text-xs font-bold text-ink">{formatRupee(p.price)}</span>
+              {p.compareAtPrice && p.compareAtPrice > p.price && (
+                <span className="font-body text-[0.7rem] text-ink-3 line-through">
+                  {formatRupee(p.compareAtPrice)}
+                </span>
+              )}
+            </div>
+            {hasDiscount && (
+              <span className="inline-flex w-fit rounded bg-flame/15 px-1.5 py-0.2 font-util text-[0.55rem] font-bold text-flame">
+                🔥 {p.discountPercent ? `${p.discountPercent}% OFF` : 'Special Offer'}
+              </span>
             )}
           </div>
-          <span className="font-medium text-ink">{p.name}</span>
-        </div>
-      ),
+        );
+      },
     },
-    { key: 'sku', header: 'SKU', render: (p) => <span className="font-util text-xs">{p.sku}</span> },
-    { key: 'type', header: 'Category', render: (p) => p.type },
-    { key: 'price', header: 'Price', render: (p) => <span className="font-util text-xs">{formatRupee(p.price)}</span> },
     {
       key: 'stock',
       header: 'Stock',
-      render: (p) => <span className={cn('font-util text-xs', p.stock <= 5 ? 'text-red-600' : 'text-ink')}>{p.stock}</span>,
+      render: (p) => (
+        <span
+          className={cn(
+            'font-util text-xs font-semibold',
+            p.stock <= 5 ? 'text-red-600' : 'text-emerald-700',
+          )}
+        >
+          {p.stock <= 0 ? 'Out of Stock' : `${p.stock} in stock`}
+        </span>
+      ),
     },
     {
       key: 'status',
       header: 'Status',
       render: (p) => (
-        <span className={cn('rounded-full border px-2.5 py-1 font-util text-[0.55rem] uppercase tracking-[0.12em]', p.isActive ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200 bg-gray-100 text-gray-500')}>
+        <span
+          className={cn(
+            'rounded-full border px-2.5 py-0.5 font-util text-[0.55rem] uppercase tracking-[0.12em]',
+            p.isActive
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : 'border-gray-200 bg-gray-100 text-gray-500',
+          )}
+        >
           {p.isActive ? 'Active' : 'Hidden'}
         </span>
       ),
@@ -90,12 +154,18 @@ export default function AdminProductsPage() {
       key: 'actions',
       header: '',
       render: (p) => (
-        <div className="flex gap-3">
-          <button onClick={() => router.push(`/products/${p._id}`)} className="font-util text-[0.6rem] uppercase tracking-[0.1em] text-gold hover:text-gold-dk">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push(`/products/${p._id}`)}
+            className="rounded-lg border border-line bg-white px-2.5 py-1 font-util text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-ink hover:border-gold hover:text-gold-dk"
+          >
             Edit
           </button>
-          <button onClick={() => setDeleteId(p._id)} className="font-util text-[0.6rem] uppercase tracking-[0.1em] text-red-500 hover:underline">
-            Delete
+          <button
+            onClick={() => setDeleteId(p._id)}
+            className="rounded-lg border border-line bg-white px-2 py-1 font-util text-[0.6rem] uppercase tracking-[0.1em] text-red-500 hover:border-red-300 hover:bg-red-50"
+          >
+            ✕
           </button>
         </div>
       ),
