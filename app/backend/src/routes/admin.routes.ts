@@ -30,6 +30,7 @@ router.get('/dashboard', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), adminControl
 
 // Product management — all staff
 router.get('/products', validate(listProductsSchema), productController.list);
+router.get('/products/:idOrSlug', productController.detail);
 router.post('/products', validate(createProductSchema), productController.create);
 router.patch('/products/:id', validate(updateProductSchema), productController.update);
 router.delete('/products/:id', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), productController.remove);

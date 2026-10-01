@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 const imageSchema = z.object({
-  url: z.string().url(),
-  alt: z.string().optional(),
-  isPrimary: z.boolean().optional(),
+  url: z.string().min(1),
+  alt: z.string().optional().default(''),
+  isPrimary: z.boolean().optional().default(false),
 });
 
 const variantSchema = z.object({
@@ -20,9 +20,9 @@ export const createProductSchema = {
     type: z.string().min(1),
     fragrance: z.string().optional().default(''),
     description: z.string().optional().default(''),
-    category: z.string().length(24).optional().nullable(),
+    category: z.string().length(24).optional().nullable().or(z.literal('')),
     price: z.number().min(0),
-    compareAtPrice: z.number().min(0).optional(),
+    compareAtPrice: z.number().min(0).optional().nullable(),
     discountPercent: z.number().min(0).max(100).optional().default(0),
     weight: z.string().optional(),
     stock: z.number().int().min(0).default(0),

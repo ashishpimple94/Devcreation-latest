@@ -261,25 +261,43 @@ export function ProductForm({ product }: { product?: Product }) {
     if (form.packType) rawTags.push(form.packType);
     const cleanedTags = Array.from(new Set(rawTags.filter(Boolean)));
 
-    const payload = {
-      name: form.name,
-      type: form.type,
-      fragrance: form.fragrance,
+    const payload: Record<string, unknown> = {
+      name: form.name.trim(),
+      type: form.type.trim(),
+      fragrance: form.fragrance.trim(),
       description: form.boxContents
         ? `${form.description}\n\nBox Contents: ${form.boxContents}`.trim()
-        : form.description,
-      category: form.category || null,
+        : form.description.trim(),
       price: Number(form.price),
-      compareAtPrice: form.compareAtPrice ? Number(form.compareAtPrice) : undefined,
       discountPercent: Number(form.discountPercent) || 0,
-      weight: form.weight || form.packType || undefined,
-      stock: Number(form.stock),
-      sku: form.sku || undefined,
+      stock: Number(form.stock) || 0,
       tags: cleanedTags,
-      isActive: form.isActive,
-      isFeatured: form.isFeatured,
-      images: form.images,
+      isActive: Boolean(form.isActive),
+      isFeatured: Boolean(form.isFeatured),
+      images: form.images.map((im) => ({
+        url: im.url.trim(),
+        alt: im.alt?.trim() || form.name.trim(),
+        isPrimary: Boolean(im.isPrimary),
+      })),
     };
+
+    if (form.category && form.category.trim().length === 24) {
+      payload.category = form.category.trim();
+    } else {
+      payload.category = null;
+    }
+
+    if (Number(form.compareAtPrice) > 0) {
+      payload.compareAtPrice = Number(form.compareAtPrice);
+    }
+
+    if (form.weight?.trim() || form.packType?.trim()) {
+      payload.weight = form.weight?.trim() || form.packType?.trim();
+    }
+
+    if (form.sku?.trim()) {
+      payload.sku = form.sku.trim();
+    }
 
     try {
       if (product) {
