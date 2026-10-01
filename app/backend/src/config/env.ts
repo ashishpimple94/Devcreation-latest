@@ -1,0 +1,67 @@
+import dotenv from 'dotenv';
+import { z } from 'zod';
+
+dotenv.config();
+
+/**
+ * Validates and normalises environment variables at startup. If a required
+ * variable is missing or malformed the process exits immediately with a clear
+ * message rather than failing later at runtime.
+ */
+const schema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().default(4000),
+  API_PREFIX: z.string().default('/api'),
+
+  CORS_ORIGIN: z.string().default('http://localhost:3000'),
+
+  MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
+  REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+
+  JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 chars'),
+  JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 chars'),
+  JWT_ACCESS_EXPIRES: z.string().default('15m'),
+  JWT_REFRESH_EXPIRES: z.string().default('7d'),
+
+  STORAGE_DRIVER: z.enum(['local', 's3', 'cloudinary']).default('local'),
+  UPLOAD_DIR: z.string().default('uploads'),
+  MAX_UPLOAD_MB: z.coerce.number().default(5),
+  PUBLIC_ASSET_BASE: z.string().default('http://localhost:4000'),
+
+  SEED_ADMIN_NAME: z.string().default('Super Admin'),
+  SEED_ADMIN_EMAIL: z.string().email().default('admin@devcreation.example'),
+  SEED_ADMIN_PASSWORD: z.string().min(6).default('Admin@12345'),
+
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
+  RATE_LIMIT_MAX: z.coerce.number().default(300),
+
+  // ── Email (SMTP). All optional — when SMTP_HOST is unset, emails are logged
+  //    to the console instead of sent, so the app works without a mail server. ──
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_SECURE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().default('Dev Creation <no-reply@devcreation.example>'),
+  ADMIN_NOTIFY_EMAIL: z.string().optional(),
+  STORE_URL: z.string().default('http://localhost:3000'),
+});
+
+const parsed = schema.safeParse(process.env);
+
+if (!parsed.success) {
+  // eslint-disable-next-line no-console
+  console.error('❌ Invalid environment configuration:');
+  // eslint-disable-next-line no-console
+  console.error(parsed.error.flatten().fieldErrors);
+  process.exit(1);
+}
+
+export const env = {
+  ...parsed.data,
+  isProd: parsed.data.NODE_ENV === 'production',
+  corsOrigins: parsed.data.CORS_ORIGIN.split(',').map((o) => o.trim()),
+};

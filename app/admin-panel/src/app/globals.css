@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+body {
+  background: #f7f5f0;
+  color: #1c1410;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #2c1810;
+  color: #fff;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+:focus-visible {
+  outline: 2px solid #b8943f;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@layer components {
+  .util-label {
+    @apply font-util text-[0.6rem] font-medium uppercase tracking-[0.16em] text-copper;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border-[1.5px] border-deep bg-deep px-6 py-3 font-util text-[0.7rem] uppercase tracking-[0.16em] text-white transition-all duration-200 hover:border-[#3D2A1E] hover:bg-[#3D2A1E] disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border-[1.5px] border-line bg-transparent px-6 py-3 font-util text-[0.7rem] uppercase tracking-[0.16em] text-ink-2 transition-all duration-200 hover:border-gold;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "dev-creation-ecommerce",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dev Creation — full-stack e-commerce platform (Next.js + Express + MongoDB + Redis + Socket.IO)",
+  "workspaces": [
+    "frontend",
+    "admin-panel",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,store,admin -c blue,magenta,yellow \"npm:dev:backend\" \"npm:dev:frontend\" \"npm:dev:admin\"",
+    "dev:backend": "npm --workspace backend run dev",
+    "dev:frontend": "npm --workspace frontend run dev",
+    "dev:admin": "npm --workspace admin-panel run dev",
+    "build": "npm --workspace backend run build && npm --workspace frontend run build && npm --workspace admin-panel run build",
+    "seed": "npm --workspace backend run seed",
+    "typecheck": "npm --workspace backend run typecheck && npm --workspace frontend run typecheck && npm --workspace admin-panel run typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

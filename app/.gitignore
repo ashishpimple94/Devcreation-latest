@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# builds
+dist/
+build/
+.next/
+out/
+
+# env — never commit secrets
+.env
+.env.local
+.env.*.local
+**/.env
+!**/.env.example
+
+# logs
+logs/
+*.log
+npm-debug.log*
+
+# uploads (local image storage dev fallback)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
