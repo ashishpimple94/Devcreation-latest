@@ -221,3 +221,23 @@ export interface AppliedGiftCard {
   maxDiscount?: number;
 }
 
+export interface ProductReview {
+  _id: string;
+  product: string;
+  user: string;
+  userName: string;
+  rating: number;
+  title: string;
+  comment: string;
+  verifiedPurchase: boolean;
+  helpfulCount: number;
+  createdAt: string;
+}
+
+export interface ReviewsSummary {
+  average: number;
+  total: number;
+  breakdown: Record<number, number>;
+}
+
+

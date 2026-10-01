@@ -42,4 +42,26 @@ export const productService = {
     const res = await api.get<Category[]>('/categories', { auth: false });
     return res.data;
   },
+
+  async listReviews(idOrSlug: string): Promise<{ reviews: ProductReview[]; summary: ReviewsSummary }> {
+    const res = await api.get<{ reviews: ProductReview[]; summary: ReviewsSummary }>(
+      `/products/${idOrSlug}/reviews`,
+      { auth: false },
+    );
+    return res.data;
+  },
+
+  async createReview(
+    idOrSlug: string,
+    data: { rating: number; title: string; comment: string },
+  ): Promise<ProductReview> {
+    const res = await api.post<ProductReview>(`/products/${idOrSlug}/reviews`, data);
+    return res.data;
+  },
+
+  async markReviewHelpful(reviewId: string): Promise<ProductReview> {
+    const res = await api.post<ProductReview>(`/products/reviews/${reviewId}/helpful`, {}, { auth: false });
+    return res.data;
+  },
 };
+

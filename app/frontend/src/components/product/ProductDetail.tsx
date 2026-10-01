@@ -8,6 +8,7 @@ import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/components/ui/Toast';
 import { ProductCard } from '@/components/product/ProductCard';
+import { ProductReviews } from '@/components/product/ProductReviews';
 import { api } from '@/lib/api';
 import type { Product } from '@/types';
 
@@ -520,6 +521,9 @@ export function ProductDetail({ product, related }: { product: Product; related:
             </div>
           </div>
         </div>
+
+        {/* Real-Time Ratings & Customer Comments */}
+        <ProductReviews product={product} />
 
         {/* "You May Also Like" Related Products */}
         {related.length > 0 && (
