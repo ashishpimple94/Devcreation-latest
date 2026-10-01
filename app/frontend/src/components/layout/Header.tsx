@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuthStore } from '@/store/authStore';
@@ -8,6 +8,7 @@ import { useCartStore } from '@/store/cartStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { cn } from '@/lib/utils';
 
 const NAV_LINKS = [
   { label: 'Collection', href: '/products' },
@@ -17,17 +18,33 @@ const NAV_LINKS = [
   { label: 'Refills', href: '/products' },
 ];
 
-/** Sticky header with centered nav, ported from the original site. */
+/** Sticky header with centered nav and smooth scroll elevation. */
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const count = useCartStore((s) => s.count);
   const openCart = useCartStore((s) => s.open);
   const user = useAuthStore((s) => s.user);
   const unread = useNotificationStore((s) => s.unread);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 24);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <>
-      <header className="sticky top-0 z-[60] flex items-center justify-between gap-6 border-b border-line bg-paper/95 px-[var(--pad)] py-[10px] backdrop-blur-[14px]">
+      <header
+        className={cn(
+          'sticky top-0 z-[60] flex items-center justify-between gap-6 px-[var(--pad)] py-[10px] transition-all duration-500 ease-spring backdrop-blur-[16px]',
+          scrolled
+            ? 'border-b border-gold/25 bg-paper/90 shadow-[0_8px_30px_-10px_rgba(44,24,16,.08)]'
+            : 'border-b border-line bg-paper/95',
+        )}
+      >
         <Link href="/" className="flex flex-shrink-0 items-center leading-none">
           <Image
             src="/assets/Logos/logo.jpeg"
@@ -70,11 +87,14 @@ export function Header() {
           <button
             onClick={openCart}
             aria-label="Open cart"
-            className="relative p-1.5 text-ink-2 transition-colors hover:text-ink"
+            className="relative p-1.5 text-ink-2 transition-all duration-200 hover:text-ink active:scale-90"
           >
             <CartIcon />
             {count > 0 && (
-              <span className="absolute -right-1.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gold px-1 font-util text-[0.52rem] font-semibold leading-none text-white">
+              <span
+                key={count}
+                className="absolute -right-1.5 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gold px-1 font-util text-[0.52rem] font-semibold leading-none text-white shadow-xs animate-badge-pop"
+              >
                 {count}
               </span>
             )}

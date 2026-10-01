@@ -143,21 +143,21 @@ export default async function HomePage() {
             className="relative z-[2] flex items-center justify-center max-[919px]:order-1"
           >
             {/* Architectural decorative frame */}
-            <div className="group relative w-full max-w-[540px] rounded-[36px] border border-gold/30 bg-gradient-to-br from-white/90 via-[#FDF9F2] to-white/70 p-3 shadow-[0_24px_60px_-15px_rgba(44,24,16,.18)] backdrop-blur-sm transition-all duration-500 hover:border-gold/60">
+            <div className="group relative w-full max-w-[540px] rounded-[36px] border border-gold/30 bg-gradient-to-br from-white/95 via-[#FDF9F2] to-white/80 p-3.5 shadow-[0_24px_60px_-15px_rgba(44,24,16,.18)] backdrop-blur-sm transition-all duration-700 hover:border-gold/60 hover:shadow-[0_30px_70px_-15px_rgba(184,148,63,.22)]">
               {/* Inner Image Container */}
               <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[28px] sm:aspect-[5/4]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/assets/elegant-display-lit-candles-with-golden-holders-marble-table-featuring-decorative-plant_93675-335471.avif"
                   alt="Dev Creation luxury handcrafted scented wax sachets"
-                  className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                  className="h-full w-full object-cover transition-transform duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-[1.04]"
                 />
                 {/* Subtle soft vignette */}
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-deep/40 via-transparent to-transparent" />
               </div>
 
-              {/* Floating Badge 1: Top-Right Soy Wax Guarantee */}
-              <div className="absolute -top-4 right-4 z-10 flex items-center gap-2 rounded-2xl border border-gold/30 bg-white/95 px-3.5 py-2 shadow-lg backdrop-blur-md transition-transform duration-300 hover:scale-105">
+              {/* Floating Badge 1: Top-Right Soy Wax Guarantee (Gentle Floating) */}
+              <div className="absolute -top-4 right-4 z-10 flex items-center gap-2 rounded-2xl border border-gold/30 bg-white/95 px-3.5 py-2 shadow-lg backdrop-blur-md transition-all duration-300 hover:scale-105 animate-float will-change-transform">
                 <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-gold/15 text-sm text-gold-dk">
                   🌿
                 </span>
@@ -167,8 +167,8 @@ export default async function HomePage() {
                 </div>
               </div>
 
-              {/* Floating Badge 2: Bottom-Left Longevity */}
-              <div className="absolute -bottom-5 left-4 z-10 hidden sm:flex items-center gap-3 rounded-2xl border border-gold/30 bg-white/95 px-4 py-2.5 shadow-xl backdrop-blur-md transition-transform duration-300 hover:scale-105">
+              {/* Floating Badge 2: Bottom-Left Longevity (Delayed Floating) */}
+              <div className="absolute -bottom-5 left-4 z-10 hidden sm:flex items-center gap-3 rounded-2xl border border-gold/30 bg-white/95 px-4 py-2.5 shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-105 animate-float-delayed will-change-transform">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-gold to-copper text-white shadow-xs">
                   ✨
                 </span>
@@ -179,7 +179,7 @@ export default async function HomePage() {
               </div>
 
               {/* Floating Badge 3: Rating Pill */}
-              <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2 rounded-full border border-line bg-deep/90 px-3 py-1.5 text-white shadow-lg backdrop-blur-md">
+              <div className="absolute bottom-4 right-4 z-10 flex items-center gap-2 rounded-full border border-line bg-deep/90 px-3 py-1.5 text-white shadow-lg backdrop-blur-md transition-transform duration-300 hover:scale-105">
                 <span className="text-xs text-yellow-400">★★★★★</span>
                 <span className="font-util text-[0.6rem] font-medium tracking-wide text-gold-lt">4.9 / 5.0</span>
               </div>
@@ -210,7 +210,7 @@ export default async function HomePage() {
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
             {products.map((product, i) => (
-              <ScrollAnimate key={product._id} delay={Math.min(i + 1, 6) * 100}>
+              <ScrollAnimate key={product._id} delay={Math.min(i, 4) * 60}>
                 <ProductCard product={product} />
               </ScrollAnimate>
             ))}

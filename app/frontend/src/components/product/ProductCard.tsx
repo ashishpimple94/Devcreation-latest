@@ -41,8 +41,8 @@ export function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <article className="flex flex-col overflow-hidden rounded-[10px] border border-line bg-surface transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card">
-      <Link href={`/products/${product.slug}`} className="group relative block h-[320px] flex-shrink-0 overflow-hidden bg-surface-2">
+    <article className="group flex flex-col overflow-hidden rounded-[14px] border border-line bg-surface transition-all duration-500 ease-spring hover:-translate-y-1.5 hover:border-gold/50 hover:shadow-card-hover">
+      <Link href={`/products/${product.slug}`} className="relative block h-[330px] flex-shrink-0 overflow-hidden bg-surface-2">
         {hasSlider ? (
           <>
             {images.map((img, i) => (
@@ -52,12 +52,13 @@ export function ProductCard({ product }: { product: Product }) {
                 src={img.url}
                 alt={img.alt ?? product.name}
                 className={cn(
-                  'absolute inset-0 h-full w-full object-cover transition-opacity duration-500',
-                  i === active ? 'opacity-100' : 'opacity-0',
+                  'absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-[1.04]',
+                  i === active ? 'opacity-100' : 'pointer-events-none opacity-0',
                 )}
               />
             ))}
-            <div className="absolute bottom-2 left-1/2 z-[2] flex -translate-x-1/2 gap-[5px]">
+            {/* Slider Dots */}
+            <div className="absolute bottom-3 left-1/2 z-[2] flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-deep/20 px-2 py-1 backdrop-blur-xs">
               {images.map((_, i) => (
                 <button
                   key={i}
@@ -67,8 +68,8 @@ export function ProductCard({ product }: { product: Product }) {
                   }}
                   aria-label={`Show image ${i + 1}`}
                   className={cn(
-                    'h-[7px] rounded-full transition-all',
-                    i === active ? 'w-[18px] rounded bg-white' : 'w-[7px] bg-white/45',
+                    'h-1.5 rounded-full transition-all duration-300 ease-spring',
+                    i === active ? 'w-4 bg-white shadow-xs' : 'w-1.5 bg-white/50 hover:bg-white/80',
                   )}
                 />
               ))}
@@ -79,27 +80,31 @@ export function ProductCard({ product }: { product: Product }) {
           <img
             src={images[0].url}
             alt={images[0].alt ?? product.name}
-            className="h-full w-full object-cover transition-transform duration-[400ms] group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-[1.04]"
           />
         )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-deep/20 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
       </Link>
 
       <div className="flex flex-1 flex-col gap-3 p-5">
-        <div className="font-util text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-gold">{product.type}</div>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            {product.fragrance && (
-              <div className="mb-1 inline-block rounded bg-surface-2 px-2.5 py-1 font-body text-[0.82rem] text-ink-2">
-                Fragrance - <strong className="font-medium text-ink">{product.fragrance}</strong>
-              </div>
-            )}
-            <h3 className="mt-1 font-display-alt text-[1.4rem] font-medium leading-tight text-ink">
-              <Link href={`/products/${product.slug}`}>{product.name}</Link>
-            </h3>
-          </div>
-          <div className="whitespace-nowrap font-body text-[0.92rem] font-semibold tabular-nums text-ink">{formatRupee(product.price)}</div>
+        <div className="flex items-center justify-between">
+          <span className="font-util text-[0.58rem] font-semibold uppercase tracking-[0.2em] text-gold">{product.type}</span>
+          <span className="font-body text-[0.94rem] font-semibold tabular-nums text-ink">{formatRupee(product.price)}</span>
         </div>
-        <p className="text-[0.88rem] leading-relaxed text-body">{product.description}</p>
+
+        <div>
+          {product.fragrance && (
+            <div className="mb-1.5 inline-block rounded-md bg-surface-2 px-2.5 py-0.5 font-body text-[0.8rem] text-ink-2 border border-line-soft">
+              Fragrance · <strong className="font-medium text-ink">{product.fragrance}</strong>
+            </div>
+          )}
+          <h3 className="font-display-alt text-[1.38rem] font-medium leading-tight text-ink transition-colors duration-200 group-hover:text-gold-dk">
+            <Link href={`/products/${product.slug}`}>{product.name}</Link>
+          </h3>
+        </div>
+
+        <p className="line-clamp-2 text-[0.86rem] leading-relaxed text-body">{product.description}</p>
+
         <div className="flex flex-wrap gap-1.5">
           {product.tags.map((tag) => (
             <span key={tag} className="tag-chip">
@@ -107,18 +112,30 @@ export function ProductCard({ product }: { product: Product }) {
             </span>
           ))}
         </div>
+
         <button
           onClick={handleAdd}
           disabled={product.stock <= 0}
           className={cn(
-            'mt-auto cursor-pointer border p-3 text-center font-util text-[0.64rem] uppercase tracking-[0.18em] transition-all',
+            'mt-auto inline-flex items-center justify-center gap-2 rounded-lg border py-3 text-center font-util text-[0.68rem] uppercase tracking-[0.18em] transition-all duration-300 active:scale-[0.98]',
             added
-              ? 'border-gold bg-gold text-white'
-              : 'border-line text-ink hover:border-deep hover:bg-deep hover:text-white',
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm animate-badge-pop'
+              : 'border-deep/30 bg-transparent text-ink hover:border-deep hover:bg-deep hover:text-white hover:shadow-[0_4px_14px_rgba(44,24,16,.18)]',
             product.stock <= 0 && 'cursor-not-allowed opacity-50',
           )}
         >
-          {product.stock <= 0 ? 'Sold out' : added ? 'Added' : 'Add to cart'}
+          {product.stock <= 0 ? (
+            'Sold out'
+          ) : added ? (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span>Added to Cart</span>
+            </>
+          ) : (
+            'Add to Cart'
+          )}
         </button>
       </div>
     </article>

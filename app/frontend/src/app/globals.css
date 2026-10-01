@@ -49,17 +49,29 @@ a {
     @apply font-util text-[0.65rem] font-medium uppercase tracking-[0.22em] text-copper;
   }
 
-  /* Primary + ghost buttons matching the original .btn styles. */
+  /* Primary + ghost buttons with haptic micro-bounce on press */
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-[10px] border-[1.5px] border-deep bg-deep px-[30px] py-4 font-util text-[0.72rem] uppercase tracking-[0.18em] text-white transition-all duration-200 hover:border-[#3D2A1E] hover:bg-[#3D2A1E] hover:shadow-[0_6px_20px_rgba(44,24,16,.2)] disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center rounded-[10px] border-[1.5px] border-deep bg-deep px-[30px] py-4 font-util text-[0.72rem] uppercase tracking-[0.18em] text-white transition-all duration-300 ease-luxury hover:border-[#3D2A1E] hover:bg-[#3D2A1E] hover:shadow-[0_8px_25px_rgba(44,24,16,.25)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-[10px] border-[1.5px] border-deep bg-transparent px-[30px] py-4 font-util text-[0.72rem] uppercase tracking-[0.18em] text-deep transition-all duration-200 hover:bg-[rgba(44,24,16,.06)];
+    @apply inline-flex items-center justify-center rounded-[10px] border-[1.5px] border-deep bg-transparent px-[30px] py-4 font-util text-[0.72rem] uppercase tracking-[0.18em] text-deep transition-all duration-300 ease-luxury hover:bg-[rgba(44,24,16,.06)] hover:border-gold active:scale-[0.98];
   }
 
   .tag-chip {
-    @apply whitespace-nowrap rounded-[4px] bg-[rgba(184,148,63,.08)] px-[10px] py-[5px] font-util text-[0.52rem] uppercase tracking-[0.1em] text-gold-dk;
+    @apply whitespace-nowrap rounded-[4px] bg-[rgba(184,148,63,.08)] px-[10px] py-[5px] font-util text-[0.52rem] uppercase tracking-[0.1em] text-gold-dk transition-colors duration-200 hover:bg-[rgba(184,148,63,.15)];
+  }
+
+  /* Luxury card interactive elevation */
+  .luxury-card {
+    @apply transition-all duration-500 ease-spring hover:-translate-y-1.5 hover:border-gold/40 hover:shadow-card-hover;
+  }
+
+  /* Shimmering golden border badge */
+  .shimmer-badge {
+    background: linear-gradient(90deg, rgba(255,255,255,0.8) 0%, rgba(245,235,216,0.9) 50%, rgba(255,255,255,0.8) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 4s infinite linear;
   }
 }
 
