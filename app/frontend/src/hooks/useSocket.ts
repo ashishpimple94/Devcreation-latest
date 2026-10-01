@@ -28,6 +28,7 @@ export function useSocket(handlers?: {
   onAdminNotification?: (payload: SocketEventPayload) => void;
 }) {
   const user = useAuthStore((s) => s.user);
+  const status = useAuthStore((s) => s.status);
   const prepend = useNotificationStore((s) => s.prepend);
   const socketRef = useRef<Socket | null>(null);
   const handlersRef = useRef(handlers);
@@ -35,13 +36,21 @@ export function useSocket(handlers?: {
 
   useEffect(() => {
     const token = tokenStore.get();
-    if (!user || !token) return;
+    if (status !== 'authenticated' || !user || !token) return;
 
     const socket = io(SOCKET_URL, {
       auth: { token },
       transports: ['websocket'],
+      reconnectionAttempts: 3,
+      timeout: 10000,
     });
     socketRef.current = socket;
+
+    socket.on('connect_error', (err) => {
+      if (err.message === 'Unauthorized' || err.message.includes('unauthorized')) {
+        socket.disconnect();
+      }
+    });
 
     const toNotification = (p: SocketEventPayload): AppNotification => ({
       _id: `rt-${p.createdAt}-${Math.random().toString(36).slice(2)}`,
@@ -65,7 +74,7 @@ export function useSocket(handlers?: {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [user, prepend]);
+  }, [user, status, prepend]);
 
   return socketRef;
 }
