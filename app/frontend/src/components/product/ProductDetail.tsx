@@ -90,22 +90,50 @@ export function ProductDetail({ product, related }: { product: Product; related:
         <span className="text-ink">{product.name}</span>
       </nav>
 
-      <div className="grid grid-cols-1 gap-[clamp(28px,4vw,64px)] min-[861px]:grid-cols-2">
-        {/* Gallery */}
-        <div>
-          <div className="overflow-hidden rounded-[10px] border border-line bg-surface-2">
+      <div className="mx-auto max-w-6xl grid grid-cols-1 gap-8 md:grid-cols-[400px_1fr] lg:grid-cols-[440px_1fr] lg:gap-14 items-start">
+        {/* Gallery — Medium sized luxury presentation */}
+        <div className="w-full max-w-[440px] mx-auto md:mx-0 md:sticky md:top-24">
+          <div className="relative h-[380px] sm:h-[420px] w-full overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-xs group">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={images[activeImg].url} alt={images[activeImg].alt ?? product.name} className="aspect-square w-full object-cover" />
+            <img
+              src={images[activeImg].url}
+              alt={images[activeImg].alt ?? product.name}
+              className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+            />
+
+            {/* Badges on medium image frame */}
+            <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">
+              {product.tags.some((t) => t.toLowerCase().includes('offer') || t.toLowerCase().includes('deal')) && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-flame/40 bg-flame/95 px-2.5 py-0.5 font-util text-[0.58rem] font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-xs">
+                  🔥 Special Offer
+                </span>
+              )}
+              {product.compareAtPrice && product.compareAtPrice > price && (
+                <span className="inline-flex items-center rounded-full bg-deep/90 px-2.5 py-0.5 font-util text-[0.58rem] font-bold uppercase tracking-wider text-gold-lt shadow-sm backdrop-blur-xs">
+                  {product.discountPercent ? `${product.discountPercent}% OFF` : `Save ${formatRupee(product.compareAtPrice - price)}`}
+                </span>
+              )}
+            </div>
+
+            {product.weight && (
+              <span className="absolute right-3 top-3 z-10 rounded-full border border-gold/30 bg-white/95 px-2.5 py-0.5 font-util text-[0.58rem] font-semibold uppercase tracking-wider text-gold-dk shadow-xs backdrop-blur-md">
+                🎁 {product.weight}
+              </span>
+            )}
           </div>
+
+          {/* Thumbnails */}
           {images.length > 1 && (
-            <div className="mt-3 flex gap-3">
+            <div className="mt-3.5 flex gap-2.5 overflow-x-auto pb-1">
               {images.map((img, i) => (
                 <button
                   key={img.url + i}
                   onClick={() => setActiveImg(i)}
                   className={cn(
-                    'h-20 w-20 overflow-hidden rounded-[8px] border transition-colors',
-                    i === activeImg ? 'border-gold' : 'border-line hover:border-gold-lt',
+                    'h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border-2 transition-all',
+                    i === activeImg
+                      ? 'border-gold shadow-xs ring-2 ring-gold/20'
+                      : 'border-line opacity-75 hover:opacity-100 hover:border-gold/50',
                   )}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -117,16 +145,40 @@ export function ProductDetail({ product, related }: { product: Product; related:
         </div>
 
         {/* Info */}
-        <div>
-          <div className="font-util text-[0.6rem] uppercase tracking-[0.2em] text-gold">{product.type}</div>
-          <h1 className="mt-2 font-display-alt text-[clamp(2rem,4vw,3rem)] font-medium leading-tight text-ink">{product.name}</h1>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="font-util text-[0.6rem] uppercase tracking-[0.2em] text-gold">{product.type}</span>
+            {product.weight && (
+              <span className="rounded-full bg-gold/10 px-2 py-0.5 font-util text-[0.55rem] font-semibold uppercase text-gold-dk">
+                {product.weight}
+              </span>
+            )}
+          </div>
+
+          <h1 className="mt-2 font-display-alt text-[clamp(2rem,3.5vw,2.75rem)] font-medium leading-tight text-ink">{product.name}</h1>
+
           {product.fragrance && (
-            <p className="mt-3 inline-block rounded bg-surface-2 px-3 py-1.5 text-sm text-ink-2">
-              Fragrance — <strong className="font-medium text-ink">{product.fragrance}</strong>
+            <p className="mt-3 inline-block w-fit rounded-lg border border-line-soft bg-surface-2 px-3 py-1 text-sm text-ink-2">
+              Fragrance · <strong className="font-medium text-ink">{product.fragrance}</strong>
             </p>
           )}
-          <div className="mt-5 font-body text-2xl font-semibold tabular-nums text-ink">{formatRupee(price)}</div>
-          <p className="mt-5 max-w-[52ch] leading-[1.8] text-body">{product.description}</p>
+
+          {/* Pricing with Offer / Compare-At Support */}
+          <div className="mt-4 flex items-baseline gap-2.5">
+            <span className="font-body text-2xl font-bold tabular-nums text-ink">{formatRupee(price)}</span>
+            {product.compareAtPrice && product.compareAtPrice > price && (
+              <span className="font-body text-base text-ink-3 line-through">
+                {formatRupee(product.compareAtPrice)}
+              </span>
+            )}
+            {product.compareAtPrice && product.compareAtPrice > price && (
+              <span className="rounded-full bg-flame/15 px-2.5 py-0.5 font-util text-[0.62rem] font-bold text-flame">
+                {product.discountPercent ? `${product.discountPercent}% OFF` : 'Active Deal'}
+              </span>
+            )}
+          </div>
+
+          <p className="mt-4 max-w-[56ch] leading-[1.8] text-body text-sm sm:text-base">{product.description}</p>
 
           {product.variants.length > 0 && (
             <div className="mt-6">
