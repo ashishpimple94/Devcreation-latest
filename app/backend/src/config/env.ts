@@ -13,13 +13,23 @@ const schema = z.object({
   PORT: z.coerce.number().default(4000),
   API_PREFIX: z.string().default('/api'),
 
-  CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  CORS_ORIGIN: z.string().default('*'),
 
-  MONGODB_URI: z.string().min(1, 'MONGODB_URI is required'),
-  REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+  MONGODB_URI: z
+    .string()
+    .default(
+      'mongodb+srv://devcreation:devcreation@cluster0.ezzkjmw.mongodb.net/dev_creation?retryWrites=true&w=majority&appName=Cluster0',
+    ),
+  REDIS_URL: z.string().default('redis://127.0.0.1:6379'),
 
-  JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 chars'),
-  JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 chars'),
+  JWT_ACCESS_SECRET: z
+    .string()
+    .min(16, 'JWT_ACCESS_SECRET must be at least 16 chars')
+    .default('dev_access_secret_change_me_0123456789abcdef'),
+  JWT_REFRESH_SECRET: z
+    .string()
+    .min(16, 'JWT_REFRESH_SECRET must be at least 16 chars')
+    .default('dev_refresh_secret_change_me_0123456789abcdef'),
   JWT_ACCESS_EXPIRES: z.string().default('15m'),
   JWT_REFRESH_EXPIRES: z.string().default('7d'),
 
