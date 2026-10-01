@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import type { AppNotification } from '@/types';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? 'http://localhost:4000';
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? 'https://devcreation1.onrender.com';
 
 interface SocketEventPayload {
   type: AppNotification['type'];
