@@ -12,14 +12,11 @@ import { api } from '@/lib/api';
 import type { Product } from '@/types';
 
 /**
- * Amazon-Exact Product Detail Experience.
- * Features:
- * - 3-Column Amazon layout: Gallery with Hover Zoom Magnifier | Details & Offers | Iconic Buy Box
- * - Star ratings, "Dev's Choice" badge, "Limited time deal" banner
- * - Offers carousel (Bank, Partner, Pack discounts)
- * - 4-point Trust Icon bar (Free Delivery, Soy Wax, Secure, Gift Packaging)
- * - Amazon-style Specs Table & "About this item" bullet list
- * - Amazon signature yellow "Add to Cart" & orange "Buy Now" CTA buttons
+ * Product Detail Experience:
+ * Combines Amazon's high-converting 3-column layout, image zoom loupe, offers box, and buy box
+ * with Dev Creation's authentic luxury brand aesthetic:
+ * - Fonts: Cormorant Garamond (`font-display-alt`), Playfair (`font-display`), DM Sans (`font-body`), JetBrains Mono (`font-util`)
+ * - Theme: Paper cream (`bg-bg`), Warm Espresso (`text-ink`), Signature Gold (`text-gold`, `bg-gold`, `border-gold`)
  */
 export function ProductDetail({ product, related }: { product: Product; related: Product[] }) {
   const images = product.images.length ? product.images : [{ url: '/assets/Logos/logo.jpeg', alt: product.name }];
@@ -31,7 +28,7 @@ export function ProductDetail({ product, related }: { product: Product; related:
   const [wishing, setWishing] = useState(false);
   const [giftOption, setGiftOption] = useState(true);
 
-  // Amazon-style Image Zoom Magnifier state
+  // Smooth Image Zoom Magnifier
   const [zoomPos, setZoomPos] = useState<{ x: number; y: number; show: boolean }>({ x: 0, y: 0, show: false });
 
   const add = useCartStore((s) => s.add);
@@ -107,7 +104,7 @@ export function ProductDetail({ product, related }: { product: Product; related:
     setWishing(true);
     try {
       const res = await api.post<{ inWishlist: boolean }>(`/users/me/wishlist/${product._id}`);
-      success(res.data.inWishlist ? 'Added to your Wish List' : 'Removed from your Wish List');
+      success(res.data.inWishlist ? 'Saved to your wishlist' : 'Removed from your wishlist');
     } catch (err) {
       error(err instanceof Error ? err.message : 'Could not update wishlist');
     } finally {
@@ -115,7 +112,6 @@ export function ProductDetail({ product, related }: { product: Product; related:
     }
   };
 
-  // Delivery date calculations (2-3 days ahead like Amazon Prime)
   const deliveryDate = new Date();
   deliveryDate.setDate(deliveryDate.getDate() + 3);
   const formattedDelivery = deliveryDate.toLocaleDateString('en-IN', {
@@ -125,59 +121,59 @@ export function ProductDetail({ product, related }: { product: Product; related:
   });
 
   return (
-    <div className="bg-[#FFFFFF] min-h-screen text-[#0F1111] antialiased">
-      {/* Amazon Breadcrumb Bar */}
-      <div className="border-b border-[#E7E7E7] bg-white px-4 py-2.5 text-xs text-[#565959]">
-        <div className="mx-auto max-w-[1440px] flex items-center gap-1.5 flex-wrap">
-          <Link href="/" className="hover:text-[#C7511F] hover:underline">Home</Link>
-          <span>›</span>
-          <Link href="/products" className="hover:text-[#C7511F] hover:underline">Home Fragrances</Link>
-          <span>›</span>
-          <Link href="/products" className="hover:text-[#C7511F] hover:underline">{product.type || 'Wax Sachets'}</Link>
-          <span>›</span>
-          <span className="truncate max-w-[280px] font-medium text-[#0F1111]">{product.name}</span>
+    <div className="bg-bg min-h-screen text-ink antialiased">
+      {/* Luxury Breadcrumb Bar */}
+      <div className="border-b border-line bg-surface/70 backdrop-blur-xs px-[var(--pad)] py-3">
+        <div className="mx-auto max-w-shell flex items-center gap-2 font-util text-[0.62rem] uppercase tracking-[0.16em] text-ink-3 flex-wrap">
+          <Link href="/" className="hover:text-gold transition-colors">Home</Link>
+          <span>·</span>
+          <Link href="/products" className="hover:text-gold transition-colors">Collection</Link>
+          <span>·</span>
+          <Link href="/products" className="hover:text-gold transition-colors">{product.type || 'Wax Sachets'}</Link>
+          <span>·</span>
+          <span className="truncate max-w-[280px] text-ink font-medium">{product.name}</span>
         </div>
       </div>
 
-      <main className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6">
-        {/* Amazon 3-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr_310px] xl:grid-cols-[500px_1fr_330px] gap-6 xl:gap-8 items-start">
+      <main className="mx-auto max-w-shell px-[var(--pad)] py-8 sm:py-12">
+        {/* Amazon 3-Column Layout in Dev Creation Luxury Styling */}
+        <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr_320px] xl:grid-cols-[480px_1fr_340px] gap-8 xl:gap-10 items-start">
 
           {/* COLUMN 1: Gallery with Thumbnails & Zoom Lens */}
-          <div className="flex flex-col-reverse sm:flex-row gap-3 lg:sticky lg:top-20">
+          <div className="flex flex-col-reverse sm:flex-row gap-3.5 lg:sticky lg:top-24">
             {/* Vertical Thumbnail Strip */}
-            <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-visible pb-1 sm:pb-0 flex-shrink-0">
+            <div className="flex sm:flex-col gap-2.5 overflow-x-auto sm:overflow-visible pb-1 sm:pb-0 flex-shrink-0">
               {images.map((img, i) => (
                 <button
                   key={img.url + i}
                   onMouseEnter={() => setActiveImg(i)}
                   onClick={() => setActiveImg(i)}
                   className={cn(
-                    'h-14 w-14 sm:h-16 sm:w-16 overflow-hidden rounded-md border p-0.5 transition-all bg-white',
+                    'h-16 w-16 overflow-hidden rounded-xl border-2 p-0.5 transition-all bg-surface-2',
                     i === activeImg
-                      ? 'border-[#E77600] ring-2 ring-[#E77600]/30 shadow-xs'
-                      : 'border-[#D5D9D9] hover:border-[#888C8C] opacity-80 hover:opacity-100',
+                      ? 'border-gold ring-2 ring-gold/20 shadow-xs'
+                      : 'border-line hover:border-gold/60 opacity-80 hover:opacity-100',
                   )}
                   aria-label={`View image ${i + 1}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt="" className="h-full w-full object-contain" />
+                  <img src={img.url} alt="" className="h-full w-full object-cover rounded-lg" />
                 </button>
               ))}
             </div>
 
-            {/* Main Image Frame with Amazon Zoom Lens */}
+            {/* Main Medium Image Frame with Zoom Lens */}
             <div className="flex-1">
               <div
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
-                className="relative h-[380px] sm:h-[440px] w-full cursor-crosshair overflow-hidden rounded-lg border border-[#D5D9D9] bg-white flex items-center justify-center p-3 select-none"
+                className="relative h-[380px] sm:h-[430px] w-full cursor-crosshair overflow-hidden rounded-2xl border border-line bg-surface-2 flex items-center justify-center p-3 select-none shadow-xs group"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={images[activeImg].url}
                   alt={images[activeImg].alt ?? product.name}
-                  className="h-full w-full object-contain pointer-events-none"
+                  className="h-full w-full object-cover rounded-xl pointer-events-none transition-transform duration-300"
                   style={
                     zoomPos.show
                       ? {
@@ -189,11 +185,14 @@ export function ProductDetail({ product, related }: { product: Product; related:
                   }
                 />
 
-                {/* Amazon Deal Badge Overlay */}
+                {/* Offer Badge Overlay */}
                 {discountPercent > 0 && (
-                  <div className="absolute top-3 left-3 z-10">
-                    <span className="rounded bg-[#CC0C39] px-2.5 py-1 text-xs font-bold text-white shadow-xs uppercase tracking-wider">
-                      Limited time deal
+                  <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+                    <span className="rounded-full border border-flame/40 bg-flame/95 px-2.5 py-0.5 font-util text-[0.58rem] font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-xs">
+                      🔥 Limited Deal
+                    </span>
+                    <span className="rounded-full bg-deep/90 px-2.5 py-0.5 font-util text-[0.58rem] font-bold uppercase tracking-wider text-gold-lt shadow-sm backdrop-blur-xs">
+                      Save {discountPercent}%
                     </span>
                   </div>
                 )}
@@ -201,7 +200,7 @@ export function ProductDetail({ product, related }: { product: Product; related:
                 {/* Pack / Weight Badge */}
                 {product.weight && (
                   <div className="absolute top-3 right-3 z-10">
-                    <span className="rounded border border-[#D5D9D9] bg-white/95 px-2 py-0.5 text-[0.7rem] font-semibold text-[#0F1111] shadow-xs">
+                    <span className="rounded-full border border-gold/30 bg-white/95 px-2.5 py-0.5 font-util text-[0.58rem] font-semibold uppercase tracking-wider text-gold-dk shadow-xs backdrop-blur-md">
                       🎁 {product.weight}
                     </span>
                   </div>
@@ -210,20 +209,26 @@ export function ProductDetail({ product, related }: { product: Product; related:
                 {/* Hover prompt */}
                 <div
                   className={cn(
-                    'absolute bottom-2 right-2 text-[0.68rem] text-[#565959] bg-white/80 px-2 py-0.5 rounded transition-opacity pointer-events-none',
+                    'absolute bottom-3 right-3 font-util text-[0.55rem] uppercase tracking-wider text-ink-3 bg-white/90 px-2 py-0.5 rounded-full border border-line transition-opacity pointer-events-none shadow-2xs',
                     zoomPos.show ? 'opacity-0' : 'opacity-100',
                   )}
                 >
-                  🔍 Hover to zoom
+                  🔍 Hover to Zoom
                 </div>
               </div>
 
-              {/* Share & Wishlist under image */}
-              <div className="mt-2.5 flex items-center justify-between text-xs text-[#007185]">
-                <button onClick={toggleWishlist} className="hover:text-[#C7511F] hover:underline flex items-center gap-1">
-                  <span>♡</span> {wishing ? 'Updating...' : 'Add to Wish List'}
+              {/* Wishlist Link & Brand Origin */}
+              <div className="mt-3 flex items-center justify-between text-xs">
+                <button
+                  type="button"
+                  onClick={toggleWishlist}
+                  className="font-util text-[0.62rem] uppercase tracking-wider text-ink-2 hover:text-gold transition-colors flex items-center gap-1"
+                >
+                  <span>♡</span> {wishing ? 'Saving...' : 'Add to Wishlist'}
                 </button>
-                <span className="text-[#565959]">Handcrafted in India</span>
+                <span className="font-util text-[0.58rem] uppercase tracking-wider text-ink-3">
+                  100% Hand-Poured in India
+                </span>
               </div>
             </div>
           </div>
@@ -232,209 +237,231 @@ export function ProductDetail({ product, related }: { product: Product; related:
           <div className="space-y-4">
             {/* Brand Store Link */}
             <div>
-              <Link href="/products" className="text-xs font-medium text-[#007185] hover:text-[#C7511F] hover:underline">
-                Visit the Dev Creation Store
+              <Link href="/products" className="font-util text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-gold hover:text-gold-dk transition-colors">
+                Dev Creation Fragrance House
               </Link>
-              <h1 className="mt-1 text-xl sm:text-2xl font-normal leading-snug text-[#0F1111]">
-                {product.name} — Handcrafted Botanical Aromatherapy Sachet
+              <h1 className="mt-1 font-display-alt text-[clamp(1.85rem,3.2vw,2.5rem)] font-medium leading-tight text-ink">
+                {product.name}
               </h1>
             </div>
 
-            {/* Ratings & Amazon's Choice Badge */}
-            <div className="flex flex-wrap items-center gap-3 border-b border-[#E7E7E7] pb-3 text-xs">
-              <div className="flex items-center gap-1 text-[#FFA41C]">
+            {/* Ratings & Dev's Choice Badge */}
+            <div className="flex flex-wrap items-center gap-3 border-b border-line pb-3.5">
+              <div className="flex items-center gap-1 text-gold text-sm">
                 <span>★★★★★</span>
-                <span className="text-[#007185] font-semibold hover:underline cursor-pointer">4.8</span>
+                <span className="font-body text-xs font-semibold text-ink">4.9</span>
               </div>
-              <span className="text-[#565959]">|</span>
-              <span className="text-[#007185] hover:underline cursor-pointer">142 ratings</span>
-              <span className="text-[#565959]">|</span>
-              <span className="text-[#565959]">50+ bought in past month</span>
+              <span className="text-line">|</span>
+              <span className="font-body text-xs text-ink-3">142 customer reviews</span>
+              <span className="text-line">|</span>
               <div className="w-full sm:w-auto">
-                <span className="inline-flex items-center rounded-xs bg-[#232F3E] text-white px-2 py-0.5 text-[0.68rem] font-bold">
-                  <span>Dev’s</span>&nbsp;<span className="text-[#F08804]">Choice</span>
+                <span className="inline-flex items-center rounded-full bg-deep px-2.5 py-0.5 font-util text-[0.58rem] font-bold text-white shadow-xs">
+                  <span>Dev’s</span>&nbsp;<span className="text-gold-lt">Choice</span>
                 </span>
-                <span className="ml-1.5 text-[0.7rem] text-[#565959]">in &quot;{product.type}&quot;</span>
+                <span className="ml-1.5 font-body text-xs text-ink-3">in {product.type || 'Wax Sachets'}</span>
               </div>
             </div>
 
-            {/* Amazon Price Block */}
-            <div className="space-y-1 border-b border-[#E7E7E7] pb-3.5">
+            {/* Pricing Section */}
+            <div className="space-y-1.5 border-b border-line pb-4">
               {discountPercent > 0 && (
                 <div className="flex items-center gap-2">
-                  <span className="rounded bg-[#CC0C39] px-2 py-0.5 text-xs font-bold text-white uppercase">
-                    Deal
+                  <span className="rounded-full bg-flame/15 px-2.5 py-0.5 font-util text-[0.6rem] font-bold text-flame uppercase tracking-wider">
+                    Deal Active
                   </span>
-                  <span className="text-sm font-bold text-[#CC0C39]">
+                  <span className="font-body text-sm font-bold text-flame">
                     -{discountPercent}%
                   </span>
                 </div>
               )}
 
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs align-super text-[#0F1111] font-normal">₹</span>
-                <span className="text-3xl font-medium tracking-tight text-[#0F1111]">
-                  {price.toLocaleString('en-IN')}
+              <div className="flex items-baseline gap-2.5">
+                <span className="font-body text-3xl font-bold tabular-nums text-ink">
+                  {formatRupee(price)}
                 </span>
-                <span className="text-xs font-normal text-[#0F1111]">00</span>
+                {comparePrice && comparePrice > price && (
+                  <span className="font-body text-base text-ink-3 line-through">
+                    {formatRupee(comparePrice)}
+                  </span>
+                )}
               </div>
 
-              {comparePrice && comparePrice > price && (
-                <div className="text-xs text-[#565959]">
-                  M.R.P.: <span className="line-through">{formatRupee(comparePrice)}</span>
-                </div>
-              )}
-
-              <p className="text-xs text-[#565959]">Inclusive of all taxes</p>
-              <p className="text-xs text-[#0F1111] font-medium">
-                <strong>EMI</strong> starts at ₹{Math.round(price / 3)}. No Cost EMI available
+              <p className="font-body text-xs text-ink-3">Inclusive of all taxes</p>
+              <p className="font-body text-xs text-ink-2">
+                <strong>EMI options available</strong> · Free pan-India shipping on orders over ₹499
               </p>
             </div>
 
-            {/* Amazon Offers Section */}
-            <div className="space-y-2 border-b border-[#E7E7E7] pb-4">
-              <div className="flex items-center gap-1.5 text-sm font-bold text-[#0F1111]">
-                <span>🏷️</span>
-                <span>Offers</span>
+            {/* Fragrance specification callout */}
+            {product.fragrance && (
+              <div className="rounded-xl border border-line-soft bg-surface-2 px-3.5 py-2">
+                <span className="font-util text-[0.58rem] uppercase tracking-wider text-ink-3 block">
+                  Signature Fragrance Notes
+                </span>
+                <span className="font-body text-sm font-semibold text-ink">
+                  {product.fragrance}
+                </span>
+              </div>
+            )}
+
+            {/* Offers Box in Dev Creation Theme */}
+            <div className="space-y-2.5 border-b border-line pb-4">
+              <div className="flex items-center gap-2">
+                <span className="font-util text-[0.62rem] font-bold uppercase tracking-[0.2em] text-gold-dk">
+                  🏷️ Available Offers
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div className="rounded-lg border border-[#D5D9D9] p-3 text-xs bg-white shadow-2xs hover:border-[#888C8C] transition-colors">
-                  <span className="font-bold text-[#0F1111] block mb-1">Bank Offer</span>
-                  <p className="text-[#565959] leading-snug line-clamp-2">
-                    Upto ₹150 discount on select Credit Cards & UPI.
+                <div className="rounded-xl border border-line bg-surface p-3 shadow-2xs hover:border-gold transition-colors">
+                  <span className="font-util text-[0.6rem] font-bold uppercase tracking-wider text-ink block mb-1">
+                    Bank Offer
+                  </span>
+                  <p className="font-body text-xs text-body leading-relaxed line-clamp-2">
+                    10% instant discount on UPI and select cards.
                   </p>
-                  <span className="mt-2 block text-[#007185] font-medium hover:underline cursor-pointer">
-                    2 offers ›
+                  <span className="mt-2 block font-util text-[0.58rem] text-gold uppercase tracking-wider font-semibold">
+                    Code: DEV10
                   </span>
                 </div>
 
-                <div className="rounded-lg border border-[#D5D9D9] p-3 text-xs bg-white shadow-2xs hover:border-[#888C8C] transition-colors">
-                  <span className="font-bold text-[#0F1111] block mb-1">Partner Offer</span>
-                  <p className="text-[#565959] leading-snug line-clamp-2">
-                    Get complimentary luxury aroma melt with your order.
+                <div className="rounded-xl border border-line bg-surface p-3 shadow-2xs hover:border-gold transition-colors">
+                  <span className="font-util text-[0.6rem] font-bold uppercase tracking-wider text-ink block mb-1">
+                    Gift Offer
+                  </span>
+                  <p className="font-body text-xs text-body leading-relaxed line-clamp-2">
+                    Complimentary aroma wax melt with orders above ₹799.
                   </p>
-                  <span className="mt-2 block text-[#007185] font-medium hover:underline cursor-pointer">
-                    1 offer ›
+                  <span className="mt-2 block font-util text-[0.58rem] text-gold uppercase tracking-wider font-semibold">
+                    Auto-applied
                   </span>
                 </div>
 
-                <div className="rounded-lg border border-[#D5D9D9] p-3 text-xs bg-white shadow-2xs hover:border-[#888C8C] transition-colors">
-                  <span className="font-bold text-[#0F1111] block mb-1">Pack Savings</span>
-                  <p className="text-[#565959] leading-snug line-clamp-2">
-                    Buy 2 or more gift sets and save an additional 10%.
+                <div className="rounded-xl border border-line bg-surface p-3 shadow-2xs hover:border-gold transition-colors">
+                  <span className="font-util text-[0.6rem] font-bold uppercase tracking-wider text-ink block mb-1">
+                    Pack Savings
+                  </span>
+                  <p className="font-body text-xs text-body leading-relaxed line-clamp-2">
+                    Buy 2 or more packs to unlock bulk gifting discount.
                   </p>
-                  <span className="mt-2 block text-[#007185] font-medium hover:underline cursor-pointer">
-                    Details ›
+                  <span className="mt-2 block font-util text-[0.58rem] text-gold uppercase tracking-wider font-semibold">
+                    Save extra
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Amazon 4 Trust Icons Bar */}
-            <div className="grid grid-cols-4 gap-2 border-b border-[#E7E7E7] py-3 text-center text-[0.72rem] text-[#007185]">
+            {/* 4 Trust Icons in Brand Style */}
+            <div className="grid grid-cols-4 gap-2 border-b border-line py-3.5 text-center">
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xl">🚚</span>
-                <span className="leading-tight">Free Delivery</span>
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-xl">🔄</span>
-                <span className="leading-tight">7 Days Replacement</span>
+                <span className="font-util text-[0.58rem] uppercase tracking-wider text-ink-2">Free Delivery</span>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xl">🌿</span>
-                <span className="leading-tight">100% Pure Soy Wax</span>
+                <span className="font-util text-[0.58rem] uppercase tracking-wider text-ink-2">100% Pure Soy</span>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xl">🔒</span>
-                <span className="leading-tight">Secure Transaction</span>
+                <span className="font-util text-[0.58rem] uppercase tracking-wider text-ink-2">Secure Checkout</span>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-xl">🎁</span>
+                <span className="font-util text-[0.58rem] uppercase tracking-wider text-ink-2">Gift Packaging</span>
               </div>
             </div>
 
             {/* Product Specifications Table */}
-            <div className="space-y-2 border-b border-[#E7E7E7] pb-4 text-xs">
-              <h3 className="font-bold text-sm text-[#0F1111]">Product details</h3>
-              <table className="w-full">
+            <div className="space-y-2 border-b border-line pb-4">
+              <h3 className="font-display text-sm font-medium text-ink">Product Specifications</h3>
+              <table className="w-full text-xs font-body">
                 <tbody>
-                  <tr className="border-b border-transparent">
-                    <td className="py-1 font-semibold text-[#565959] w-36">Brand</td>
-                    <td className="py-1 text-[#0F1111]">Dev Creation</td>
+                  <tr className="border-b border-line-soft">
+                    <td className="py-1.5 font-medium text-ink-3 w-36">Brand</td>
+                    <td className="py-1.5 text-ink font-semibold">Dev Creation</td>
                   </tr>
                   {product.fragrance && (
-                    <tr>
-                      <td className="py-1 font-semibold text-[#565959]">Scent</td>
-                      <td className="py-1 text-[#0F1111] font-medium">{product.fragrance}</td>
+                    <tr className="border-b border-line-soft">
+                      <td className="py-1.5 font-medium text-ink-3">Fragrance</td>
+                      <td className="py-1.5 text-ink font-semibold">{product.fragrance}</td>
                     </tr>
                   )}
-                  <tr>
-                    <td className="py-1 font-semibold text-[#565959]">Item Form</td>
-                    <td className="py-1 text-[#0F1111]">{product.type || 'Wax Sachet'}</td>
+                  <tr className="border-b border-line-soft">
+                    <td className="py-1.5 font-medium text-ink-3">Product Type</td>
+                    <td className="py-1.5 text-ink">{product.type || 'Wax Sachet'}</td>
                   </tr>
                   {product.weight && (
-                    <tr>
-                      <td className="py-1 font-semibold text-[#565959]">Package Spec</td>
-                      <td className="py-1 text-[#0F1111]">{product.weight}</td>
+                    <tr className="border-b border-line-soft">
+                      <td className="py-1.5 font-medium text-ink-3">Pack / Weight</td>
+                      <td className="py-1.5 text-ink">{product.weight}</td>
                     </tr>
                   )}
-                  <tr>
-                    <td className="py-1 font-semibold text-[#565959]">Material Feature</td>
-                    <td className="py-1 text-[#0F1111]">Plant-Based Soy, Botanical Essential Oils</td>
+                  <tr className="border-b border-line-soft">
+                    <td className="py-1.5 font-medium text-ink-3">Wax Formulation</td>
+                    <td className="py-1.5 text-ink">100% Organic Soy Blend & Essential Oils</td>
                   </tr>
                   <tr>
-                    <td className="py-1 font-semibold text-[#565959]">Country of Origin</td>
-                    <td className="py-1 text-[#0F1111]">India</td>
+                    <td className="py-1.5 font-medium text-ink-3">Origin</td>
+                    <td className="py-1.5 text-ink">Handmade in India</td>
                   </tr>
                 </tbody>
               </table>
             </div>
 
             {/* "About this item" Bullet Points */}
-            <div className="space-y-2 pb-4">
-              <h3 className="font-bold text-sm text-[#0F1111]">About this item</h3>
-              <ul className="list-disc pl-5 space-y-1.5 text-xs text-[#0F1111] leading-relaxed">
+            <div className="space-y-2 pb-2">
+              <h3 className="font-display text-sm font-medium text-ink">About This Creation</h3>
+              <p className="font-body text-xs text-body leading-relaxed mb-3">
+                {product.description}
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 font-body text-xs text-body leading-relaxed">
                 <li>
-                  <strong>LONG-LASTING NATURAL AROMA:</strong> Infused with premium botanical fragrance oils providing an uplifting and calming ambiance in wardrobes, closets, drawers, and workspaces.
+                  <strong className="text-ink">Long-Lasting Aroma:</strong> Infused with therapeutic-grade botanical fragrance oils providing an uplifting and calming ambiance in wardrobes, closets, drawers, and workspaces.
                 </li>
                 <li>
-                  <strong>100% ORGANIC SOY WAX:</strong> Handcrafted with eco-conscious, non-toxic soy wax that is biodegradable, clean burning, and safe for linen and delicate clothing.
+                  <strong className="text-ink">100% Organic Soy Wax:</strong> Handcrafted with eco-conscious, non-toxic soy wax that is biodegradable, clean burning, and completely safe for linen and clothing.
                 </li>
                 <li>
-                  <strong>ARTISAN CRAFTED:</strong> Each sachet is hand-embellished with real dried flowers, botanicals, and a luxurious hanging ribbon.
+                  <strong className="text-ink">Artisan Decorated:</strong> Each sachet is hand-embellished with real dried flowers, botanical petals, and a luxury hanging ribbon.
                 </li>
                 <li>
-                  <strong>READY TO GIFT:</strong> Elegantly presented in luxury packaging, making it an ideal gift for weddings, housewarmings, festive celebrations, and corporate hampers.
+                  <strong className="text-ink">Ready to Gift:</strong> Elegantly presented in luxury packaging, making it an ideal gift for weddings, housewarmings, festive celebrations, and corporate hampers.
                 </li>
               </ul>
             </div>
           </div>
 
-          {/* COLUMN 3: The Famous Amazon Buy Box */}
-          <div className="rounded-lg border border-[#D5D9D9] p-4 text-xs bg-white shadow-sm lg:sticky lg:top-20 space-y-3.5">
-            {/* Price display */}
+          {/* COLUMN 3: The Dev Creation Buy Box */}
+          <div className="rounded-2xl border border-line bg-surface p-5 text-xs shadow-card lg:sticky lg:top-24 space-y-4">
+            {/* Price Header */}
             <div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-xs text-[#0F1111]">₹</span>
-                <span className="text-2xl font-bold text-[#0F1111]">
-                  {price.toLocaleString('en-IN')}
+              <span className="font-util text-[0.58rem] uppercase tracking-wider text-ink-3 block">Total Price</span>
+              <div className="flex items-baseline gap-1 mt-0.5">
+                <span className="font-body text-2xl font-bold text-ink tabular-nums">
+                  {formatRupee(price)}
                 </span>
-                <span className="text-xs text-[#0F1111]">.00</span>
+                {comparePrice && comparePrice > price && (
+                  <span className="font-body text-xs text-ink-3 line-through ml-1.5">
+                    {formatRupee(comparePrice)}
+                  </span>
+                )}
               </div>
               {comparePrice && comparePrice > price && (
-                <div className="text-[0.72rem] text-[#565959] mt-0.5">
-                  Save {formatRupee(comparePrice - price)} ({discountPercent}%)
-                </div>
+                <span className="font-util text-[0.62rem] text-emerald-700 font-semibold block mt-0.5">
+                  Save {formatRupee(comparePrice - price)} ({discountPercent}% OFF)
+                </span>
               )}
             </div>
 
             {/* Delivery Info */}
-            <div className="space-y-1 text-xs">
-              <div className="text-[#0F1111]">
-                <strong className="text-[#007600]">FREE delivery</strong> <strong>{formattedDelivery}</strong>.
+            <div className="space-y-1 font-body text-xs border-t border-line-soft pt-3">
+              <div className="text-ink">
+                <strong className="text-emerald-700">FREE Delivery</strong> by <strong>{formattedDelivery}</strong>
               </div>
-              <div className="text-[#565959]">
-                Order within <span className="text-[#007600] font-semibold">12 hrs 30 mins</span>
+              <div className="text-ink-3 text-[0.72rem]">
+                Order within <span className="text-emerald-700 font-semibold">12 hrs</span> for fastest dispatch
               </div>
-              <div className="flex items-center gap-1 text-[#007185] hover:text-[#C7511F] hover:underline cursor-pointer pt-0.5">
+              <div className="flex items-center gap-1 font-util text-[0.65rem] text-gold hover:text-gold-dk transition-colors cursor-pointer pt-0.5">
                 <span>📍</span>
                 <span>Deliver to your location</span>
               </div>
@@ -443,23 +470,27 @@ export function ProductDetail({ product, related }: { product: Product; related:
             {/* In Stock */}
             <div>
               {stock > 0 ? (
-                <span className="text-lg font-bold text-[#007600] block">In stock</span>
+                <span className="font-util text-xs uppercase tracking-wider font-bold text-emerald-700 block">
+                  ✓ In Stock ({stock} units left)
+                </span>
               ) : (
-                <span className="text-lg font-bold text-[#B12704] block">Currently unavailable</span>
+                <span className="font-util text-xs uppercase tracking-wider font-bold text-red-600 block">
+                  ✕ Out of Stock
+                </span>
               )}
             </div>
 
             {/* Quantity Selector */}
             {stock > 0 && (
-              <div className="flex items-center gap-2">
-                <label htmlFor="quantity-select" className="text-xs font-semibold text-[#0F1111]">
+              <div className="flex items-center justify-between border-t border-line-soft pt-2">
+                <label htmlFor="buybox-quantity" className="font-util text-[0.65rem] uppercase tracking-wider text-ink font-semibold">
                   Quantity:
                 </label>
                 <select
-                  id="quantity-select"
+                  id="buybox-quantity"
                   value={qty}
                   onChange={(e) => setQty(Number(e.target.value))}
-                  className="rounded-md border border-[#D5D9D9] bg-[#F0F2F2] px-2.5 py-1 text-xs font-medium text-[#0F1111] shadow-2xs outline-none focus:border-[#E77600]"
+                  className="rounded-lg border border-line bg-surface-2 px-3 py-1 font-body text-xs font-semibold text-ink outline-none focus:border-gold"
                 >
                   {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => (
                     <option key={n} value={n}>
@@ -470,83 +501,94 @@ export function ProductDetail({ product, related }: { product: Product; related:
               </div>
             )}
 
-            {/* Amazon CTA Buttons */}
-            <div className="space-y-2 pt-1">
-              {/* Add to Cart: Amazon Signature Yellow */}
+            {/* CTA Buttons in Luxury Dev Creation Palette */}
+            <div className="space-y-2.5 pt-1">
+              {/* Add to Cart: Deep Rich Button */}
               <button
                 type="button"
                 onClick={handleAdd}
                 disabled={stock <= 0 || adding || buying}
                 className={cn(
-                  'w-full rounded-full py-2.5 px-4 text-xs font-medium text-[#0F1111] shadow-xs transition-all active:scale-[0.98]',
-                  'bg-[#FFD814] hover:bg-[#F7CA00] border border-[#FCD200]',
+                  'w-full rounded-xl py-3 px-4 font-util text-[0.68rem] uppercase tracking-[0.16em] transition-all duration-300 active:scale-[0.98]',
+                  'bg-deep text-white border border-deep hover:bg-[#3D2A1E] shadow-sm',
                   stock <= 0 && 'opacity-50 cursor-not-allowed',
                 )}
               >
                 {adding ? 'Adding to Cart...' : 'Add to Cart'}
               </button>
 
-              {/* Buy Now: Amazon Signature Orange */}
+              {/* Buy Now: Signature Gold Button */}
               <button
                 type="button"
                 onClick={handleBuyNow}
                 disabled={stock <= 0 || buying || adding}
                 className={cn(
-                  'w-full rounded-full py-2.5 px-4 text-xs font-medium text-[#0F1111] shadow-xs transition-all active:scale-[0.98]',
-                  'bg-[#FFA41C] hover:bg-[#FA8900] border border-[#FF8F00]',
+                  'w-full rounded-xl py-3 px-4 font-util text-[0.68rem] uppercase tracking-[0.16em] transition-all duration-300 active:scale-[0.98]',
+                  'bg-gold text-white border border-gold hover:bg-gold-dk shadow-sm',
                   stock <= 0 && 'opacity-50 cursor-not-allowed',
                 )}
               >
-                {buying ? 'Redirecting to Checkout...' : 'Buy Now'}
+                {buying ? 'Proceeding to Checkout...' : 'Buy Now'}
               </button>
             </div>
 
-            {/* Secure Transaction & Fulfillment */}
-            <div className="space-y-1.5 border-t border-[#E7E7E7] pt-3 text-[0.72rem] text-[#565959]">
-              <div className="flex items-center gap-1.5 text-[#007185]">
+            {/* Security & Provenance */}
+            <div className="space-y-1 border-t border-line-soft pt-3 font-util text-[0.62rem] text-ink-3">
+              <div className="flex items-center gap-1.5 text-gold-dk font-semibold">
                 <span>🔒</span>
-                <span>Secure transaction</span>
+                <span>Secure & Encrypted Checkout</span>
               </div>
-              <div className="grid grid-cols-[70px_1fr] gap-1 pt-1">
-                <span>Ships from</span>
-                <span className="text-[#0F1111] font-medium">Dev Creation</span>
-                <span>Sold by</span>
-                <span className="text-[#0F1111] font-medium">Dev Creation Official</span>
+              <div className="grid grid-cols-[80px_1fr] gap-1 pt-1 font-body text-xs">
+                <span className="text-ink-3">Ships from:</span>
+                <span className="text-ink font-medium">Dev Creation</span>
+                <span className="text-ink-3">Sold by:</span>
+                <span className="text-ink font-medium">Dev Creation Studio</span>
               </div>
             </div>
 
-            {/* Gift Options Checkbox */}
-            <label className="flex items-center gap-2 cursor-pointer border-t border-[#E7E7E7] pt-2 text-[0.75rem] text-[#0F1111]">
+            {/* Gift Wrap Checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer border-t border-line-soft pt-2 font-body text-xs text-ink">
               <input
                 type="checkbox"
                 checked={giftOption}
                 onChange={(e) => setGiftOption(e.target.checked)}
-                className="rounded border-[#D5D9D9] text-[#E77600] focus:ring-[#E77600]"
+                className="rounded border-line text-gold focus:ring-gold"
               />
-              <span>Add gift options at checkout</span>
+              <span>Add luxury gift wrap & personal note</span>
             </label>
 
-            {/* Add to Wish List Button */}
-            <div className="border-t border-[#E7E7E7] pt-2">
+            {/* Wishlist Button */}
+            <div className="border-t border-line-soft pt-2">
               <button
                 type="button"
                 onClick={toggleWishlist}
                 disabled={wishing}
-                className="w-full rounded-md border border-[#D5D9D9] bg-[#F7FAFA] py-1.5 text-xs text-[#0F1111] hover:bg-[#EDF2F2] transition-colors"
+                className="w-full rounded-xl border border-line bg-surface-2 py-2 font-util text-[0.65rem] uppercase tracking-[0.14em] text-ink-2 hover:border-gold hover:text-ink transition-colors"
               >
-                {wishing ? 'Saving...' : 'Add to Wish List'}
+                {wishing ? 'Updating...' : '♡ Add to Wishlist'}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Amazon "Customers Also Viewed" Section */}
+        {/* "You May Also Like" Related Products */}
         {related.length > 0 && (
-          <div className="mt-14 border-t border-[#E7E7E7] pt-8">
-            <h2 className="text-xl font-bold text-[#0F1111] mb-4">
-              Inspired by your browsing history
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="mt-20 border-t border-line pt-12">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <span className="font-util text-[0.6rem] font-semibold uppercase tracking-[0.2em] text-gold">
+                  Curated Collection
+                </span>
+                <h2 className="mt-1 font-display text-[clamp(1.5rem,2.8vw,2.2rem)] font-medium text-ink">
+                  You May Also Like
+                </h2>
+              </div>
+              <Link href="/products" className="font-util text-xs text-gold hover:text-gold-dk uppercase tracking-wider">
+                View All →
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {related.map((p) => (
                 <ProductCard key={p._id} product={p} />
               ))}
