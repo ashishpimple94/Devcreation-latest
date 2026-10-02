@@ -83,7 +83,21 @@ export const productService = {
       const query = Types.ObjectId.isValid(idOrSlug)
         ? { $or: [{ _id: idOrSlug }, { slug: idOrSlug }] }
         : { slug: idOrSlug };
-      const product = await Product.findOne(query).populate('category', 'name slug').lean();
+      let product = await Product.findOne(query).populate('category', 'name slug').lean();
+
+      // Intelligent fallback: if not matched directly, try matching base slug (e.g. wax-sachet vs wax-sachet-1)
+      if (!product && typeof idOrSlug === 'string' && idOrSlug.trim()) {
+        const cleanSlug = idOrSlug.trim().toLowerCase().replace(/-\d+$/, '');
+        product = await Product.findOne({
+          $or: [
+            { slug: new RegExp(`^${cleanSlug}`, 'i') },
+            { name: new RegExp(`^${cleanSlug.replace(/-/g, ' ')}`, 'i') },
+          ],
+        })
+          .populate('category', 'name slug')
+          .lean();
+      }
+
       if (!product) throw ApiError.notFound('Product not found');
       return product;
     });

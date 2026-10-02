@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
@@ -14,28 +14,37 @@ export default function AdminLoginPage() {
   const isStaff = useAuthStore((s) => s.isStaff);
   const logout = useAuthStore((s) => s.logout);
   const refreshNotifications = useNotificationStore((s) => s.refresh);
-  const { error } = useToast();
+  const { error, success } = useToast();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Pre-warm backend when login page opens so cold-start delay is eliminated
+  useEffect(() => {
+    fetch('https://devcreation1.onrender.com/api/health', { method: 'GET' }).catch(() => {});
+  }, []);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email.trim(), password);
+
       // Only staff may use the admin panel.
       if (!isStaff()) {
         await logout();
         error('This account does not have admin access');
+        setLoading(false);
         return;
       }
-      await refreshNotifications();
+
+      success('Welcome back!');
+      // Refresh notifications in background - do NOT block navigation!
+      refreshNotifications().catch(() => {});
       router.push('/dashboard');
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Login failed');
-    } finally {
+      error(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
       setLoading(false);
     }
   };

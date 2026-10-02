@@ -20,7 +20,7 @@ export const createProductSchema = {
     type: z.string().min(1),
     fragrance: z.string().optional().default(''),
     description: z.string().optional().default(''),
-    category: z.string().length(24).optional().nullable().or(z.literal('')),
+    category: z.union([z.string().length(24), z.literal(''), z.null()]).optional().nullable(),
     price: z.number().min(0),
     compareAtPrice: z.number().min(0).optional().nullable(),
     discountPercent: z.number().min(0).max(100).optional().default(0),

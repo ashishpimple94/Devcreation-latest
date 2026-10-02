@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
@@ -24,23 +24,36 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Pre-warm backend when login page opens so cold-start delay is eliminated
+  useEffect(() => {
+    fetch('https://devcreation1.onrender.com/api/health', { method: 'GET' }).catch(() => {});
+  }, []);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
-      // Staff accounts belong to the admin panel, not the storefront.
+      await login(email.trim(), password);
+
+      // Staff accounts belong to the admin panel, not the storefront
       if (isStaff()) {
         await logout();
-        error('Staff accounts must sign in through the admin panel');
+        error('Staff accounts must sign in through the Admin Panel (port 3001)');
+        setLoading(false);
         return;
       }
-      await Promise.all([refreshCart(), refreshNotifications()]);
-      const redirect = params.get('redirect');
-      router.push(redirect ?? '/account/profile');
+
+      // Background refresh - do NOT block user navigation!
+      refreshCart().catch(() => {});
+      refreshNotifications().catch(() => {});
+
+      let redirect = params.get('redirect');
+      if (!redirect || redirect === '/account' || redirect === '/login') {
+        redirect = '/account/profile';
+      }
+      router.push(redirect);
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Login failed');
-    } finally {
+      error(err instanceof Error ? err.message : 'Login failed. Please check your credentials.');
       setLoading(false);
     }
   };

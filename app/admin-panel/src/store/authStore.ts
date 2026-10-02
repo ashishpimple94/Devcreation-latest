@@ -19,9 +19,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   status: 'idle',
 
   async init() {
-    // Try to restore the session even if the access token is missing/expired:
-    // the api client will attempt a refresh (httpOnly cookie) on a 401 before
-    // giving up, so a short-lived token expiring never logs the admin out mid-session.
+    if (!tokenStore.get()) {
+      set({ user: null, status: 'unauthenticated' });
+      return;
+    }
     set({ status: 'loading' });
     try {
       const res = await api.get<User>('/auth/me');
