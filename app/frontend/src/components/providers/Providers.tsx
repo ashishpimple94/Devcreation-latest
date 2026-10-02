@@ -14,9 +14,11 @@ function Bootstrap({ children }: { children: React.ReactNode }) {
   const refreshCart = useCartStore((s) => s.refresh);
   const refreshNotifications = useNotificationStore((s) => s.refresh);
 
-  // Restore the session on first load.
+  // Restore the session on first load & pre-warm backend to eliminate cold starts.
   useEffect(() => {
     void init();
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://devcreation1.onrender.com/api';
+    fetch(`${apiUrl}/health`, { method: 'GET' }).catch(() => {});
   }, [init]);
 
   // Once authenticated, hydrate cart + notifications.

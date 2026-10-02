@@ -23,10 +23,22 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [takingLong, setTakingLong] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (loading) {
+      timer = setTimeout(() => setTakingLong(true), 2500);
+    } else {
+      setTakingLong(false);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   // Pre-warm backend when login page opens so cold-start delay is eliminated
   useEffect(() => {
-    fetch('https://devcreation1.onrender.com/api/health', { method: 'GET' }).catch(() => {});
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://devcreation1.onrender.com/api';
+    fetch(`${apiUrl}/health`, { method: 'GET' }).catch(() => {});
   }, []);
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -84,8 +96,13 @@ function LoginForm() {
         Forgot password?
       </Link>
       <Button type="submit" loading={loading} className="w-full">
-        Log in
+        {loading ? (takingLong ? 'Connecting...' : 'Logging in...') : 'Log in'}
       </Button>
+      {loading && takingLong && (
+        <p className="mt-2.5 text-center text-xs text-amber-600 animate-pulse font-util tracking-wide">
+          Waking up secure server... (Render cloud cold start takes a moment)
+        </p>
+      )}
       <p className="mt-6 text-center text-sm text-body">
         New here?{' '}
         <Link href="/register" className="font-medium text-gold hover:text-gold-dk">

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -48,8 +49,28 @@ export function createApp() {
     }),
   );
 
-  // Serve locally stored uploads (dev image storage driver).
+  // Serve locally stored uploads (disk cache).
   app.use('/uploads', express.static(path.join(storageService.uploadRoot)));
+
+  // Fallback for uploads: restore from MongoDB Atlas if disk was reset on Render redeploy
+  app.get('/uploads/*', async (req, res, next) => {
+    try {
+      const rawKey = req.params[0] || '';
+      const media = await storageService.findMedia(rawKey);
+      if (!media) return next();
+
+      // Write back to local disk cache for fast future hits
+      const dest = path.join(storageService.uploadRoot, media.key);
+      await fs.mkdir(path.dirname(dest), { recursive: true }).catch(() => {});
+      await fs.writeFile(dest, media.data).catch(() => {});
+
+      res.setHeader('Content-Type', media.mimeType || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.send(media.data);
+    } catch (err) {
+      return next(err);
+    }
+  });
 
   app.use(env.API_PREFIX, apiLimiter, routes);
 

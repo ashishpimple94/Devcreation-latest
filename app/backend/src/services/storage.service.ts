@@ -1,17 +1,17 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import type { Request } from 'express';
 import { env } from '@/config/env';
 import { ApiError } from '@/utils/ApiError';
+import { UploadedMedia } from '@/models/UploadedMedia';
+import { logger } from '@/utils/logger';
 
 /**
- * Pluggable object-storage abstraction. Only the resulting public URL and
- * metadata are ever persisted in MongoDB — never the binary itself.
- *
- * The `local` driver writes to disk and is intended for development. In
- * production set STORAGE_DRIVER=s3 (or cloudinary) and implement the upload in
- * the corresponding branch; the rest of the app is unaffected because it only
- * consumes the returned URL.
+ * Pluggable object-storage abstraction with MongoDB Atlas persistence.
+ * Binary data is persisted to MongoDB Atlas so images survive ephemeral container
+ * restarts (e.g. Render redeployments and free-tier spin-downs) while local disk
+ * acts as a high-speed cache.
  */
 export interface StoredFile {
   url: string;
@@ -26,8 +26,6 @@ async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
 }
 
-import type { Request } from 'express';
-
 export const storageService = {
   get uploadRoot() {
     return uploadRoot;
@@ -35,15 +33,34 @@ export const storageService = {
 
   async save(file: Express.Multer.File, req?: Request): Promise<StoredFile> {
     if (env.STORAGE_DRIVER !== 'local') {
-      // Extension point: upload `file.buffer` to S3/Cloudinary and return the CDN URL.
       throw ApiError.internal(`Storage driver "${env.STORAGE_DRIVER}" is not configured`);
     }
 
     const ext = path.extname(file.originalname) || '.bin';
     const key = `products/${crypto.randomUUID()}${ext}`;
     const dest = path.join(uploadRoot, key);
-    await ensureDir(path.dirname(dest));
-    await fs.writeFile(dest, file.buffer);
+
+    // 1. Write to local disk cache
+    try {
+      await ensureDir(path.dirname(dest));
+      await fs.writeFile(dest, file.buffer);
+    } catch (diskErr) {
+      logger.warn('Disk cache write failed, falling back to MongoDB only', { err: (diskErr as Error).message });
+    }
+
+    // 2. Persist permanently to MongoDB Atlas so Render redeploy never deletes images!
+    try {
+      await UploadedMedia.create({
+        key,
+        originalName: file.originalname,
+        mimeType: file.mimetype || 'image/jpeg',
+        size: file.size,
+        data: file.buffer,
+      });
+      logger.info('Image permanently persisted to MongoDB Atlas', { key, size: file.size });
+    } catch (dbErr) {
+      logger.error('Failed to persist media in MongoDB Atlas', { key, err: (dbErr as Error).message });
+    }
 
     let base = env.PUBLIC_ASSET_BASE;
     if (req) {
@@ -67,5 +84,16 @@ export const storageService = {
       size: file.size,
       mimeType: file.mimetype,
     };
+  },
+
+  async findMedia(key: string) {
+    const cleanKey = key.replace(/^\/+/, '');
+    return UploadedMedia.findOne({
+      $or: [
+        { key: cleanKey },
+        { key: `products/${cleanKey}` },
+        { key: cleanKey.replace(/^products\//, '') },
+      ],
+    });
   },
 };
