@@ -7,7 +7,7 @@ import { DataTable, type Column } from '@/components/admin/DataTable';
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/OrderStatusBadge';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useSocket } from '@/hooks/useSocket';
-import { formatDate, formatRupee, cn } from '@/lib/utils';
+import { formatDate, formatRupee, cn, resolveImageUrl } from '@/lib/utils';
 import type { Order, OrderStatus, PageMeta } from '@/types';
 
 const STATUS_TABS: { label: string; value: OrderStatus | '' }[] = [
@@ -111,9 +111,15 @@ export default function AdminOrdersPage() {
             {firstItem?.image && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={firstItem.image}
+                src={resolveImageUrl(firstItem.image)}
                 alt={firstItem.name}
                 className="h-8 w-8 rounded-md border border-line object-cover bg-surface-2"
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                    el.src = '/assets/Logos/logo.jpeg';
+                  }
+                }}
               />
             )}
             <div className="text-xs text-ink">

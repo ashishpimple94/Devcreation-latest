@@ -5,3 +5,8 @@ services:
     plan: free
     buildCommand: cd app/backend && npm install && npm run build
     startCommand: cd app/backend && npm start
+    envVars:
+      - key: PUBLIC_ASSET_BASE
+        value: https://devcreation1.onrender.com
+      - key: NODE_ENV
+        value: production

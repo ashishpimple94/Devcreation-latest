@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
-import { formatRupee } from '@/lib/utils';
+import { formatRupee, resolveImageUrl } from '@/lib/utils';
 import { EmptyState, Spinner } from '@/components/ui';
 import { RedeemGiftCard } from '@/components/cart/RedeemGiftCard';
 
@@ -63,10 +63,18 @@ export default function CartPage() {
             {items.map((item) => (
               <div key={`${item.product.id}-${item.variantSku ?? ''}`} className="flex gap-4 border-b border-line py-5">
                 <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-[8px] border border-line bg-surface-2">
-                  {item.product.image && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.product.image} alt={item.product.name} className="h-full w-full object-cover" />
-                  )}
+                    <img
+                      src={resolveImageUrl(item.product.image)}
+                      alt={item.product.name}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        const el = e.currentTarget;
+                        if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                          el.src = '/assets/Logos/logo.jpeg';
+                        }
+                      }}
+                    />
                 </div>
                 <div className="flex flex-1 flex-col">
                   <Link href={`/products/${item.product.slug}`} className="font-display-alt text-xl font-medium text-ink hover:text-gold">

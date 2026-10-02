@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { formatRupee, cn } from '@/lib/utils';
+import { formatRupee, cn, resolveImageUrl } from '@/lib/utils';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/components/ui/Toast';
@@ -20,7 +20,11 @@ import type { Product } from '@/types';
  * - Theme: Paper cream (`bg-bg`), Warm Espresso (`text-ink`), Signature Gold (`text-gold`, `bg-gold`, `border-gold`)
  */
 export function ProductDetail({ product, related }: { product: Product; related: Product[] }) {
-  const images = product.images.length ? product.images : [{ url: '/assets/Logos/logo.jpeg', alt: product.name }];
+  const images = (
+    product.images && product.images.length
+      ? product.images
+      : [{ url: '/assets/Logos/logo.jpeg', alt: product.name }]
+  ).map((im) => ({ ...im, url: resolveImageUrl(im.url) }));
   const [activeImg, setActiveImg] = useState(0);
   const [variantSku, setVariantSku] = useState<string | undefined>(product.variants[0]?.sku);
   const [qty, setQty] = useState(1);
@@ -158,7 +162,17 @@ export function ProductDetail({ product, related }: { product: Product; related:
                   aria-label={`View image ${i + 1}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt="" className="h-full w-full object-cover rounded-lg" />
+                  <img
+                    src={resolveImageUrl(img.url)}
+                    alt=""
+                    className="h-full w-full object-cover rounded-lg"
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                        el.src = '/assets/Logos/logo.jpeg';
+                      }
+                    }}
+                  />
                 </button>
               ))}
             </div>
@@ -172,9 +186,15 @@ export function ProductDetail({ product, related }: { product: Product; related:
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={images[activeImg].url}
+                  src={resolveImageUrl(images[activeImg].url)}
                   alt={images[activeImg].alt ?? product.name}
                   className="h-full w-full object-cover rounded-xl pointer-events-none transition-transform duration-300"
+                  onError={(e) => {
+                    const el = e.currentTarget;
+                    if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                      el.src = '/assets/Logos/logo.jpeg';
+                    }
+                  }}
                   style={
                     zoomPos.show
                       ? {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { formatRupee, cn } from '@/lib/utils';
+import { formatRupee, cn, resolveImageUrl } from '@/lib/utils';
 import type { ProductImage } from '@/types';
 
 interface ProductPreviewCardProps {
@@ -45,7 +45,7 @@ export function ProductPreviewCard({
   const [previewAdded, setPreviewAdded] = useState(false);
 
   const displayImages = images.length
-    ? images
+    ? images.map((im) => ({ ...im, url: resolveImageUrl(im.url) }))
     : [{ url: '/assets/Logos/logo.jpeg', alt: name || 'Product' }];
   const hasSlider = displayImages.length > 1;
 
@@ -123,9 +123,15 @@ export function ProductPreviewCard({
           <div className="relative mt-3 h-[240px] w-full overflow-hidden rounded-xl border border-line bg-surface-2 flex items-center justify-center p-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={currentImg.url}
+              src={resolveImageUrl(currentImg.url)}
               alt={currentImg.alt || name || 'Product image'}
               className="h-full w-full object-cover rounded-lg transition-transform duration-300 hover:scale-105"
+              onError={(e) => {
+                const el = e.currentTarget;
+                if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                  el.src = '/assets/Logos/logo.jpeg';
+                }
+              }}
             />
 
             {/* Deal Badge Overlay */}
@@ -156,7 +162,17 @@ export function ProductPreviewCard({
                   )}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt="" className="h-full w-full object-cover rounded" />
+                  <img
+                    src={resolveImageUrl(img.url)}
+                    alt=""
+                    className="h-full w-full object-cover rounded"
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                        el.src = '/assets/Logos/logo.jpeg';
+                      }
+                    }}
+                  />
                 </button>
               ))}
             </div>
@@ -260,9 +276,15 @@ export function ProductPreviewCard({
           <div className="relative block h-[330px] flex-shrink-0 overflow-hidden bg-surface-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={currentImg.url}
+              src={resolveImageUrl(currentImg.url)}
               alt={currentImg.alt || name || 'Product image'}
               className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+              onError={(e) => {
+                const el = e.currentTarget;
+                if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                  el.src = '/assets/Logos/logo.jpeg';
+                }
+              }}
             />
 
             <div className="absolute left-3 top-3 z-10 flex flex-col gap-1.5">

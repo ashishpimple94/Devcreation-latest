@@ -8,7 +8,7 @@ import { OrderStatusBadge, PaymentStatusBadge } from '@/components/OrderStatusBa
 import { ErrorState, Skeleton } from '@/components/ui';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
-import { formatDateTime, formatRupee, cn } from '@/lib/utils';
+import { formatDateTime, formatRupee, cn, resolveImageUrl } from '@/lib/utils';
 import type { Order, OrderStatus } from '@/types';
 
 // Allowed forward transitions, mirroring the backend state machine
@@ -231,7 +231,17 @@ export default function AdminOrderDetailPage() {
                     <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl border border-line bg-surface-2">
                       {item.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                        <img
+                          src={resolveImageUrl(item.image)}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            const el = e.currentTarget;
+                            if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                              el.src = '/assets/Logos/logo.jpeg';
+                            }
+                          }}
+                        />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-xs text-ink-3">
                           No Pic

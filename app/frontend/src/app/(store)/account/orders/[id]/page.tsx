@@ -7,7 +7,7 @@ import { OrderStatusBadge, PaymentStatusBadge } from '@/components/OrderStatusBa
 import { ErrorState, Skeleton, Button } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { useSocket } from '@/hooks/useSocket';
-import { formatDateTime, formatRupee } from '@/lib/utils';
+import { formatDateTime, formatRupee, resolveImageUrl } from '@/lib/utils';
 import type { Order } from '@/types';
 
 const TIMELINE = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'] as const;
@@ -97,7 +97,17 @@ export default function OrderDetailPage() {
                 <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-[6px] border border-line bg-surface-2">
                   {item.image && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                    <img
+                      src={resolveImageUrl(item.image)}
+                      alt={item.name}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        const el = e.currentTarget;
+                        if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                          el.src = '/assets/Logos/logo.jpeg';
+                        }
+                      }}
+                    />
                   )}
                 </div>
                 <div className="flex-1">

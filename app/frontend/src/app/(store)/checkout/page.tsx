@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { orderService } from '@/services/order.service';
-import { formatRupee } from '@/lib/utils';
+import { formatRupee, resolveImageUrl } from '@/lib/utils';
 import { useToast } from '@/components/ui/Toast';
 import { Button, EmptyState } from '@/components/ui';
 import { RedeemGiftCard } from '@/components/cart/RedeemGiftCard';
@@ -169,7 +169,17 @@ export default function CheckoutPage() {
                   <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-[8px] border border-line bg-surface">
                     {i.product.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={i.product.image} alt={i.product.name} className="h-full w-full object-cover" />
+                      <img
+                        src={resolveImageUrl(i.product.image)}
+                        alt={i.product.name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          const el = e.currentTarget;
+                          if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                            el.src = '/assets/Logos/logo.jpeg';
+                          }
+                        }}
+                      />
                     ) : null}
                     <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-deep px-1 font-body text-[0.65rem] font-semibold tabular-nums text-white">
                       {i.quantity}

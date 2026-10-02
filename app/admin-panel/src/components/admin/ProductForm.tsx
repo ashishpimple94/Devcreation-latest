@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/Toast';
 import { Button, Spinner } from '@/components/ui';
 import { ProductPreviewCard } from '@/components/admin/ProductPreviewCard';
 import type { Category, Product, ProductImage } from '@/types';
-import { formatRupee, cn } from '@/lib/utils';
+import { formatRupee, cn, resolveImageUrl } from '@/lib/utils';
 
 interface FormState {
   name: string;
@@ -124,7 +124,10 @@ export function ProductForm({ product }: { product?: Product }) {
         tags: product.tags.join(', '),
         isActive: product.isActive,
         isFeatured: product.isFeatured,
-        images: product.images ?? [],
+        images: (product.images ?? []).map((im) => ({
+          ...im,
+          url: resolveImageUrl(im.url),
+        })),
       });
     }
   }, [product]);
@@ -163,23 +166,64 @@ export function ProductForm({ product }: { product?: Product }) {
     setForm((f) => ({ ...f, discountPercent: val, price: p }));
   };
 
-  // Image actions
+  // Image actions with instant client preview and auto-sanitized URLs
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
+
+    // 1. Instant preview: Read data URLs immediately so user sees images without waiting
+    const dataUrls = await Promise.all(
+      files.map(
+        (file) =>
+          new Promise<string>((res) => {
+            const reader = new FileReader();
+            reader.onload = () => res(reader.result as string);
+            reader.onerror = () => res('');
+            reader.readAsDataURL(file);
+          })
+      )
+    );
+
+    const tempImages = dataUrls
+      .filter(Boolean)
+      .map((dUrl, idx) => ({
+        url: dUrl,
+        alt: form.name || files[idx]?.name || 'Product Image',
+        isPrimary: form.images.length === 0 && idx === 0,
+      }));
+
+    if (tempImages.length > 0) {
+      setForm((f) => ({
+        ...f,
+        images: [...f.images, ...tempImages],
+      }));
+    }
+
     setUploading(true);
     try {
       const uploaded = await adminService.uploadImages(files);
-      setForm((f) => ({
-        ...f,
-        images: [
-          ...f.images,
-          ...uploaded.map((u, i) => ({ url: u.url, alt: f.name, isPrimary: f.images.length === 0 && i === 0 })),
-        ],
-      }));
-      success(`${uploaded.length} image(s) uploaded`);
+      const sanitized = uploaded.map((u) => resolveImageUrl(u.url));
+
+      // Swap the temporary data URLs with permanent server URLs
+      setForm((f) => {
+        let replaceIdx = 0;
+        const updated = f.images.map((img) => {
+          if (dataUrls.includes(img.url)) {
+            const serverUrl = sanitized[replaceIdx++];
+            return {
+              ...img,
+              url: serverUrl || img.url,
+            };
+          }
+          return img;
+        });
+        return { ...f, images: updated };
+      });
+      success(`${uploaded.length} image(s) uploaded successfully`);
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Upload failed');
+      console.warn('Backend upload delayed, client-side preview retained:', err);
+      // Even if server upload fails or Render sleeps, local preview is kept in form state!
+      error(err instanceof Error ? `${err.message} (local preview retained)` : 'Upload delayed, preview retained');
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -188,11 +232,12 @@ export function ProductForm({ product }: { product?: Product }) {
 
   const addImageUrl = () => {
     if (!customImageUrl.trim()) return;
+    const resolved = resolveImageUrl(customImageUrl.trim());
     setForm((f) => ({
       ...f,
       images: [
         ...f.images,
-        { url: customImageUrl.trim(), alt: f.name, isPrimary: f.images.length === 0 },
+        { url: resolved, alt: f.name, isPrimary: f.images.length === 0 },
       ],
     }));
     setCustomImageUrl('');
@@ -594,7 +639,17 @@ export function ProductForm({ product }: { product?: Product }) {
                 )}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.url} alt={img.alt ?? ''} className="h-full w-full object-cover" />
+                <img
+                  src={resolveImageUrl(img.url)}
+                  alt={img.alt ?? ''}
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    const el = e.currentTarget;
+                    if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                      el.src = '/assets/Logos/logo.jpeg';
+                    }
+                  }}
+                />
 
                 {/* Primary Badge */}
                 {img.isPrimary && (

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { OrderStatusBadge } from '@/components/OrderStatusBadge';
-import { formatRupee, formatDateTime } from '@/lib/utils';
+import { formatRupee, formatDateTime, resolveImageUrl } from '@/lib/utils';
 import type { Order } from '@/types';
 
 /** Recent transactions table with thumbnails, customer avatars and a CSV export. */
@@ -87,7 +87,17 @@ export function RecentTransactions({ orders }: { orders: Order[] }) {
                         <span className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-lg border border-line bg-surface-2">
                           {item?.image && (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={item.image} alt="" className="h-full w-full object-cover" />
+                            <img
+                              src={resolveImageUrl(item.image)}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                const el = e.currentTarget;
+                                if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                                  el.src = '/assets/Logos/logo.jpeg';
+                                }
+                              }}
+                            />
                           )}
                         </span>
                         <div className="min-w-0">

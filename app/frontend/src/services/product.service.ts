@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import type { Product, Category, PageMeta } from '@/types';
+import type { Product, Category, PageMeta, ProductReview, ReviewsSummary } from '@/types';
 
 export interface ProductQuery {
   page?: number;

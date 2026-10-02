@@ -8,7 +8,7 @@ import { DataTable, type Column } from '@/components/admin/DataTable';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { useDebounce } from '@/hooks/useDebounce';
-import { formatRupee, cn } from '@/lib/utils';
+import { formatRupee, cn, resolveImageUrl } from '@/lib/utils';
 import type { Product, PageMeta } from '@/types';
 
 export default function AdminProductsPage() {
@@ -68,7 +68,17 @@ export default function AdminProductsPage() {
             <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl border border-line bg-surface-2">
               {p.images[0] ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.images[0].url} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={resolveImageUrl(p.images[0].url)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    const el = e.currentTarget;
+                    if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                      el.src = '/assets/Logos/logo.jpeg';
+                    }
+                  }}
+                />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-[0.6rem] text-ink-3">
                   No Pic

@@ -26,12 +26,14 @@ async function ensureDir(dir: string) {
   await fs.mkdir(dir, { recursive: true });
 }
 
+import type { Request } from 'express';
+
 export const storageService = {
   get uploadRoot() {
     return uploadRoot;
   },
 
-  async save(file: Express.Multer.File): Promise<StoredFile> {
+  async save(file: Express.Multer.File, req?: Request): Promise<StoredFile> {
     if (env.STORAGE_DRIVER !== 'local') {
       // Extension point: upload `file.buffer` to S3/Cloudinary and return the CDN URL.
       throw ApiError.internal(`Storage driver "${env.STORAGE_DRIVER}" is not configured`);
@@ -43,8 +45,24 @@ export const storageService = {
     await ensureDir(path.dirname(dest));
     await fs.writeFile(dest, file.buffer);
 
+    let base = env.PUBLIC_ASSET_BASE;
+    if (req) {
+      const forwardedHost = req.get('x-forwarded-host');
+      const forwardedProto = req.get('x-forwarded-proto') || 'https';
+      if (forwardedHost) {
+        base = `${forwardedProto}://${forwardedHost}`;
+      } else if (req.get('host')) {
+        const proto = req.secure || req.protocol === 'https' ? 'https' : req.protocol;
+        base = `${proto}://${req.get('host')}`;
+      }
+    }
+
+    if ((!base || base.includes('localhost:4000')) && (process.env.RENDER || process.env.NODE_ENV === 'production')) {
+      base = 'https://devcreation1.onrender.com';
+    }
+
     return {
-      url: `${env.PUBLIC_ASSET_BASE}/uploads/${key}`,
+      url: `${base.replace(/\/+$/, '')}/uploads/${key}`,
       key,
       size: file.size,
       mimeType: file.mimetype,

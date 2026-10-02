@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { formatRupee, cn } from '@/lib/utils';
+import { formatRupee, cn, resolveImageUrl } from '@/lib/utils';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/components/ui/Toast';
@@ -10,7 +10,12 @@ import type { Product } from '@/types';
 
 /** Product card faithfully ported from the original design, incl. the image slider. */
 export function ProductCard({ product }: { product: Product }) {
-  const images = product.images.length ? product.images : [{ url: '/assets/Logos/logo.jpeg', alt: product.name }];
+  const images = (
+    product.images && product.images.length
+      ? product.images
+      : [{ url: '/assets/Logos/logo.jpeg', alt: product.name }]
+  ).map((img) => ({ ...img, url: resolveImageUrl(img.url) }));
+
   const hasSlider = images.length > 1;
   const [active, setActive] = useState(0);
   const [added, setAdded] = useState(false);
@@ -49,12 +54,18 @@ export function ProductCard({ product }: { product: Product }) {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 key={img.url + i}
-                src={img.url}
+                src={resolveImageUrl(img.url)}
                 alt={img.alt ?? product.name}
                 className={cn(
                   'absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-[1.04]',
                   i === active ? 'opacity-100' : 'pointer-events-none opacity-0',
                 )}
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                    el.src = '/assets/Logos/logo.jpeg';
+                  }
+                }}
               />
             ))}
             {/* Slider Dots */}
@@ -78,9 +89,15 @@ export function ProductCard({ product }: { product: Product }) {
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={images[0].url}
+            src={resolveImageUrl(images[0].url)}
             alt={images[0].alt ?? product.name}
             className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-[1.04]"
+            onError={(e) => {
+              const el = e.currentTarget;
+              if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                el.src = '/assets/Logos/logo.jpeg';
+              }
+            }}
           />
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-deep/20 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
