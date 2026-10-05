@@ -101,11 +101,38 @@ jobs:
             exit 1
           fi
 
-          echo "🔐 Configuring SSH client..."
+          echo "🔐 Formatting and configuring SSH key..."
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/ec2_key
+
+          node -e '
+            const fs = require("fs");
+            let key = process.env.SSH_PRIVATE_KEY || "";
+            key = key.trim();
+            if (!key.includes("BEGIN") && key.length > 50) {
+              try {
+                const decoded = Buffer.from(key, "base64").toString("utf-8");
+                if (decoded.includes("BEGIN")) key = decoded.trim();
+              } catch (e) {}
+            }
+            key = key.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+            if (!key.includes("\n") && key.includes("BEGIN") && key.includes("END")) {
+              const m = key.match(/(-----BEGIN[^-]+-----)(.*?)(-----END[^-]+-----)/);
+              if (m) {
+                const header = m[1].trim();
+                const body = m[2].replace(/\s+/g, "");
+                const footer = m[3].trim();
+                const chunks = body.match(/.{1,64}/g) || [];
+                key = header + "\n" + chunks.join("\n") + "\n" + footer;
+              }
+            }
+            key = key.trim() + "\n";
+            fs.writeFileSync(process.env.HOME + "/.ssh/ec2_key", key, { mode: 0o600 });
+          '
           chmod 600 ~/.ssh/ec2_key
+
+          echo "🔍 Validating SSH key format..."
+          ssh-keygen -l -f ~/.ssh/ec2_key
 
           echo "🌐 Connecting to ${TARGET_USER}@${TARGET_HOST}..."
           ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/ec2_key "${TARGET_USER}@${TARGET_HOST}" "
