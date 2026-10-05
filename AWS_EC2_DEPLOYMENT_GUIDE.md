@@ -109,8 +109,8 @@ Once connected to your EC2 instance, run the automated provisioning script. It a
 
 ```bash
 # Clone the repository
-git clone https://github.com/ashishpimple94/Devcreation1.git
-cd Devcreation1
+git clone https://github.com/ashishpimple94/Devcreation-latest.git
+cd Devcreation-latest
 
 # Make scripts executable
 chmod +x ec2-setup.sh deploy.sh
@@ -271,3 +271,30 @@ sudo certbot certonly --webroot \
 
 ### Issue 3: Container crashes due to memory
 - Verify swap is active by running `free -m`. You should see `2047` in the Swap row. If not, re-run Step 2 of `ec2-setup.sh`.
+
+---
+
+## 11. 🔄 GitHub Actions Automated CI/CD Setup
+
+The repository includes a ready-to-run GitHub Actions workflow in `.github/workflows/deploy.yml`.
+
+Every time you push code to `main`:
+1. **CI Step**: Installs dependencies and verifies that `backend`, `frontend`, and `admin-panel` build with zero errors.
+2. **CD Step**: Connects to your AWS EC2 instance via SSH, pulls latest changes, and triggers `./deploy.sh` for zero-downtime updates!
+
+### 🔑 Required GitHub Repository Secrets
+
+To activate automatic EC2 deployment, configure these 3 secrets in your repository:
+
+1. Open your repository on GitHub: **`https://github.com/ashishpimple94/Devcreation-latest`**
+2. Go to **Settings > Secrets and variables > Actions**.
+3. Click **New repository secret** and add:
+
+| Secret Name | Value Example | Description |
+| :--- | :--- | :--- |
+| **`EC2_HOST`** | `54.210.12.34` | The Public IPv4 address or Elastic IP of your EC2 instance. |
+| **`EC2_USER`** | `ubuntu` | The default SSH user for Ubuntu EC2 instances (`ubuntu`). |
+| **`EC2_SSH_KEY`** | `-----BEGIN RSA PRIVATE KEY-----...` | The entire content of your downloaded `.pem` key file. |
+
+Once added, any subsequent push to the `main` branch will automatically validate, build, and deploy your changes directly to the EC2 server!
+
