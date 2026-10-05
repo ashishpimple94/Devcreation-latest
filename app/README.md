@@ -2,6 +2,8 @@
 
 Production-ready e-commerce application for **Dev Creation** (handcrafted luxury wax sachets & candles), converted from the original static HTML marketing site into a scalable full-stack app.
 
+Live on AWS EC2 with automated GitHub Actions CI/CD deployment.
+
 The original design — cream/gold palette, Playfair Display / Cormorant Garamond / DM Sans / JetBrains Mono type stack, product cards, cart drawer — is preserved exactly on the customer-facing storefront. A separate enterprise admin panel is built in the same brand language.
 
 ## Stack
