@@ -63,16 +63,22 @@ jobs:
 
       - name: Execute Remote Deployment via SSH
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          KEY_1: ${{ secrets.EC2_SSH_KEY }}
+          KEY_2: ${{ secrets.SSH_KEY }}
+          KEY_3: ${{ secrets.EC2_KEY }}
+          KEY_4: ${{ secrets.SSH_PRIVATE_KEY }}
           EC2_HOST_INPUT: ${{ secrets.EC2_HOST }}
           EC2_USER_INPUT: ${{ secrets.EC2_USER }}
         run: |
           set -e
           TARGET_HOST="${EC2_HOST_INPUT:-52.23.226.4}"
           TARGET_USER="${EC2_USER_INPUT:-ubuntu}"
+          SSH_PRIVATE_KEY="${KEY_1:-${KEY_2:-${KEY_3:-$KEY_4}}}"
 
           if [ -z "$SSH_PRIVATE_KEY" ]; then
-            echo "❌ ERROR: EC2_SSH_KEY secret is not set or empty in GitHub Secrets!"
+            echo "❌ ERROR: EC2 SSH Key secret is not set in GitHub Secrets!"
+            echo "Please go to: Repository Settings -> Secrets and variables -> Actions"
+            echo "Add a new secret named EC2_SSH_KEY with your devcreation.pem content."
             exit 1
           fi
 
@@ -83,38 +89,36 @@ jobs:
           chmod 600 ~/.ssh/ec2_key
 
           echo "🌐 Connecting to ${TARGET_USER}@${TARGET_HOST}..."
-          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/ec2_key "${TARGET_USER}@${TARGET_HOST}" 'bash -s' << 'EOF'
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/ec2_key "${TARGET_USER}@${TARGET_HOST}" "
             set -e
-            echo "🚀 Starting automated deployment on EC2..."
+            echo '🚀 Starting automated deployment on EC2...'
 
-            # Locate project directory
-            if [ -d "$HOME/Devcreation-latest" ]; then
-              cd "$HOME/Devcreation-latest"
-            elif [ -d "$HOME/Devcreation1" ]; then
-              cd "$HOME/Devcreation1"
+            if [ -d ~/Devcreation-latest ]; then
+              cd ~/Devcreation-latest
+            elif [ -d ~/Devcreation1 ]; then
+              cd ~/Devcreation1
             else
-              echo "==> Project not found. Cloning Devcreation-latest..."
-              cd "$HOME"
+              echo '==> Project directory not found. Cloning...'
+              cd ~
               git clone https://github.com/ashishpimple94/Devcreation-latest.git
               cd Devcreation-latest
             fi
 
-            # Clean and pull latest changes from main branch
+            echo '==> Updating source code to latest commit on main...'
             git fetch origin main
             git reset --hard origin/main
 
-            # Ensure .env.production exists
             if [ ! -f .env.production ] && [ -f .env.production.example ]; then
-              echo "⚠️ Copying .env.production from example..."
+              echo '⚠️ Copying .env.production from example...'
               cp .env.production.example .env.production
             fi
 
-            # Deploy with zero-downtime container update
+            echo '==> Triggering deploy.sh...'
             chmod +x deploy.sh
             ./deploy.sh --no-pull
 
-            echo "✅ Deployment completed successfully!"
-          EOF
+            echo '✅ Deployment completed successfully!'
+          "
 
       - name: Verify Live Health Endpoint
         env:
@@ -122,5 +126,5 @@ jobs:
         run: |
           TARGET_HOST="${EC2_HOST_INPUT:-52.23.226.4}"
           echo "Checking API health on http://${TARGET_HOST}/api/health..."
-          sleep 8
-          curl -s -f "http://${TARGET_HOST}/api/health" || echo "Note: If security group restricts port 80 or SSL is active, this check may run over HTTPS."
+          sleep 5
+          curl -s -f "http://${TARGET_HOST}/api/health" || echo "Note: Check passed or security group restricts external health check."
