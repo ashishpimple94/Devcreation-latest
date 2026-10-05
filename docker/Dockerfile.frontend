@@ -6,7 +6,7 @@
 # ── Stage 1: Builder ──────────────────────────────────────────
 FROM node:20-alpine AS builder
 
-WORKDIR /app
+WORKDIR /build
 
 # Build-time environment variables for Next.js public client bundle
 ARG NEXT_PUBLIC_API_URL=/api
@@ -21,7 +21,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY app/package*.json ./app/
 COPY app/frontend/package*.json ./app/frontend/
 
-WORKDIR /app/frontend
+WORKDIR /build/app/frontend
 RUN npm install --no-audit
 
 # Copy source and build standalone output
@@ -42,9 +42,9 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Copy standalone server, static assets, and public directory
-COPY --from=builder /app/frontend/public ./frontend/public
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/static ./frontend/.next/static
+COPY --from=builder /build/app/frontend/public ./frontend/public
+COPY --from=builder --chown=nextjs:nodejs /build/app/frontend/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /build/app/frontend/.next/static ./frontend/.next/static
 
 USER nextjs
 
