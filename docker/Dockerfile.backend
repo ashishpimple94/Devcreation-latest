@@ -1,0 +1,45 @@
+# ============================================================
+# Dev Creation — Backend API Dockerfile (Express + Socket.IO)
+# Multi-stage production build
+# ============================================================
+
+# ── Stage 1: Builder ──────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+COPY app/package*.json ./app/
+COPY app/backend/package*.json ./app/backend/
+
+WORKDIR /app/backend
+RUN npm install --no-audit
+
+# Copy source and compile TypeScript via tsup
+COPY app/backend ./
+RUN npm run build
+
+# ── Stage 2: Production Runner ────────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Install only production dependencies
+COPY app/backend/package*.json ./
+RUN npm install --omit=dev --no-audit
+
+# Copy compiled JavaScript bundles (server.js and seed/seed.js)
+COPY --from=builder /app/backend/dist ./dist
+
+# Create uploads directory with non-root ownership
+RUN mkdir -p uploads && chown -R node:node /app
+
+USER node
+
+EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:4000/api/health || exit 1
+
+CMD ["node", "dist/server.js"]

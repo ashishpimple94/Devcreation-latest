@@ -1,0 +1,56 @@
+# ============================================================
+# Dev Creation — Storefront Dockerfile (Next.js 14 Standalone)
+# Multi-stage optimized production build
+# ============================================================
+
+# ── Stage 1: Builder ──────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Build-time environment variables for Next.js public client bundle
+ARG NEXT_PUBLIC_API_URL=/api
+ARG NEXT_PUBLIC_SOCKET_URL=/
+ARG NEXT_PUBLIC_ADMIN_URL=http://localhost:3001
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
+ENV NEXT_PUBLIC_ADMIN_URL=$NEXT_PUBLIC_ADMIN_URL
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Install dependencies
+COPY app/package*.json ./app/
+COPY app/frontend/package*.json ./app/frontend/
+
+WORKDIR /app/frontend
+RUN npm install --no-audit
+
+# Copy source and build standalone output
+COPY app/frontend ./
+RUN npm run build
+
+# ── Stage 2: Production Runner ────────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Create unprivileged system user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copy standalone server, static assets, and public directory
+COPY --from=builder /app/frontend/public ./frontend/public
+COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/static ./frontend/.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1
+
+CMD ["node", "frontend/server.js"]

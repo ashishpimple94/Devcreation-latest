@@ -1,0 +1,197 @@
+# ============================================================
+# Dev Creation — EC2 Production Docker Compose Configuration
+# Features:
+#   - High Security: Internal services (Redis, Mongo, Backend) are private
+#   - Only Nginx (80, 443, 3001) is exposed to the public Internet
+#   - Resource Limits: Prevents Out-Of-Memory (OOM) crashes on EC2
+#   - Log Rotation: Caps logs at 10MB per container to preserve disk space
+# ============================================================
+
+services:
+
+  # ── In-Memory Cache & Pub/Sub ──────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: devcreation_redis
+    restart: always
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - devcreation_net
+
+  # ── Optional Local MongoDB (active if MONGODB_URI points here)
+  mongo:
+    image: mongo:7
+    container_name: devcreation_mongo
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - devcreation_net
+
+  # ── Express REST API + Socket.IO Backend ───────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: devcreation_backend
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      API_PREFIX: /api
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - devcreation_net
+
+  # ── Next.js Customer Storefront ────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-/}
+        NEXT_PUBLIC_ADMIN_URL: ${NEXT_PUBLIC_ADMIN_URL:-http://localhost:3001}
+    container_name: devcreation_frontend
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - devcreation_net
+
+  # ── Next.js Admin Panel ────────────────────────────────────
+  admin:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.admin
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-/}
+        NEXT_PUBLIC_STOREFRONT_URL: ${NEXT_PUBLIC_STOREFRONT_URL:-http://localhost}
+    container_name: devcreation_admin
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+    depends_on:
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - devcreation_net
+
+  # ── Nginx Web Server & Reverse Proxy ───────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: devcreation_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "3001:3001"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_webroot:/var/www/certbot:ro
+      - certbot_certs:/etc/letsencrypt:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - devcreation_net
+
+volumes:
+  redis_data:
+    driver: local
+  mongo_data:
+    driver: local
+  backend_uploads:
+    driver: local
+  certbot_webroot:
+    driver: local
+  certbot_certs:
+    driver: local
+
+networks:
+  devcreation_net:
+    driver: bridge

@@ -1,0 +1,160 @@
+# ============================================================
+# Dev Creation — Full Stack Docker Compose Architecture
+# Services:
+#   - Nginx: Reverse proxy, SSL termination, path routing (Ports 80, 443)
+#   - Frontend: Next.js customer storefront (Port 3000)
+#   - Admin: Next.js administration panel (Port 3001)
+#   - Backend: Express REST API + Socket.IO (Port 4000)
+#   - Redis: Real-time cache & Pub/Sub broker (Port 6379)
+#   - Mongo: Optional local MongoDB (or use MongoDB Atlas cloud)
+# ============================================================
+
+services:
+
+  # ── In-Memory Cache & Pub/Sub ──────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: devcreation_redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devcreation_net
+
+  # ── Optional Local MongoDB (active if Atlas is not used) ───
+  mongo:
+    image: mongo:7
+    container_name: devcreation_mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devcreation_net
+
+  # ── Express REST API + Socket.IO Backend ───────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: devcreation_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      API_PREFIX: /api
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/dev_creation}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change_me_super_secret_jwt_access_key_min32}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_me_super_secret_jwt_refresh_key_min32}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      UPLOAD_DIR: uploads
+      PUBLIC_ASSET_BASE: ${PUBLIC_ASSET_BASE:-}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Super Admin}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@devcreation.example}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin@12345}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Dev Creation <no-reply@devcreation.example>}
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    networks:
+      - devcreation_net
+
+  # ── Next.js Customer Storefront ────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-/}
+        NEXT_PUBLIC_ADMIN_URL: ${NEXT_PUBLIC_ADMIN_URL:-http://localhost:3001}
+    container_name: devcreation_frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - devcreation_net
+
+  # ── Next.js Admin Panel ────────────────────────────────────
+  admin:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.admin
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-/}
+        NEXT_PUBLIC_STOREFRONT_URL: ${NEXT_PUBLIC_STOREFRONT_URL:-http://localhost}
+    container_name: devcreation_admin
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - devcreation_net
+
+  # ── Nginx Web Server & Reverse Proxy ───────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: devcreation_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "3001:3001"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_webroot:/var/www/certbot:ro
+      - certbot_certs:/etc/letsencrypt:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+    networks:
+      - devcreation_net
+
+volumes:
+  redis_data:
+    driver: local
+  mongo_data:
+    driver: local
+  backend_uploads:
+    driver: local
+  certbot_webroot:
+    driver: local
+  certbot_certs:
+    driver: local
+
+networks:
+  devcreation_net:
+    driver: bridge
