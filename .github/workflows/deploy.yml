@@ -64,7 +64,7 @@ jobs:
       - name: Execute Remote Deployment via SSH
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: ${{ secrets.EC2_HOST || '52.23.226.4' }}
           username: ${{ secrets.EC2_USER || 'ubuntu' }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
@@ -103,8 +103,7 @@ jobs:
 
       - name: Verify Live Health Endpoint
         run: |
-          if [ -n "${{ secrets.EC2_HOST }}" ]; then
-            echo "Checking API health on http://${{ secrets.EC2_HOST }}/api/health..."
-            sleep 8
-            curl -s -f "http://${{ secrets.EC2_HOST }}/api/health" || echo "Note: If security group restricts port 80 or SSL is active, this check may run over HTTPS."
-          fi
+          TARGET_HOST="${{ secrets.EC2_HOST || '52.23.226.4' }}"
+          echo "Checking API health on http://${TARGET_HOST}/api/health..."
+          sleep 8
+          curl -s -f "http://${TARGET_HOST}/api/health" || echo "Note: If security group restricts port 80 or SSL is active, this check may run over HTTPS."
