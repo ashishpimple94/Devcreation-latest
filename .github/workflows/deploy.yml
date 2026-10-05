@@ -107,15 +107,7 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          # Create global SSH configuration
-          cat << 'SSHEOF' > ~/.ssh/config
-Host *
-    StrictHostKeyChecking no
-    UserKnownHostsFile /dev/null
-    PubkeyAcceptedKeyTypes +ssh-rsa
-    PubkeyAcceptedAlgorithms +ssh-rsa
-    HostkeyAlgorithms +ssh-rsa
-SSHEOF
+          printf "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n  PubkeyAcceptedKeyTypes +ssh-rsa\n  PubkeyAcceptedAlgorithms +ssh-rsa\n  HostkeyAlgorithms +ssh-rsa\n" > ~/.ssh/config
           chmod 600 ~/.ssh/config
 
           node -e '
