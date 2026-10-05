@@ -101,9 +101,22 @@ jobs:
             exit 1
           fi
 
+          export SSH_PRIVATE_KEY
+
           echo "🔐 Formatting and configuring SSH key..."
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
+
+          # Create global SSH configuration
+          cat << 'SSHEOF' > ~/.ssh/config
+Host *
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null
+    PubkeyAcceptedKeyTypes +ssh-rsa
+    PubkeyAcceptedAlgorithms +ssh-rsa
+    HostkeyAlgorithms +ssh-rsa
+SSHEOF
+          chmod 600 ~/.ssh/config
 
           node -e '
             const fs = require("fs");
@@ -128,6 +141,7 @@ jobs:
             }
             key = key.trim() + "\n";
             fs.writeFileSync(process.env.HOME + "/.ssh/ec2_key", key, { mode: 0o600 });
+            console.log("  ✔ Key written successfully, size:", key.length, "bytes");
           '
           chmod 600 ~/.ssh/ec2_key
 
@@ -135,7 +149,7 @@ jobs:
           ssh-keygen -l -f ~/.ssh/ec2_key
 
           echo "🌐 Connecting to ${TARGET_USER}@${TARGET_HOST}..."
-          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/ec2_key "${TARGET_USER}@${TARGET_HOST}" "
+          ssh -v -o ConnectTimeout=30 -i ~/.ssh/ec2_key "${TARGET_USER}@${TARGET_HOST}" "
             set -e
             echo '🚀 Starting automated deployment on EC2...'
 
