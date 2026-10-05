@@ -66,19 +66,38 @@ jobs:
           KEY_1: ${{ secrets.EC2_SSH_KEY }}
           KEY_2: ${{ secrets.SSH_KEY }}
           KEY_3: ${{ secrets.EC2_KEY }}
-          KEY_4: ${{ secrets.SSH_PRIVATE_KEY }}
+          KEY_4: ${{ secrets.DEVCREATION }}
+          KEY_5: ${{ secrets.devcreation }}
+          KEY_6: ${{ secrets.SSH_PRIVATE_KEY }}
+          KEY_7: ${{ secrets.AWS_KEY }}
+          KEY_8: ${{ secrets.PEM_KEY }}
           EC2_HOST_INPUT: ${{ secrets.EC2_HOST }}
           EC2_USER_INPUT: ${{ secrets.EC2_USER }}
         run: |
           set -e
           TARGET_HOST="${EC2_HOST_INPUT:-52.23.226.4}"
           TARGET_USER="${EC2_USER_INPUT:-ubuntu}"
-          SSH_PRIVATE_KEY="${KEY_1:-${KEY_2:-${KEY_3:-$KEY_4}}}"
+          SSH_PRIVATE_KEY="${KEY_1:-${KEY_2:-${KEY_3:-${KEY_4:-${KEY_5:-${KEY_6:-${KEY_7:-$KEY_8}}}}}}}"
+
+          echo "🔍 Checking available GitHub Secrets..."
+          [ -n "$KEY_1" ] && echo "  ✔ Found secret: EC2_SSH_KEY"
+          [ -n "$KEY_2" ] && echo "  ✔ Found secret: SSH_KEY"
+          [ -n "$KEY_3" ] && echo "  ✔ Found secret: EC2_KEY"
+          [ -n "$KEY_4" ] && echo "  ✔ Found secret: DEVCREATION"
+          [ -n "$KEY_5" ] && echo "  ✔ Found secret: devcreation"
+          [ -n "$KEY_6" ] && echo "  ✔ Found secret: SSH_PRIVATE_KEY"
+          [ -n "$KEY_7" ] && echo "  ✔ Found secret: AWS_KEY"
+          [ -n "$KEY_8" ] && echo "  ✔ Found secret: PEM_KEY"
 
           if [ -z "$SSH_PRIVATE_KEY" ]; then
-            echo "❌ ERROR: EC2 SSH Key secret is not set in GitHub Secrets!"
-            echo "Please go to: Repository Settings -> Secrets and variables -> Actions"
-            echo "Add a new secret named EC2_SSH_KEY with your devcreation.pem content."
+            echo ""
+            echo "❌ ERROR: No SSH Private Key found in GitHub Secrets!"
+            echo "To fix this:"
+            echo "1. Go to: https://github.com/ashishpimple94/Devcreation-latest/settings/secrets/actions"
+            echo "2. Under 'Repository secrets', click 'New repository secret'"
+            echo "3. Name: EC2_SSH_KEY"
+            echo "4. Secret: Paste the complete contents of devcreation.pem"
+            echo ""
             exit 1
           fi
 
