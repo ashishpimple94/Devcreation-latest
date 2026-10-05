@@ -50,6 +50,10 @@ if [ "$DO_PULL" = true ] && [ -d .git ]; then
   git pull origin main || git pull origin master || echo "⚠️ Git pull failed or skipped, continuing with local files..."
 fi
 
+echo "==> Ensuring port 80 is clear from host services..."
+sudo systemctl stop nginx 2>/dev/null || true
+sudo systemctl disable nginx 2>/dev/null || true
+
 echo "==> Building and starting production containers..."
 docker compose -f docker-compose.prod.yml up -d --build
 

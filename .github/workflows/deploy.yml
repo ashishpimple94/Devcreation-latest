@@ -68,7 +68,7 @@ jobs:
           username: ${{ secrets.EC2_USER || 'ubuntu' }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          timeout: 300s
+          timeout: 600s
           script: |
             set -e
             echo "🚀 Starting automated deployment on EC2..."
@@ -85,7 +85,7 @@ jobs:
               cd Devcreation-latest
             fi
 
-            # Pull latest changes from main branch
+            # Clean and pull latest changes from main branch
             git fetch origin main
             git reset --hard origin/main
 
