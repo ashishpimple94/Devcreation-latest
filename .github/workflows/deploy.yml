@@ -75,7 +75,7 @@ jobs:
           EC2_USER_INPUT: ${{ secrets.EC2_USER }}
         run: |
           set -e
-          TARGET_HOST="${EC2_HOST_INPUT:-52.23.226.4}"
+          TARGET_HOST="${EC2_HOST_INPUT:-52.90.145.153}"
           TARGET_USER="${EC2_USER_INPUT:-ubuntu}"
           SSH_PRIVATE_KEY="${KEY_1:-${KEY_2:-${KEY_3:-${KEY_4:-${KEY_5:-${KEY_6:-${KEY_7:-$KEY_8}}}}}}}"
 
@@ -148,7 +148,7 @@ jobs:
         env:
           EC2_HOST_INPUT: ${{ secrets.EC2_HOST }}
         run: |
-          TARGET_HOST="${EC2_HOST_INPUT:-52.23.226.4}"
+          TARGET_HOST="${EC2_HOST_INPUT:-52.90.145.153}"
           echo "Checking API health on http://${TARGET_HOST}/api/health..."
           sleep 5
           curl -s -f "http://${TARGET_HOST}/api/health" || echo "Note: Check passed or security group restricts external health check."
