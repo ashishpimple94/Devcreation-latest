@@ -47,7 +47,7 @@ export function generateInvoicePdf(order: IOrder, customerName: string): Promise
       doc.fillColor(INK).fontSize(10).font('Helvetica-Bold').text(customerName || a.fullName, right - 220, boxY + 14, { width: 220, align: 'right' });
       doc.fillColor(INK3).font('Helvetica').fontSize(9);
       doc.text(
-        `${a.line1}${a.line2 ? ', ' + a.line2 : ''}\n${a.city}, ${a.state} ${a.postalCode}\n${a.country}\n${a.phone}`,
+        `${a.line1}${a.line2 ? ', ' + a.line2 : ''}\n${a.city}, ${a.state} ${a.postalCode}\n${a.country || 'India'}\n${a.phone}`,
         right - 220,
         boxY + 30,
         { width: 220, align: 'right' },
@@ -85,13 +85,14 @@ export function generateInvoicePdf(order: IOrder, customerName: string): Promise
         doc.fillColor(INK).text(value, right - 90, y, { width: 80, align: 'right' });
         y += bold ? 22 : 16;
       };
-      totalRow('Items total', rupee(order.itemsTotal));
+      totalRow('Items total', rupee(order.itemsTotal || order.total));
+      if (order.discount && order.discount > 0) {
+        totalRow(`Discount${order.promoCode ? ` (${order.promoCode})` : ''}`, `-${rupee(order.discount)}`);
+      }
       totalRow('Shipping', order.shippingFee ? rupee(order.shippingFee) : 'Free');
       doc.moveTo(totalsX, y).lineTo(right, y).strokeColor(LINE).lineWidth(0.5).stroke();
       y += 8;
       totalRow('TOTAL', rupee(order.total), true);
-
-      // Footer
       doc.fillColor(INK3).font('Helvetica').fontSize(9);
       doc.text('Thank you for shopping with Dev Creation.', left, doc.page.height - 90, { align: 'center', width: right - left });
       doc.fillColor(GOLD).fontSize(8).text('Free shipping over Rs. 999  |  Returns within 14 days', left, doc.page.height - 74, { align: 'center', width: right - left, characterSpacing: 1 });

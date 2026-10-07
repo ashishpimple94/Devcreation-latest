@@ -1,12 +1,44 @@
 import { env } from '@/config/env';
 import type { IOrder, IOrderItem } from '@/models/Order';
-import type { OrderStatus } from '@/constants';
+import type { OrderStatus, PaymentStatus } from '@/constants';
 
 const rupee = (n: number) => '₹' + Math.round(n).toLocaleString('en-IN');
 const esc = (s: string) =>
   String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
 
-/** Luxury Dev Creation email shell matching the storefront aesthetic. */
+/** Website color tokens matching tailwind.config.ts and globals.css */
+const C = {
+  paper: '#FFFDF8',
+  surface: '#FFFFFF',
+  surface2: '#FAF6EF',
+  surface3: '#F0EAE0',
+  ink: '#1C1410',
+  ink2: '#3D312A',
+  ink3: '#5C4F46',
+  gold: '#B8943F',
+  goldDk: '#8C6F2A',
+  goldLt: '#D4B06A',
+  copper: '#C17F3E',
+  forest: '#8B5E3C',
+  deep: '#2C1810',
+  line: '#E5DCCB',
+  lineSoft: '#F6F1EA',
+};
+
+function resolveItemImg(url?: string | null): string {
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return `${env.STORE_URL}/assets/Logos/logo.jpeg`;
+  }
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  if (trimmed.startsWith('/assets/')) return `${env.STORE_URL}${trimmed}`;
+  if (trimmed.startsWith('assets/')) return `${env.STORE_URL}/${trimmed}`;
+  if (trimmed.startsWith('/uploads/')) return `${env.PUBLIC_ASSET_BASE}${trimmed}`;
+  if (trimmed.startsWith('uploads/')) return `${env.PUBLIC_ASSET_BASE}/${trimmed}`;
+  return `${env.STORE_URL}/assets/Logos/logo.jpeg`;
+}
+
+/** Shared responsive email shell matching the website styling and fonts */
 function layout(bodyHtml: string, previewText = ''): string {
   return `<!doctype html>
 <html lang="en">
@@ -14,72 +46,76 @@ function layout(bodyHtml: string, previewText = ''): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dev Creation</title>
-  <!--[if mso]>
-  <style type="text/css">
-    body, table, td, a { font-family: Georgia, 'Times New Roman', serif !important; }
-  </style>
-  <![endif]-->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <style>
+    body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important; }
+    .font-serif { font-family: 'Playfair Display', Georgia, serif !important; }
+    .font-cormorant { font-family: 'Cormorant Garamond', Georgia, serif !important; }
+    .font-mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important; }
     @media only screen and (max-width: 600px) {
-      .container-table { width: 100% !important; border-radius: 0 !important; }
-      .content-padding { padding: 20px 16px !important; }
-      .header-padding { padding: 24px 16px !important; }
-      .stack-column { display: block !important; width: 100% !important; margin-bottom: 12px !important; }
+      .shell-table { width: 100% !important; border-radius: 0 !important; }
+      .p-card { padding: 20px 16px !important; }
+      .timeline-step { padding: 0 4px !important; }
+      .mobile-stack { display: block !important; width: 100% !important; }
     }
   </style>
 </head>
-<body style="margin:0;padding:24px 0;background-color:#FAF6F0;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1C1410;-webkit-font-smoothing:antialiased;">
-  ${previewText ? `<div style="display:none;font-size:1px;color:#FAF6F0;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${esc(previewText)}</div>` : ''}
+<body style="margin:0;padding:24px 0;background-color:${C.paper};font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${C.ink};-webkit-font-smoothing:antialiased;">
+  ${previewText ? `<div style="display:none;font-size:1px;color:${C.paper};line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">${esc(previewText)}</div>` : ''}
 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAF6F0;margin:0;padding:0;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${C.paper};margin:0;padding:0;">
     <tr>
-      <td align="center" style="padding:10px 14px;">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="container-table" style="width:600px;max-width:600px;background-color:#FFFFFF;border:1px solid #E5DCCB;border-radius:12px;overflow:hidden;box-shadow:0 8px 30px rgba(44,24,16,0.06);">
+      <td align="center" style="padding:8px 12px;">
+        <table role="presentation" width="620" cellpadding="0" cellspacing="0" class="shell-table" style="width:620px;max-width:620px;background-color:${C.surface};border:1px solid ${C.line};border-radius:12px;overflow:hidden;box-shadow:0 14px 34px -12px rgba(28,20,16,.15);">
           
-          <!-- Luxury Brand Header -->
+          <!-- Website-Matched Brand Header -->
           <tr>
-            <td class="header-padding" style="background-color:#2C1810;padding:32px 28px;text-align:center;border-bottom:3px solid #C5A059;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td align="center">
-                    <div style="font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:700;color:#FFFFFF;letter-spacing:4px;text-transform:uppercase;">
-                      DEV CREATION
-                    </div>
-                    <div style="width:40px;height:1px;background-color:#C5A059;margin:8px auto;"></div>
-                    <div style="font-family:'DM Sans',Arial,sans-serif;font-size:10px;font-weight:600;color:#D4B06A;letter-spacing:2.5px;text-transform:uppercase;">
-                      HANDCRAFTED WITH LOVE &bull; SCENTED WITH CARE
-                    </div>
-                  </td>
-                </tr>
-              </table>
+            <td style="background-color:${C.deep};padding:28px 20px 22px;text-align:center;border-bottom:3px solid ${C.gold};">
+              <a href="${env.STORE_URL}" target="_blank" style="text-decoration:none;display:block;">
+                <img src="${env.STORE_URL}/assets/Logos/logo.jpeg" alt="Dev Creation" width="68" height="68" style="width:68px;height:68px;border-radius:50%;border:2px solid ${C.gold};display:block;margin:0 auto 10px;box-shadow:0 4px 14px rgba(0,0,0,0.35);object-fit:cover;" />
+                <div style="font-family:'Playfair Display',Georgia,serif;font-size:24px;font-weight:700;color:#FFFFFF;letter-spacing:4px;text-transform:uppercase;">
+                  DEV CREATION
+                </div>
+                <div style="width:36px;height:1px;background-color:${C.gold};margin:8px auto;"></div>
+                <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;color:${C.goldLt};letter-spacing:2px;text-transform:uppercase;">
+                  HANDCRAFTED WITH LOVE &bull; SCENTED WITH CARE
+                </div>
+              </a>
+              <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12);font-family:'JetBrains Mono',ui-monospace,monospace;">
+                <a href="${env.STORE_URL}/products" target="_blank" style="color:#FAF6EF;text-decoration:none;font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:0 8px;">Collection</a>
+                <span style="color:${C.gold};font-size:9px;">&bull;</span>
+                <a href="${env.STORE_URL}/our-story" target="_blank" style="color:#FAF6EF;text-decoration:none;font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:0 8px;">Our Story</a>
+                <span style="color:${C.gold};font-size:9px;">&bull;</span>
+                <a href="${env.STORE_URL}/categories/gift-sets" target="_blank" style="color:#FAF6EF;text-decoration:none;font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:0 8px;">Gifting</a>
+                <span style="color:${C.gold};font-size:9px;">&bull;</span>
+                <a href="${env.STORE_URL}/#care" target="_blank" style="color:#FAF6EF;text-decoration:none;font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin:0 8px;">Care</a>
+              </div>
             </td>
           </tr>
 
-          <!-- Main Content -->
+          <!-- Email Content -->
           <tr>
-            <td class="content-padding" style="padding:36px 32px;background-color:#FFFFFF;">
+            <td class="p-card" style="padding:32px 28px;background-color:${C.surface};">
               ${bodyHtml}
             </td>
           </tr>
 
-          <!-- Artisanal Footer -->
+          <!-- Storefront-Matching Footer -->
           <tr>
-            <td style="background-color:#F5EFE5;padding:26px 28px;border-top:1px solid #E5DCCB;text-align:center;">
-              <div style="font-family:'Playfair Display',Georgia,serif;font-size:14px;font-style:italic;color:#5C4F46;margin-bottom:8px;">
-                "Curating pure sensory warmth for your everyday sanctuary."
+            <td style="background-color:${C.surface2};padding:26px 20px;border-top:1px solid ${C.line};text-align:center;">
+              <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:16px;font-style:italic;color:${C.ink2};margin-bottom:6px;">
+                "Handcrafted with love, Scented with care."
               </div>
-              <div style="font-size:11px;color:#8C6F2A;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">
-                100% Pure Soy Wax &bull; Toxin-Free &bull; Handcrafted in India
+              <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9.5px;color:${C.copper};font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">
+                100% Pure Soy Wax &bull; Hand-Poured in India &bull; Master Perfumer Oils
               </div>
-              <div style="font-size:12px;color:#5C4F46;line-height:1.6;">
-                Need help with your order? Contact our concierge:<br>
-                <a href="mailto:support@devcreation24.in" style="color:#2C1810;font-weight:600;text-decoration:none;">support@devcreation24.in</a> &bull; 
-                <a href="${env.STORE_URL}" style="color:#2C1810;font-weight:600;text-decoration:none;">devcreation24.in</a>
+              <div style="font-size:12px;color:${C.ink3};line-height:1.7;">
+                Concierge: <a href="mailto:support@devcreation24.in" style="color:${C.ink};font-weight:600;text-decoration:none;">support@devcreation24.in</a> &bull; Phone: <strong style="color:${C.ink};">+91 788 758 2008</strong><br>
+                Online Boutique: <a href="${env.STORE_URL}" style="color:${C.ink};font-weight:600;text-decoration:none;">devcreation24.in</a>
               </div>
-              <div style="font-size:11px;color:#9b8f84;margin-top:14px;border-top:1px solid #E5DCCB;padding-top:12px;">
+              <div style="font-size:11px;color:#9b8f84;margin-top:14px;border-top:1px solid ${C.line};padding-top:10px;">
                 &copy; ${new Date().getFullYear()} Dev Creation. All rights reserved.
               </div>
             </td>
@@ -93,11 +129,72 @@ function layout(bodyHtml: string, previewText = ''): string {
 </html>`;
 }
 
+/** Badges matching OrderStatusBadge.tsx */
+function statusBadge(status: string): string {
+  const map: Record<string, { bg: string; text: string; border: string }> = {
+    pending: { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A' },
+    confirmed: { bg: '#EFF6FF', text: '#1D4ED8', border: '#BFDBFE' },
+    processing: { bg: '#EEF2FF', text: '#4338CA', border: '#C7D2FE' },
+    shipped: { bg: '#ECFEFF', text: '#0E7490', border: '#A5F3FC' },
+    delivered: { bg: '#F0FDF4', text: '#15803D', border: '#BBF7D0' },
+    cancelled: { bg: '#FEF2F2', text: '#B91C1C', border: '#FECACA' },
+    refunded: { bg: '#F3F4F6', text: '#4B5563', border: '#E5E7EB' },
+  };
+  const s = map[status.toLowerCase()] || map.pending;
+  return `<span style="display:inline-block;border-radius:9999px;border:1px solid ${s.border};background-color:${s.bg};color:${s.text};padding:4px 10px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;">${esc(status)}</span>`;
+}
+
+/** Badges matching PaymentStatusBadge.tsx */
+function paymentBadge(status: string): string {
+  const map: Record<string, { bg: string; text: string; border: string }> = {
+    pending: { bg: '#FFFBEB', text: '#B45309', border: '#FDE68A' },
+    paid: { bg: '#F0FDF4', text: '#15803D', border: '#BBF7D0' },
+    failed: { bg: '#FEF2F2', text: '#B91C1C', border: '#FECACA' },
+    refunded: { bg: '#F3F4F6', text: '#4B5563', border: '#E5E7EB' },
+  };
+  const s = map[status.toLowerCase()] || map.pending;
+  return `<span style="display:inline-block;border-radius:9999px;border:1px solid ${s.border};background-color:${s.bg};color:${s.text};padding:4px 10px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;">${esc(status)}</span>`;
+}
+
+/** 5-Step visual timeline matching website order detail */
+function renderTimeline(currentStatus: string): string {
+  const steps = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
+  const labels = ['Placed', 'Confirmed', 'Packing', 'Shipped', 'Delivered'];
+  const currentIdx = steps.indexOf(currentStatus.toLowerCase());
+
+  const items = steps
+    .map((step, idx) => {
+      const isPastOrCurrent = currentIdx >= idx;
+      const circleBg = isPastOrCurrent ? C.gold : C.surface3;
+      const circleColor = isPastOrCurrent ? '#FFFFFF' : C.ink3;
+      const labelColor = isPastOrCurrent ? C.ink : '#9b8f84';
+
+      return `
+      <td align="center" class="timeline-step" style="width:20%;vertical-align:top;">
+        <div style="width:28px;height:28px;border-radius:50%;background-color:${circleBg};color:${circleColor};line-height:28px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:700;margin:0 auto;text-align:center;">
+          ${idx + 1}
+        </div>
+        <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9.5px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:${labelColor};margin-top:6px;">
+          ${labels[idx]}
+        </div>
+      </td>`;
+    })
+    .join('');
+
+  return `
+  <div style="margin:22px 0;background-color:${C.surface};border:1px solid ${C.line};border-radius:10px;padding:16px 10px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>${items}</tr>
+    </table>
+  </div>`;
+}
+
 function button(label: string, href: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px auto;">
+  return `
+  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px auto;">
     <tr>
-      <td align="center" style="background-color:#2C1810;border-radius:8px;border:1px solid #C5A059;">
-        <a href="${esc(href)}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:'DM Sans',Arial,sans-serif;font-size:13px;font-weight:600;color:#FFFFFF;text-decoration:none;letter-spacing:1.5px;text-transform:uppercase;">
+      <td align="center" style="background-color:${C.deep};border-radius:10px;border:1.5px solid ${C.deep};box-shadow:0 8px 25px rgba(44,24,16,0.18);">
+        <a href="${esc(href)}" target="_blank" style="display:inline-block;padding:15px 32px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;font-weight:600;color:#FFFFFF;text-decoration:none;letter-spacing:0.18em;text-transform:uppercase;">
           ${esc(label)} &rarr;
         </a>
       </td>
@@ -105,22 +202,26 @@ function button(label: string, href: string): string {
   </table>`;
 }
 
-function itemsInvoiceTable(items: IOrderItem[]): string {
+/** Product items table matching OrderDetailClient.tsx card */
+function renderItemsCard(items: IOrderItem[]): string {
   const rows = items
     .map(
       (item) => `
-      <tr style="border-bottom:1px solid #EFE8DC;">
-        <td style="padding:14px 8px;vertical-align:middle;">
-          <div style="font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:600;color:#1C1410;">
+      <tr style="border-bottom:1px solid ${C.lineSoft};">
+        <td style="padding:14px 6px;vertical-align:middle;width:52px;">
+          <div style="width:50px;height:50px;background-color:${C.surface2};border:1px solid ${C.line};border-radius:8px;overflow:hidden;text-align:center;">
+            <img src="${resolveItemImg(item.image)}" alt="${esc(item.name)}" width="50" height="50" style="width:50px;height:50px;object-fit:cover;display:block;" />
+          </div>
+        </td>
+        <td style="padding:14px 10px;vertical-align:middle;">
+          <div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:17px;font-weight:600;color:${C.ink};line-height:1.2;">
             ${esc(item.name)}
           </div>
-          ${item.variantName ? `<div style="font-size:12px;color:#8C6F2A;margin-top:2px;">Variant: ${esc(item.variantName)}</div>` : ''}
-          <div style="font-size:12px;color:#8A7A70;margin-top:2px;">SKU: ${esc(item.sku || 'DC-CANDLE')}</div>
+          <div style="font-size:12px;color:${C.ink3};margin-top:2px;">
+            ${item.variantName ? `${esc(item.variantName)} &middot; ` : ''}Qty ${item.quantity}
+          </div>
         </td>
-        <td align="center" style="padding:14px 8px;font-size:14px;color:#3D312A;vertical-align:middle;font-weight:500;">
-          &times;${item.quantity}
-        </td>
-        <td align="right" style="padding:14px 8px;font-size:14px;color:#1C1410;vertical-align:middle;font-weight:600;white-space:nowrap;">
+        <td align="right" style="padding:14px 6px;vertical-align:middle;font-size:14px;font-weight:600;color:${C.ink};white-space:nowrap;font-variant-numeric:tabular-nums;">
           ${rupee(item.price * item.quantity)}
         </td>
       </tr>`,
@@ -128,281 +229,254 @@ function itemsInvoiceTable(items: IOrderItem[]): string {
     .join('');
 
   return `
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:16px 0;">
-    <thead>
-      <tr style="background-color:#FBF7F0;border-top:1px solid #E5DCCB;border-bottom:1px solid #E5DCCB;">
-        <th align="left" style="padding:10px 8px;font-size:11px;font-weight:700;color:#8C6F2A;letter-spacing:1px;text-transform:uppercase;">Item Details</th>
-        <th align="center" style="padding:10px 8px;font-size:11px;font-weight:700;color:#8C6F2A;letter-spacing:1px;text-transform:uppercase;">Qty</th>
-        <th align="right" style="padding:10px 8px;font-size:11px;font-weight:700;color:#8C6F2A;letter-spacing:1px;text-transform:uppercase;">Amount</th>
-      </tr>
-    </thead>
-    <tbody>
+  <div style="background-color:${C.surface};border:1px solid ${C.line};border-radius:10px;padding:18px 20px;margin-bottom:20px;">
+    <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:${C.copper};margin-bottom:8px;">
+      ITEMS
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
       ${rows}
-    </tbody>
-  </table>`;
+    </table>
+  </div>`;
 }
 
-/** Luxury Order Confirmation Email with Invoice Details */
+/** Customer order-confirmation email matching storefront order detail */
 export function orderConfirmationEmail(order: IOrder, customerName: string) {
   const a = order.shippingAddress;
   const isFreeShip = !order.shippingFee || order.shippingFee === 0;
+  const formattedDate = new Date(order.placedAt || order.createdAt).toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   const body = `
-    <!-- Top Greeting -->
-    <div style="text-align:center;margin-bottom:28px;">
-      <span style="display:inline-block;padding:4px 12px;background-color:#F5EFE5;border:1px solid #C5A059;border-radius:20px;font-size:11px;font-weight:700;color:#8C6F2A;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">
-        Order Confirmed &bull; Invoice Generated
-      </span>
-      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:28px;font-weight:700;color:#2C1810;margin:0 0 8px;line-height:1.2;">
-        Thank You For Your Order
-      </h1>
-      <p style="font-size:15px;color:#5C4F46;margin:0;line-height:1.5;">
-        Dear <strong>${esc(customerName)}</strong>, we are thrilled to craft your luxury fragrance experience. Your order is confirmed and currently being prepared.
-      </p>
-    </div>
+    <!-- Order Number & Top Badges (Mirroring Storefront Header) -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+      <tr>
+        <td style="vertical-align:top;">
+          <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:600;color:${C.ink};margin:0;letter-spacing:0.5px;">
+            ${esc(order.orderNumber)}
+          </h1>
+          <div style="font-size:12px;color:${C.ink3};margin-top:3px;">
+            Placed ${formattedDate}
+          </div>
+        </td>
+        <td align="right" style="vertical-align:top;">
+          <div style="margin-bottom:4px;">${statusBadge(order.status)}</div>
+          <div>${paymentBadge(order.paymentStatus)}</div>
+        </td>
+      </tr>
+    </table>
 
-    <!-- Invoice Header Card -->
-    <div style="background-color:#FBF7F0;border:1px solid #E5DCCB;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td style="vertical-align:top;">
-            <div style="font-size:11px;font-weight:700;color:#8C6F2A;letter-spacing:1px;text-transform:uppercase;">Invoice / Order No.</div>
-            <div style="font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:700;color:#2C1810;margin-top:2px;">#${esc(order.orderNumber)}</div>
-            <div style="font-size:12px;color:#8A7A70;margin-top:4px;">Date: ${new Date(order.placedAt || order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-          </td>
-          <td align="right" style="vertical-align:top;">
-            <div style="font-size:11px;font-weight:700;color:#8C6F2A;letter-spacing:1px;text-transform:uppercase;">Payment Status</div>
-            <div style="display:inline-block;padding:3px 10px;background-color:#EBF5EA;color:#276738;border-radius:4px;font-size:12px;font-weight:700;margin-top:4px;text-transform:uppercase;">
-              ${esc(order.paymentStatus)}
-            </div>
-            <div style="font-size:12px;color:#8A7A70;margin-top:4px;text-transform:uppercase;">Method: ${esc(order.paymentMethod || 'COD')}</div>
-          </td>
-        </tr>
-      </table>
-    </div>
+    <!-- 5-Step Timeline Bar -->
+    ${renderTimeline(order.status)}
 
-    <!-- Ordered Items Section -->
-    <div style="margin-bottom:24px;">
-      <div style="font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:600;color:#2C1810;border-bottom:2px solid #C5A059;padding-bottom:6px;">
-        Order & Invoice Breakdown
-      </div>
-      ${itemsInvoiceTable(order.items)}
-    </div>
+    <!-- Main Grid: Items Card & Financials -->
+    ${renderItemsCard(order.items)}
 
-    <!-- Invoice Totals Box -->
-    <div style="background-color:#FBF7F0;border:1px solid #E5DCCB;border-radius:8px;padding:18px 20px;margin-bottom:26px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;color:#3D312A;">
+    <!-- Order Financials Card -->
+    <div style="background-color:${C.surface2};border:1px solid ${C.line};border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;color:${C.ink2};">
         <tr>
-          <td style="padding:4px 0;color:#5C4F46;">Items Subtotal</td>
-          <td align="right" style="padding:4px 0;font-weight:600;">${rupee(order.itemsTotal || order.total)}</td>
-        </tr>
-        <tr>
-          <td style="padding:4px 0;color:#5C4F46;">Delivery & Handling</td>
-          <td align="right" style="padding:4px 0;font-weight:600;color:${isFreeShip ? '#276738' : '#3D312A'};">
-            ${isFreeShip ? 'FREE' : rupee(order.shippingFee)}
-          </td>
+          <td style="padding:4px 0;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:${C.ink3};">Items total</td>
+          <td align="right" style="padding:4px 0;font-weight:500;">${rupee(order.itemsTotal || order.total)}</td>
         </tr>
         ${order.discount ? `
         <tr>
-          <td style="padding:4px 0;color:#8C6F2A;">Special Promo Discount</td>
-          <td align="right" style="padding:4px 0;font-weight:600;color:#8C6F2A;">- ${rupee(order.discount)}</td>
+          <td style="padding:4px 0;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#15803D;">Discount ${order.promoCode ? `(${esc(order.promoCode)})` : ''}</td>
+          <td align="right" style="padding:4px 0;font-weight:600;color:#15803D;">-${rupee(order.discount)}</td>
         </tr>` : ''}
         <tr>
-          <td colspan="2" style="padding-top:10px;border-top:1px solid #E5DCCB;"></td>
+          <td style="padding:4px 0;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:${C.ink3};">Shipping</td>
+          <td align="right" style="padding:4px 0;font-weight:500;color:${isFreeShip ? '#15803D' : C.ink2};">
+            ${isFreeShip ? 'Free' : rupee(order.shippingFee)}
+          </td>
         </tr>
-        <tr style="font-size:18px;">
-          <td style="font-family:'Playfair Display',Georgia,serif;font-weight:700;color:#2C1810;">Total Amount</td>
-          <td align="right" style="font-family:'Playfair Display',Georgia,serif;font-weight:700;color:#8C6F2A;">
+        <tr>
+          <td colspan="2" style="padding-top:10px;border-top:1px solid ${C.line};"></td>
+        </tr>
+        <tr style="font-size:16px;font-weight:700;">
+          <td style="font-family:'Playfair Display',Georgia,serif;color:${C.ink};">Total Amount</td>
+          <td align="right" style="font-family:'Playfair Display',Georgia,serif;color:${C.goldDk};">
             ${rupee(order.total)}
           </td>
         </tr>
       </table>
     </div>
 
-    <!-- Shipping & Delivery Address -->
-    <div style="background-color:#FFFFFF;border:1px solid #E5DCCB;border-radius:8px;padding:18px 20px;margin-bottom:24px;">
-      <div style="font-family:'Playfair Display',Georgia,serif;font-size:16px;font-weight:600;color:#2C1810;margin-bottom:10px;">
-        📍 Shipping & Delivery Destination
+    <!-- Shipping To Card (Matching Storefront Aside) -->
+    <div style="background-color:${C.surface};border:1px solid ${C.line};border-radius:10px;padding:16px 20px;margin-bottom:20px;">
+      <div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:${C.copper};margin-bottom:8px;">
+        SHIPPING TO
       </div>
-      <div style="font-size:13px;line-height:1.6;color:#5C4F46;">
-        <strong style="color:#1C1410;font-size:14px;">${esc(a.fullName)}</strong><br>
+      <div style="font-size:13px;line-height:1.6;color:${C.ink2};">
+        <strong style="color:${C.ink};">${esc(a.fullName)}</strong><br>
         ${esc(a.line1)}${a.line2 ? `, ${esc(a.line2)}` : ''}<br>
-        ${esc(a.city)}, ${esc(a.state)} &mdash; <strong>${esc(a.postalCode)}</strong><br>
-        Country: ${esc(a.country || 'India')}<br>
-        <span style="color:#1C1410;">Phone: <strong>${esc(a.phone)}</strong></span>
+        ${esc(a.city)}, ${esc(a.state)} ${esc(a.postalCode)}<br>
+        ${esc(a.country || 'India')}<br>
+        Phone: ${esc(a.phone)}
       </div>
     </div>
 
-    <!-- PDF Attachment Callout -->
-    <div style="background-color:#F5EFE5;border:1px dashed #C5A059;border-radius:8px;padding:14px 18px;margin-bottom:20px;text-align:center;">
-      <div style="font-size:13px;font-weight:600;color:#2C1810;">
-        📎 Official Tax Invoice Attached
+    <!-- Official PDF Tax Invoice Attachment Box -->
+    <div style="background-color:${C.paper};border:1px dashed ${C.gold};border-radius:10px;padding:14px 18px;margin-bottom:22px;text-align:center;">
+      <div style="font-size:13px;font-weight:700;color:${C.ink};">
+        📎 Official Tax Invoice Attached (PDF)
       </div>
-      <div style="font-size:12px;color:#5C4F46;margin-top:2px;">
-        A copy of your branded tax invoice (<span style="font-family:monospace;">invoice-${esc(order.orderNumber)}.pdf</span>) is attached with this email for your financial records.
+      <div style="font-size:12px;color:${C.ink3};margin-top:3px;">
+        A copy of your branded tax invoice (<span style="font-family:'JetBrains Mono',monospace;font-weight:600;">invoice-${esc(order.orderNumber)}.pdf</span>) has been generated and attached for your records.
       </div>
     </div>
 
-    <!-- Action Button -->
+    <!-- CTA Button -->
     <div style="text-align:center;">
-      ${button('Track Order & View Live Updates', `${env.STORE_URL}/account/orders`)}
+      ${button('View Order on Website', `${env.STORE_URL}/account/orders/${order._id}`)}
     </div>
   `;
 
   return {
-    subject: `Order Confirmed #${order.orderNumber} — Dev Creation Tax Invoice`,
-    html: layout(body, `Your order #${order.orderNumber} is confirmed. View your receipt and order summary.`),
-    text: `Thank you for your order! Order #${order.orderNumber} totaling Rs. ${order.total} has been confirmed. Track at: ${env.STORE_URL}/account/orders`,
+    subject: `Order #${order.orderNumber} Confirmed — Dev Creation Tax Invoice`,
+    html: layout(body, `Your Dev Creation order #${order.orderNumber} is confirmed. View details and invoice.`),
+    text: `Order #${order.orderNumber} confirmed! Total: Rs. ${order.total}. View details: ${env.STORE_URL}/account/orders/${order._id}`,
   };
 }
 
-/** Luxury Admin New Order Notification */
+/** Admin notification email matching storefront */
 export function adminNewOrderEmail(order: IOrder, customerName: string) {
   const a = order.shippingAddress;
   const body = `
-    <div style="margin-bottom:20px;">
-      <span style="display:inline-block;padding:3px 10px;background-color:#2C1810;color:#D4B06A;border-radius:12px;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">
+    <div style="margin-bottom:16px;">
+      <span style="display:inline-block;padding:3px 10px;background-color:${C.deep};color:${C.goldLt};border-radius:12px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">
         Store Alert
       </span>
-      <h2 style="font-family:'Playfair Display',Georgia,serif;font-size:24px;color:#2C1810;margin:10px 0 6px;">
-        New Order Received: #${esc(order.orderNumber)}
-      </h2>
-      <p style="font-size:14px;color:#5C4F46;margin:0;">
-        A customer has placed an order on Dev Creation storefront.
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:24px;color:${C.ink};margin:8px 0 4px;">
+        New Order: #${esc(order.orderNumber)}
+      </h1>
+      <p style="font-size:13px;color:${C.ink3};margin:0;">
+        Placed by ${esc(customerName)} on Dev Creation.
       </p>
     </div>
 
-    <div style="background-color:#FBF7F0;border:1px solid #E5DCCB;border-radius:8px;padding:16px 20px;margin-bottom:20px;font-size:13px;">
+    <div style="background-color:${C.surface2};border:1px solid ${C.line};border-radius:10px;padding:16px 20px;margin-bottom:20px;font-size:13px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr><td style="padding:4px 0;color:#8C6F2A;font-weight:700;">Customer:</td><td align="right" style="font-weight:600;color:#1C1410;">${esc(customerName)}</td></tr>
-        <tr><td style="padding:4px 0;color:#8C6F2A;font-weight:700;">Order Total:</td><td align="right" style="font-weight:700;color:#2C1810;font-size:16px;">${rupee(order.total)}</td></tr>
-        <tr><td style="padding:4px 0;color:#8C6F2A;font-weight:700;">Payment Method:</td><td align="right" style="text-transform:uppercase;color:#1C1410;">${esc(order.paymentMethod)}</td></tr>
-        <tr><td style="padding:4px 0;color:#8C6F2A;font-weight:700;">Phone:</td><td align="right" style="color:#1C1410;">${esc(a.phone)}</td></tr>
+        <tr><td style="padding:4px 0;color:${C.goldDk};font-weight:700;">Customer:</td><td align="right" style="font-weight:600;color:${C.ink};">${esc(customerName)}</td></tr>
+        <tr><td style="padding:4px 0;color:${C.goldDk};font-weight:700;">Total Amount:</td><td align="right" style="font-weight:700;color:${C.deep};font-size:16px;">${rupee(order.total)}</td></tr>
+        <tr><td style="padding:4px 0;color:${C.goldDk};font-weight:700;">Payment:</td><td align="right" style="text-transform:uppercase;">${esc(order.paymentMethod)} (${esc(order.paymentStatus)})</td></tr>
+        <tr><td style="padding:4px 0;color:${C.goldDk};font-weight:700;">Phone:</td><td align="right">${esc(a.phone)}</td></tr>
       </table>
     </div>
 
-    ${itemsInvoiceTable(order.items)}
+    ${renderItemsCard(order.items)}
 
-    <div style="margin-top:20px;">
-      ${button('Open Order in Admin Panel', `https://login.devcreation24.in/orders`)}
+    <div style="text-align:center;margin-top:20px;">
+      ${button('Open in Admin Panel', `https://login.devcreation24.in/orders`)}
     </div>
   `;
 
   return {
-    subject: `🛎 [New Order] #${order.orderNumber} &bull; ${rupee(order.total)} from ${customerName}`,
-    html: layout(body, `New order #${order.orderNumber} received for ${rupee(order.total)}.`),
+    subject: `🛎 [New Order] #${order.orderNumber} — ${rupee(order.total)} from ${customerName}`,
+    html: layout(body, `New order #${order.orderNumber} received.`),
     text: `New order #${order.orderNumber} placed by ${customerName} for Rs. ${order.total}. Manage: https://login.devcreation24.in/orders`,
   };
 }
 
-/** Luxury Order Status Update */
+/** Status update email matching storefront */
 export function orderStatusEmail(order: IOrder, customerName: string, status: OrderStatus, note?: string) {
-  const statusTitles: Record<string, string> = {
-    confirmed: 'Your Order is Confirmed & Being Prepared',
-    processing: 'Your Handcrafted Candles are in Packaging',
-    shipped: 'Your Order Has Been Dispatched',
-    delivered: 'Your Dev Creation Package Has Arrived',
-    cancelled: 'Your Order Has Been Cancelled',
-    refunded: 'Your Refund Has Been Processed',
-  };
-
   const body = `
-    <div style="text-align:center;margin-bottom:24px;">
-      <span style="display:inline-block;padding:4px 12px;background-color:#F5EFE5;border:1px solid #C5A059;border-radius:20px;font-size:11px;font-weight:700;color:#8C6F2A;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">
-        Order Status Update
-      </span>
-      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:700;color:#2C1810;margin:0 0 6px;">
-        ${esc(statusTitles[status] || `Order ${status.toUpperCase()}`)}
+    <div style="margin-bottom:16px;">
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:24px;color:${C.ink};margin:0 0 6px;">
+        Order #${esc(order.orderNumber)} Update
       </h1>
-      <p style="font-size:15px;color:#5C4F46;margin:0;">
-        Hi ${esc(customerName)}, here is the latest update on your order <strong>#${esc(order.orderNumber)}</strong>.
-      </p>
+      <div style="font-size:13px;color:${C.ink3};">
+        Current Status: ${statusBadge(status)}
+      </div>
     </div>
 
+    ${renderTimeline(status)}
+
     ${note ? `
-    <div style="background-color:#FAF6EF;border-left:4px solid #C5A059;padding:12px 16px;border-radius:4px;margin-bottom:20px;font-size:13px;color:#3D312A;">
+    <div style="background-color:${C.surface2};border-left:4px solid ${C.gold};padding:12px 16px;border-radius:4px;margin-bottom:20px;font-size:13px;color:${C.ink2};">
       <strong>Note from Concierge:</strong> ${esc(note)}
     </div>` : ''}
 
-    <div style="margin-bottom:24px;">
-      ${itemsInvoiceTable(order.items)}
-    </div>
+    ${renderItemsCard(order.items)}
 
     <div style="text-align:center;">
-      ${button('Track Live Shipment', `${env.STORE_URL}/account/orders`)}
+      ${button('View Order on Website', `${env.STORE_URL}/account/orders/${order._id}`)}
     </div>
   `;
 
   return {
-    subject: `Order Update #${order.orderNumber}: ${status.toUpperCase()} — Dev Creation`,
+    subject: `Order #${order.orderNumber} Status: ${status.toUpperCase()} — Dev Creation`,
     html: layout(body, `Your order #${order.orderNumber} is now ${status}.`),
-    text: `Order #${order.orderNumber} status update: ${status}. View details at ${env.STORE_URL}/account/orders`,
+    text: `Order #${order.orderNumber} status update: ${status}. View: ${env.STORE_URL}/account/orders/${order._id}`,
   };
 }
 
-/** Luxury Welcome Email */
+/** Welcome email matching storefront aesthetics */
 export function welcomeEmail(customerName: string) {
   const body = `
-    <div style="text-align:center;margin-bottom:24px;">
-      <span style="display:inline-block;padding:4px 12px;background-color:#F5EFE5;border:1px solid #C5A059;border-radius:20px;font-size:11px;font-weight:700;color:#8C6F2A;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">
-        Artisanal Luxury
-      </span>
-      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:28px;font-weight:700;color:#2C1810;margin:0 0 8px;">
-        Welcome to the Family
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${C.copper};margin-bottom:8px;">
+        WELCOME
+      </div>
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:26px;color:${C.ink};margin:0 0 8px;">
+        Welcome to Dev Creation, ${esc(customerName)}
       </h1>
-      <p style="font-size:15px;color:#5C4F46;line-height:1.6;margin:0;">
-        Dear <strong>${esc(customerName)}</strong>, welcome to Dev Creation. We design soulful, handcrafted scented candles and curated home fragrances to transform your living spaces into serene havens.
+      <p style="font-size:14px;color:${C.ink3};line-height:1.6;margin:0;">
+        Thank you for joining our community. Discover our luxury handcrafted candles and signature fragrances.
       </p>
     </div>
 
-    <div style="background-color:#FBF7F0;border:1px solid #E5DCCB;border-radius:8px;padding:20px 24px;margin-bottom:24px;">
-      <div style="font-family:'Playfair Display',Georgia,serif;font-size:16px;font-weight:600;color:#2C1810;margin-bottom:10px;">
-        What Awaits You:
+    <div style="background-color:${C.surface2};border:1px solid ${C.line};border-radius:10px;padding:18px 22px;margin:20px 0;">
+      <div style="font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:600;color:${C.ink};margin-bottom:8px;">
+        Your Membership Benefits:
       </div>
-      <ul style="font-size:13px;color:#5C4F46;line-height:1.8;padding-left:18px;margin:0;">
-        <li>Exclusive access to limited-edition candle drops</li>
-        <li>Priority express dispatch on all bespoke orders</li>
-        <li>Special festive & anniversary gifting privilege</li>
+      <ul style="font-size:13px;color:${C.ink3};line-height:1.8;padding-left:18px;margin:0;">
+        <li>Real-time order tracking and invoice management</li>
+        <li>Early access to seasonal candle releases</li>
+        <li>Priority concierge gifting support</li>
       </ul>
     </div>
 
     <div style="text-align:center;">
-      ${button('Explore Our Candles Collection', `${env.STORE_URL}/products`)}
+      ${button('Explore Our Candles', `${env.STORE_URL}/products`)}
     </div>
   `;
 
   return {
     subject: `Welcome to Dev Creation, ${customerName} ✨`,
     html: layout(body, `Welcome to Dev Creation handcrafted luxury candles.`),
-    text: `Welcome to Dev Creation, ${customerName}! Explore our luxury candles at ${env.STORE_URL}/products`,
+    text: `Welcome to Dev Creation, ${customerName}! Explore: ${env.STORE_URL}/products`,
   };
 }
 
-/** Luxury Password Reset Email */
+/** Password reset email */
 export function passwordResetEmail(customerName: string, resetUrl: string) {
   const body = `
     <div style="text-align:center;margin-bottom:20px;">
-      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:700;color:#2C1810;margin:0 0 8px;">
-        Password Reset Request
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:24px;color:${C.ink};margin:0 0 8px;">
+        Password Reset
       </h1>
-      <p style="font-size:14px;color:#5C4F46;margin:0;">
-        Hi ${esc(customerName)}, we received a request to reset the password for your Dev Creation account.
+      <p style="font-size:14px;color:${C.ink3};margin:0;">
+        Hi ${esc(customerName)}, click the button below to reset your Dev Creation password:
       </p>
     </div>
 
-    <div style="text-align:center;margin:28px 0;">
-      ${button('Reset My Password', resetUrl)}
+    <div style="text-align:center;margin:24px 0;">
+      ${button('Reset Password', resetUrl)}
     </div>
 
-    <p style="font-size:12px;color:#8A7A70;text-align:center;margin-top:20px;line-height:1.5;">
-      This security link will expire in <strong>15 minutes</strong>.<br>
-      If you did not initiate this request, you can safely disregard this message.
+    <p style="font-size:12px;color:#8A7A70;text-align:center;margin-top:20px;">
+      This link will expire in <strong>15 minutes</strong>. If you did not make this request, you can ignore this email.
     </p>
   `;
 
   return {
     subject: `Reset Your Dev Creation Password`,
-    html: layout(body, `Security link to reset your Dev Creation account password.`),
-    text: `Reset your Dev Creation password using this link (valid 15 mins): ${resetUrl}`,
+    html: layout(body, `Security link to reset your password.`),
+    text: `Reset password: ${resetUrl} (Valid for 15 mins)`,
   };
 }
