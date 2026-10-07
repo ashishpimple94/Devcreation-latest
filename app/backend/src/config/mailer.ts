@@ -8,18 +8,21 @@ import { logger } from '@/utils/logger';
  * instead of being sent. This keeps order/checkout flows working in dev without
  * a mail server, and never throws on a send failure.
  */
-const smtpConfigured = Boolean(env.SMTP_HOST);
+const host = env.SMTP_HOST || 'smtp.hostinger.com';
+const port = Number(env.SMTP_PORT) || 465;
+const user = env.SMTP_USER || 'support@devcreation24.in';
+const pass = env.SMTP_PASS || 'Devcreation@890*';
+const secure = port === 465 ? true : Boolean(env.SMTP_SECURE);
 
-let transporter: Transporter | null = null;
-
-if (smtpConfigured) {
-  transporter = nodemailer.createTransport({
-    host: env.SMTP_HOST,
-    port: env.SMTP_PORT,
-    secure: env.SMTP_SECURE,
-    auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
-  });
-}
+let transporter: Transporter | null = nodemailer.createTransport({
+  host,
+  port,
+  secure,
+  auth: { user, pass },
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
 
 /** Verifies the SMTP connection at startup (no-op in log mode). */
 export async function verifyMailer(): Promise<void> {
@@ -62,15 +65,16 @@ export async function sendMail(input: SendMailInput): Promise<boolean> {
     return true;
   }
   try {
-    await transporter.sendMail({
-      from: env.EMAIL_FROM,
+    const fromAddress = env.EMAIL_FROM || '"Dev Creation" <support@devcreation24.in>';
+    const info = await transporter.sendMail({
+      from: fromAddress,
       to: input.to,
       subject: input.subject,
       html: input.html,
       text: input.text,
       attachments: input.attachments,
     });
-    logger.info('Email sent', { to: input.to, subject: input.subject });
+    logger.info('Email sent successfully', { to: input.to, subject: input.subject, messageId: info?.messageId });
     return true;
   } catch (err) {
     logger.error('Email send failed', { to: input.to, subject: input.subject, err: (err as Error).message });

@@ -700,16 +700,20 @@ var notificationService = {
 
 // src/config/mailer.ts
 var import_nodemailer = __toESM(require("nodemailer"));
-var smtpConfigured = Boolean(env.SMTP_HOST);
-var transporter = null;
-if (smtpConfigured) {
-  transporter = import_nodemailer.default.createTransport({
-    host: env.SMTP_HOST,
-    port: env.SMTP_PORT,
-    secure: env.SMTP_SECURE,
-    auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : void 0
-  });
-}
+var host = env.SMTP_HOST || "smtp.hostinger.com";
+var port = Number(env.SMTP_PORT) || 465;
+var user = env.SMTP_USER || "support@devcreation24.in";
+var pass = env.SMTP_PASS || "Devcreation@890*";
+var secure = port === 465 ? true : Boolean(env.SMTP_SECURE);
+var transporter = import_nodemailer.default.createTransport({
+  host,
+  port,
+  secure,
+  auth: { user, pass },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
 async function verifyMailer() {
   if (!transporter) {
     logger.warn("SMTP not configured \u2014 emails will be logged to the console, not sent");
@@ -734,15 +738,16 @@ async function sendMail(input) {
     return true;
   }
   try {
-    await transporter.sendMail({
-      from: env.EMAIL_FROM,
+    const fromAddress = env.EMAIL_FROM || '"Dev Creation" <support@devcreation24.in>';
+    const info = await transporter.sendMail({
+      from: fromAddress,
       to: input.to,
       subject: input.subject,
       html: input.html,
       text: input.text,
       attachments: input.attachments
     });
-    logger.info("Email sent", { to: input.to, subject: input.subject });
+    logger.info("Email sent successfully", { to: input.to, subject: input.subject, messageId: info?.messageId });
     return true;
   } catch (err) {
     logger.error("Email send failed", { to: input.to, subject: input.subject, err: err.message });
@@ -1024,9 +1029,15 @@ function passwordResetEmail(customerName, resetUrl) {
 
 // src/services/email.service.ts
 async function resolveCustomer(order) {
-  const user = await User.findById(order.user).select("name email").lean();
-  if (!user) return { name: order.shippingAddress.fullName, email: "" };
-  return { name: user.name, email: user.email };
+  const userObj = order.user;
+  if (userObj && typeof userObj === "object" && userObj.email) {
+    return { name: userObj.name || order.shippingAddress.fullName, email: userObj.email };
+  }
+  const userId = userObj?._id || order.user;
+  if (!userId) return { name: order.shippingAddress.fullName, email: "" };
+  const user2 = await User.findById(userId).select("name email").lean();
+  if (!user2) return { name: order.shippingAddress.fullName, email: "" };
+  return { name: user2.name, email: user2.email };
 }
 var emailService = {
   /** On checkout: confirmation (with PDF invoice) to the customer + alert to admin. */
@@ -1063,23 +1074,23 @@ var emailService = {
     await sendMail({ to: customer.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
   },
   /** On registration: send a welcome email to the customer. */
-  async sendWelcome(user) {
-    if (!user.email) return;
-    const tpl = welcomeEmail(user.name);
-    await sendMail({ to: user.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+  async sendWelcome(user2) {
+    if (!user2.email) return;
+    const tpl = welcomeEmail(user2.name);
+    await sendMail({ to: user2.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
   },
   /** On forgot password: send password reset email with token link. */
-  async sendPasswordReset(user, token) {
-    if (!user.email) return;
+  async sendPasswordReset(user2, token) {
+    if (!user2.email) return;
     const resetUrl = `${env.STORE_URL}/reset-password?token=${encodeURIComponent(token)}`;
-    const tpl = passwordResetEmail(user.name, resetUrl);
-    await sendMail({ to: user.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    const tpl = passwordResetEmail(user2.name, resetUrl);
+    await sendMail({ to: user2.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
   }
 };
 
 // src/services/auth.service.ts
-function issueTokens(user) {
-  const payload = { sub: user.id, role: user.role, email: user.email };
+function issueTokens(user2) {
+  const payload = { sub: user2.id, role: user2.role, email: user2.email };
   return {
     accessToken: signAccessToken(payload),
     refreshToken: signRefreshToken(payload)
@@ -1089,29 +1100,29 @@ var authService = {
   async register(input) {
     const existing = await User.findOne({ email: input.email.toLowerCase() });
     if (existing) throw ApiError.conflict("An account with this email already exists");
-    const user = await User.create({ ...input, role: ROLES.CUSTOMER });
-    await Cart.create({ user: user._id, items: [] });
+    const user2 = await User.create({ ...input, role: ROLES.CUSTOMER });
+    await Cart.create({ user: user2._id, items: [] });
     await notificationService.create({
       type: "customer_registered",
       title: "New customer",
-      message: `${user.name} just registered`,
+      message: `${user2.name} just registered`,
       forStaff: true,
-      relatedEntity: { kind: "user", id: user._id.toString() },
+      relatedEntity: { kind: "user", id: user2._id.toString() },
       dashboardDirty: true
     });
-    void emailService.sendWelcome({ name: user.name, email: user.email }).catch((err) => {
+    void emailService.sendWelcome({ name: user2.name, email: user2.email }).catch((err) => {
       logger.warn("Failed to send welcome email", { err: err.message });
     });
-    const tokens = issueTokens({ id: user._id.toString(), role: user.role, email: user.email });
-    return { user: user.toJSON(), ...tokens };
+    const tokens = issueTokens({ id: user2._id.toString(), role: user2.role, email: user2.email });
+    return { user: user2.toJSON(), ...tokens };
   },
   async login(email, password) {
-    const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
-    if (!user || !user.isActive) throw ApiError.unauthorized("Invalid credentials");
-    const ok = await user.comparePassword(password);
+    const user2 = await User.findOne({ email: email.toLowerCase() }).select("+password");
+    if (!user2 || !user2.isActive) throw ApiError.unauthorized("Invalid credentials");
+    const ok = await user2.comparePassword(password);
     if (!ok) throw ApiError.unauthorized("Invalid credentials");
-    const tokens = issueTokens({ id: user._id.toString(), role: user.role, email: user.email });
-    return { user: user.toJSON(), ...tokens };
+    const tokens = issueTokens({ id: user2._id.toString(), role: user2.role, email: user2.email });
+    return { user: user2.toJSON(), ...tokens };
   },
   async refresh(refreshToken) {
     let payload;
@@ -1120,9 +1131,9 @@ var authService = {
     } catch {
       throw ApiError.unauthorized("Invalid refresh token");
     }
-    const user = await User.findById(payload.sub);
-    if (!user || !user.isActive) throw ApiError.unauthorized("Account unavailable");
-    return issueTokens({ id: user._id.toString(), role: user.role, email: user.email });
+    const user2 = await User.findById(payload.sub);
+    if (!user2 || !user2.isActive) throw ApiError.unauthorized("Account unavailable");
+    return issueTokens({ id: user2._id.toString(), role: user2.role, email: user2.email });
   },
   /**
    * Generates a single-use reset token stored in Redis with a short TTL. In a
@@ -1130,12 +1141,12 @@ var authService = {
    * caller (dev) and logged so the flow is testable without an SMTP server.
    */
   async forgotPassword(email) {
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) return { delivered: true };
+    const user2 = await User.findOne({ email: email.toLowerCase() });
+    if (!user2) return { delivered: true };
     const token = import_node_crypto.default.randomBytes(32).toString("hex");
-    await kv.set(`pwreset:${token}`, user._id.toString(), 15 * 60);
-    logger.info("Password reset requested", { userId: user._id.toString() });
-    void emailService.sendPasswordReset({ name: user.name, email: user.email }, token).catch((err) => {
+    await kv.set(`pwreset:${token}`, user2._id.toString(), 15 * 60);
+    logger.info("Password reset requested", { userId: user2._id.toString() });
+    void emailService.sendPasswordReset({ name: user2.name, email: user2.email }, token).catch((err) => {
       logger.warn("Failed to send password reset email", { err: err.message });
     });
     return { delivered: true, devToken: token };
@@ -1143,17 +1154,17 @@ var authService = {
   async resetPassword(token, password) {
     const userId = await kv.get(`pwreset:${token}`);
     if (!userId) throw ApiError.badRequest("Reset link is invalid or has expired");
-    const user = await User.findById(userId).select("+password");
-    if (!user) throw ApiError.badRequest("Reset link is invalid or has expired");
-    user.password = password;
-    await user.save();
+    const user2 = await User.findById(userId).select("+password");
+    if (!user2) throw ApiError.badRequest("Reset link is invalid or has expired");
+    user2.password = password;
+    await user2.save();
     await kv.del(`pwreset:${token}`);
     return { reset: true };
   },
   async me(userId) {
-    const user = await User.findById(userId);
-    if (!user) throw ApiError.notFound("User not found");
-    return user.toJSON();
+    const user2 = await User.findById(userId);
+    if (!user2) throw ApiError.notFound("User not found");
+    return user2.toJSON();
   }
 };
 
@@ -1199,8 +1210,8 @@ var authController = {
     return sendSuccess(res, result, "Password updated. You can now log in.");
   }),
   me: asyncHandler(async (req, res) => {
-    const user = await authService.me(req.user.id);
-    return sendSuccess(res, user, "Current user");
+    const user2 = await authService.me(req.user.id);
+    return sendSuccess(res, user2, "Current user");
   })
 };
 
@@ -1315,39 +1326,39 @@ var Address = (0, import_mongoose6.model)("Address", addressSchema);
 // src/services/user.service.ts
 var userService = {
   async updateProfile(userId, data) {
-    const user = await User.findByIdAndUpdate(userId, data, { new: true, runValidators: true });
-    if (!user) throw ApiError.notFound("User not found");
-    return user.toJSON();
+    const user2 = await User.findByIdAndUpdate(userId, data, { new: true, runValidators: true });
+    if (!user2) throw ApiError.notFound("User not found");
+    return user2.toJSON();
   },
   async changePassword(userId, currentPassword, newPassword) {
-    const user = await User.findById(userId).select("+password");
-    if (!user) throw ApiError.notFound("User not found");
-    const ok = await user.comparePassword(currentPassword);
+    const user2 = await User.findById(userId).select("+password");
+    if (!user2) throw ApiError.notFound("User not found");
+    const ok = await user2.comparePassword(currentPassword);
     if (!ok) throw ApiError.badRequest("Current password is incorrect");
-    user.password = newPassword;
-    await user.save();
+    user2.password = newPassword;
+    await user2.save();
     return { updated: true };
   },
   // ---- Wishlist ----
   async getWishlist(userId) {
-    const user = await User.findById(userId).populate({
+    const user2 = await User.findById(userId).populate({
       path: "wishlist",
       select: "name slug price images type fragrance stock"
     });
-    if (!user) throw ApiError.notFound("User not found");
-    return user.wishlist;
+    if (!user2) throw ApiError.notFound("User not found");
+    return user2.wishlist;
   },
   async toggleWishlist(userId, productId) {
-    const user = await User.findById(userId);
-    if (!user) throw ApiError.notFound("User not found");
+    const user2 = await User.findById(userId);
+    if (!user2) throw ApiError.notFound("User not found");
     const pid = new import_mongoose7.Types.ObjectId(productId);
-    const exists = user.wishlist.some((w) => w.equals(pid));
+    const exists = user2.wishlist.some((w) => w.equals(pid));
     if (exists) {
-      user.wishlist = user.wishlist.filter((w) => !w.equals(pid));
+      user2.wishlist = user2.wishlist.filter((w) => !w.equals(pid));
     } else {
-      user.wishlist.push(pid);
+      user2.wishlist.push(pid);
     }
-    await user.save();
+    await user2.save();
     return { inWishlist: !exists };
   },
   // ---- Addresses ----
@@ -1381,8 +1392,8 @@ var userService = {
 // src/controllers/user.controller.ts
 var userController = {
   updateProfile: asyncHandler(async (req, res) => {
-    const user = await userService.updateProfile(req.user.id, req.body);
-    return sendSuccess(res, user, "Profile updated");
+    const user2 = await userService.updateProfile(req.user.id, req.body);
+    return sendSuccess(res, user2, "Profile updated");
   }),
   changePassword: asyncHandler(async (req, res) => {
     const result = await userService.changePassword(
@@ -1802,13 +1813,13 @@ var reviewService = {
    */
   async create(idOrSlug, userId, input) {
     const product = await this.resolveProduct(idOrSlug);
-    const user = await User.findById(userId).lean();
-    if (!user) throw ApiError.notFound("User not found");
+    const user2 = await User.findById(userId).lean();
+    if (!user2) throw ApiError.notFound("User not found");
     const review = await Review.create({
       product: product._id,
-      user: user._id,
-      userName: user.name || "Anonymous Customer",
-      userEmail: user.email,
+      user: user2._id,
+      userName: user2.name || "Anonymous Customer",
+      userEmail: user2.email,
       rating: Math.max(1, Math.min(5, input.rating)),
       title: input.title.trim(),
       comment: input.comment.trim(),
@@ -2959,21 +2970,21 @@ var customerService = {
     return { items, meta: buildPageMeta(total, page, limit) };
   },
   async get(id) {
-    const user = await User.findById(id).lean();
-    if (!user) throw ApiError.notFound("Customer not found");
+    const user2 = await User.findById(id).lean();
+    if (!user2) throw ApiError.notFound("Customer not found");
     const [orderCount, spentAgg] = await Promise.all([
       Order.countDocuments({ user: id }),
       Order.aggregate([
-        { $match: { user: user._id, status: { $nin: ["cancelled", "refunded"] } } },
+        { $match: { user: user2._id, status: { $nin: ["cancelled", "refunded"] } } },
         { $group: { _id: null, total: { $sum: "$total" } } }
       ])
     ]);
-    return { ...user, stats: { orders: orderCount, totalSpent: spentAgg[0]?.total ?? 0 } };
+    return { ...user2, stats: { orders: orderCount, totalSpent: spentAgg[0]?.total ?? 0 } };
   },
   async setActive(id, isActive) {
-    const user = await User.findByIdAndUpdate(id, { isActive }, { new: true });
-    if (!user) throw ApiError.notFound("Customer not found");
-    return user.toJSON();
+    const user2 = await User.findByIdAndUpdate(id, { isActive }, { new: true });
+    if (!user2) throw ApiError.notFound("Customer not found");
+    return user2.toJSON();
   },
   /**
    * Updates a staff member's role. Only a super admin may assign staff roles;
@@ -2983,9 +2994,9 @@ var customerService = {
     if (actorRole !== ROLES.SUPER_ADMIN && STAFF_ROLES.includes(role)) {
       throw ApiError.forbidden("Only a super admin can assign staff roles");
     }
-    const user = await User.findByIdAndUpdate(id, { role }, { new: true });
-    if (!user) throw ApiError.notFound("User not found");
-    return user.toJSON();
+    const user2 = await User.findByIdAndUpdate(id, { role }, { new: true });
+    if (!user2) throw ApiError.notFound("User not found");
+    return user2.toJSON();
   }
 };
 
@@ -3009,8 +3020,8 @@ var adminController = {
     return sendSuccess(res, customer, "Customer updated");
   }),
   updateUserRole: asyncHandler(async (req, res) => {
-    const user = await customerService.updateRole(req.user.role, req.params.id, req.body.role);
-    return sendSuccess(res, user, "Role updated");
+    const user2 = await customerService.updateRole(req.user.role, req.params.id, req.body.role);
+    return sendSuccess(res, user2, "Role updated");
   }),
   // Categories (admin management)
   listCategories: asyncHandler(async (_req, res) => {
@@ -3207,7 +3218,64 @@ var giftCard_routes_default = router9;
 // src/routes/index.ts
 var router10 = (0, import_express10.Router)();
 router10.get("/health", (_req, res) => {
-  res.json({ success: true, message: "OK", data: { uptime: process.uptime() } });
+  res.json({
+    success: true,
+    message: "OK",
+    data: {
+      uptime: process.uptime(),
+      smtpHost: env.SMTP_HOST,
+      smtpPort: env.SMTP_PORT,
+      smtpUser: env.SMTP_USER,
+      emailFrom: env.EMAIL_FROM
+    }
+  });
+});
+router10.get("/test-email", async (req, res) => {
+  const to = req.query.to || env.ADMIN_NOTIFY_EMAIL || "support@devcreation24.in";
+  try {
+    const success = await sendMail({
+      to,
+      subject: "Dev Creation SMTP Test Notification",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 24px; max-width: 600px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+          <h2 style="color: #4f46e5; margin-top: 0;">\u2705 Dev Creation SMTP Live Test</h2>
+          <p style="font-size: 15px; color: #334155;">Hostinger SMTP is connected and working perfectly!</p>
+          <div style="background-color: #f8fafc; padding: 12px 16px; border-radius: 8px; font-size: 14px; margin: 16px 0;">
+            <p style="margin: 4px 0;"><strong>Recipient:</strong> ${to}</p>
+            <p style="margin: 4px 0;"><strong>SMTP Host:</strong> ${env.SMTP_HOST}</p>
+            <p style="margin: 4px 0;"><strong>Port:</strong> ${env.SMTP_PORT} (SSL)</p>
+            <p style="margin: 4px 0;"><strong>From:</strong> ${env.EMAIL_FROM}</p>
+            <p style="margin: 4px 0;"><strong>Server Time:</strong> ${(/* @__PURE__ */ new Date()).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST</p>
+          </div>
+          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 0;">This is an automated test message from Dev Creation Backend.</p>
+        </div>
+      `,
+      text: `Dev Creation SMTP Live Test: Hostinger SMTP is working! Recipient: ${to}, Time: ${(/* @__PURE__ */ new Date()).toISOString()}`
+    });
+    if (success) {
+      return res.json({
+        success: true,
+        message: `Test email successfully sent to ${to}`,
+        details: {
+          to,
+          host: env.SMTP_HOST,
+          port: env.SMTP_PORT,
+          from: env.EMAIL_FROM
+        }
+      });
+    } else {
+      return res.status(500).json({
+        success: false,
+        message: `Failed to send test email to ${to}. Check backend server logs.`
+      });
+    }
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "SMTP send threw an error",
+      error: err?.message || String(err)
+    });
+  }
 });
 router10.use("/auth", auth_routes_default);
 router10.use("/users", user_routes_default);

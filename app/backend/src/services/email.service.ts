@@ -13,9 +13,15 @@ import {
   passwordResetEmail,
 } from '@/emails/templates';
 
-/** Resolves the customer's name + email for an order (order.user may be an id). */
+/** Resolves the customer's name + email for an order (order.user may be an id or populated object). */
 async function resolveCustomer(order: IOrder): Promise<{ name: string; email: string } | null> {
-  const user = await User.findById(order.user).select('name email').lean();
+  const userObj = order.user as unknown as { _id?: string; name?: string; email?: string } | undefined;
+  if (userObj && typeof userObj === 'object' && userObj.email) {
+    return { name: userObj.name || order.shippingAddress.fullName, email: userObj.email };
+  }
+  const userId = userObj?._id || order.user;
+  if (!userId) return { name: order.shippingAddress.fullName, email: '' };
+  const user = await User.findById(userId).select('name email').lean();
   if (!user) return { name: order.shippingAddress.fullName, email: '' };
   return { name: user.name, email: user.email };
 }
