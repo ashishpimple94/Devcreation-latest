@@ -37,7 +37,7 @@ function LoginForm() {
 
   // Pre-warm backend when login page opens so cold-start delay is eliminated
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://devcreation1.onrender.com/api';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://lightseagreen-donkey-692988.hostingersite.com/api';
     fetch(`${apiUrl}/health`, { method: 'GET' }).catch(() => {});
   }, []);
 

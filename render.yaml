@@ -7,6 +7,6 @@ services:
     startCommand: cd app/backend && npm start
     envVars:
       - key: PUBLIC_ASSET_BASE
-        value: https://devcreation1.onrender.com
+        value: https://lightseagreen-donkey-692988.hostingersite.com
       - key: NODE_ENV
         value: production

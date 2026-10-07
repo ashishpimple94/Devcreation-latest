@@ -75,7 +75,7 @@ export const storageService = {
     }
 
     if ((!base || base.includes('localhost:4000')) && (process.env.RENDER || process.env.NODE_ENV === 'production')) {
-      base = 'https://devcreation1.onrender.com';
+      base = 'https://lightseagreen-donkey-692988.hostingersite.com';
     }
 
     return {

@@ -9,7 +9,7 @@ import { Spinner } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import type { Product, ProductReview, ReviewsSummary } from '@/types';
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? 'https://devcreation1.onrender.com';
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? 'https://lightseagreen-donkey-692988.hostingersite.com';
 
 interface SocketReviewPayload {
   productId: string;

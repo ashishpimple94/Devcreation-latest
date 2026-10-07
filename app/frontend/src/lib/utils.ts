@@ -44,7 +44,7 @@ export function timeAgo(value: string | Date): string {
 const ASSET_BACKEND_BASE = (
   process.env.NEXT_PUBLIC_SOCKET_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  'https://devcreation1.onrender.com'
+  'https://lightseagreen-donkey-692988.hostingersite.com'
 ).replace(/\/api\/?$/, '');
 
 /**

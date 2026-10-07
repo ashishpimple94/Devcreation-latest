@@ -20,8 +20,8 @@ Customer-facing e-commerce storefront for **Dev Creation** (handcrafted luxury w
 2. **Configure environment variables**:
    Create a `.env.local` file:
    ```env
-   NEXT_PUBLIC_API_URL=https://devcreation1.onrender.com/api
-   NEXT_PUBLIC_SOCKET_URL=https://devcreation1.onrender.com
+   NEXT_PUBLIC_API_URL=https://lightseagreen-donkey-692988.hostingersite.com/api
+   NEXT_PUBLIC_SOCKET_URL=https://lightseagreen-donkey-692988.hostingersite.com
    ```
 
 3. **Run local development server**:

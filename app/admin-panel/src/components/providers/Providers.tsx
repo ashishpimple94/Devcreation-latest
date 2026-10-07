@@ -15,7 +15,7 @@ function Bootstrap({ children }: { children: React.ReactNode }) {
   // Restore session & pre-warm backend to eliminate cold starts.
   useEffect(() => {
     void init();
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://devcreation1.onrender.com/api';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://lightseagreen-donkey-692988.hostingersite.com/api';
     fetch(`${apiUrl}/health`, { method: 'GET' }).catch(() => {});
   }, [init]);
 

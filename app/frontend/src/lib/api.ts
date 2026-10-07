@@ -1,6 +1,6 @@
 import type { ApiEnvelope } from '@/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://devcreation1.onrender.com/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://lightseagreen-donkey-692988.hostingersite.com/api';
 
 const ACCESS_TOKEN_KEY = 'dc_access_token';
 

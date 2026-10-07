@@ -20,8 +20,8 @@ Enterprise operations and administration dashboard for **Dev Creation** (orders,
 2. **Configure environment variables**:
    Create a `.env.local` file:
    ```env
-   NEXT_PUBLIC_API_URL=https://devcreation1.onrender.com/api
-   NEXT_PUBLIC_SOCKET_URL=https://devcreation1.onrender.com
+   NEXT_PUBLIC_API_URL=https://lightseagreen-donkey-692988.hostingersite.com/api
+   NEXT_PUBLIC_SOCKET_URL=https://lightseagreen-donkey-692988.hostingersite.com
    NEXT_PUBLIC_STOREFRONT_URL=http://localhost:3000
    ```
 
