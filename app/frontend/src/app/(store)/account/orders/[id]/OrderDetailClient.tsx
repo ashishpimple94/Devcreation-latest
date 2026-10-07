@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { orderService } from '@/services/order.service';
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/OrderStatusBadge';
 import { ErrorState, Skeleton, Button } from '@/components/ui';
@@ -13,7 +13,9 @@ import type { Order } from '@/types';
 const TIMELINE = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'] as const;
 
 export function OrderDetailClient() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const id = params?.id && params.id !== 'sample' ? params.id : (searchParams?.get('id') || '');
   const { success, error } = useToast();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
