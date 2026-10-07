@@ -1,13 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { adminService } from '@/services/admin.service';
 import { DataTable, type Column } from '@/components/admin/DataTable';
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/OrderStatusBadge';
+import { Modal } from '@/components/ui/Modal';
+import { Skeleton } from '@/components/ui';
+import { useToast } from '@/components/ui/Toast';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useSocket } from '@/hooks/useSocket';
-import { formatDate, formatRupee, cn, resolveImageUrl } from '@/lib/utils';
+import { formatDate, formatDateTime, formatRupee, cn, resolveImageUrl } from '@/lib/utils';
 import type { Order, OrderStatus, PageMeta } from '@/types';
 
 const STATUS_TABS: { label: string; value: OrderStatus | '' }[] = [
@@ -20,8 +23,28 @@ const STATUS_TABS: { label: string; value: OrderStatus | '' }[] = [
   { label: 'Cancelled', value: 'cancelled' },
 ];
 
+const ORDER_STEPS: { status: OrderStatus; label: string; stepNum: number }[] = [
+  { status: 'pending', label: 'Placed', stepNum: 1 },
+  { status: 'confirmed', label: 'Confirmed', stepNum: 2 },
+  { status: 'processing', label: 'Packing', stepNum: 3 },
+  { status: 'shipped', label: 'Shipped', stepNum: 4 },
+  { status: 'delivered', label: 'Delivered', stepNum: 5 },
+];
+
+const ALL_STATUSES: OrderStatus[] = [
+  'pending',
+  'confirmed',
+  'processing',
+  'shipped',
+  'delivered',
+  'cancelled',
+  'refunded',
+];
+
 export default function AdminOrdersPage() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { success, error: toastError } = useToast();
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [meta, setMeta] = useState<PageMeta>();
   const [loading, setLoading] = useState(true);
@@ -31,7 +54,33 @@ export default function AdminOrdersPage() {
   const [sort, setSort] = useState('newest');
   const [page, setPage] = useState(1);
 
+  // Order Details Pop-up Modal State
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [nextStatus, setNextStatus] = useState<OrderStatus>('confirmed');
+  const [statusNote, setStatusNote] = useState('');
+
   const debouncedSearch = useDebounce(search);
+
+  // Initialize search from URL params if present (e.g. ?search=email or ?id=123)
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q) setSearch(q);
+
+    const orderId = searchParams.get('id') || searchParams.get('order');
+    if (orderId) {
+      setDetailLoading(true);
+      adminService
+        .getOrder(orderId)
+        .then((ord) => {
+          setSelectedOrder(ord);
+          setNextStatus(ord.status);
+        })
+        .catch(() => {})
+        .finally(() => setDetailLoading(false));
+    }
+  }, [searchParams]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -52,6 +101,46 @@ export default function AdminOrdersPage() {
   // Real-time notification updates
   useSocket({ onAdminNotification: load });
 
+  const openOrderDetail = async (o: Order) => {
+    setSelectedOrder(o);
+    setNextStatus(o.status);
+    setStatusNote('');
+    setDetailLoading(true);
+    try {
+      const full = await adminService.getOrder(o._id);
+      setSelectedOrder(full);
+      setNextStatus(full.status);
+    } catch {
+      // keep basic order object if full fetch errors
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async () => {
+    if (!selectedOrder) return;
+    setStatusUpdating(true);
+    try {
+      const updated = await adminService.updateOrderStatus(selectedOrder._id, nextStatus, statusNote || undefined);
+      setSelectedOrder(updated);
+      success(`Order status changed to "${nextStatus.toUpperCase()}"`);
+      setStatusNote('');
+      load();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : 'Status update failed');
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const copyShippingAddress = () => {
+    if (!selectedOrder) return;
+    const a = selectedOrder.shippingAddress;
+    const text = `${a.fullName}\n${a.line1}${a.line2 ? `, ${a.line2}` : ''}\n${a.city}, ${a.state} - ${a.postalCode}\nPhone: ${a.phone}`;
+    navigator.clipboard.writeText(text);
+    success('Shipping address copied to clipboard');
+  };
+
   // Compute summary stats from current view
   const totalAmount = orders.reduce((sum, o) => sum + (o.total || 0), 0);
   const pendingCount = orders.filter((o) => o.status === 'pending').length;
@@ -63,7 +152,13 @@ export default function AdminOrdersPage() {
       header: 'Order Details',
       render: (o) => (
         <div className="flex flex-col">
-          <span className="font-util text-xs font-bold text-ink hover:text-gold cursor-pointer" onClick={() => router.push(`/orders/${o._id}`)}>
+          <span
+            className="font-util text-xs font-bold text-ink hover:text-gold cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              openOrderDetail(o);
+            }}
+          >
             {o.orderNumber}
           </span>
           <span className="text-[0.72rem] text-ink-3">
@@ -167,7 +262,10 @@ export default function AdminOrdersPage() {
       header: '',
       render: (o) => (
         <button
-          onClick={() => router.push(`/orders/${o._id}`)}
+          onClick={(e) => {
+            e.stopPropagation();
+            openOrderDetail(o);
+          }}
           className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-3 py-1.5 font-util text-[0.65rem] font-bold uppercase tracking-wider text-ink transition-colors hover:border-gold hover:text-gold-dk"
         >
           <span>View</span>
@@ -176,6 +274,16 @@ export default function AdminOrdersPage() {
       ),
     },
   ];
+
+  // Lifecycle calculations for selected order
+  const currentStepIdx = selectedOrder
+    ? ORDER_STEPS.findIndex((s) => s.status === selectedOrder.status)
+    : -1;
+
+  const customerObj =
+    selectedOrder && typeof selectedOrder.user === 'object' && selectedOrder.user
+      ? selectedOrder.user
+      : null;
 
   return (
     <div className="space-y-6">
@@ -234,7 +342,7 @@ export default function AdminOrdersPage() {
         })}
       </div>
 
-      {/* Main Order Table */}
+      {/* Main Order Table with Row Click Pop-up */}
       <DataTable
         columns={columns}
         rows={orders}
@@ -243,6 +351,7 @@ export default function AdminOrdersPage() {
         meta={meta}
         onPageChange={setPage}
         onRetry={load}
+        onRowClick={openOrderDetail}
         emptyLabel="No orders found matching your search or filters"
         toolbar={
           <>
@@ -267,6 +376,246 @@ export default function AdminOrdersPage() {
           </>
         }
       />
+
+      {/* Enhanced Order Detail Pop-up Modal */}
+      <Modal
+        open={Boolean(selectedOrder)}
+        onClose={() => setSelectedOrder(null)}
+        className="max-w-2xl max-h-[92vh] overflow-y-auto"
+      >
+        {selectedOrder && (
+          <div className="space-y-6">
+            {/* Modal Header */}
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h2 className="font-display text-2xl font-bold text-ink">{selectedOrder.orderNumber}</h2>
+                  <OrderStatusBadge status={selectedOrder.status} />
+                  <PaymentStatusBadge status={selectedOrder.paymentStatus} />
+                </div>
+                <p className="mt-1 text-xs text-ink-3">
+                  Placed on {formatDateTime(selectedOrder.placedAt ?? selectedOrder.createdAt)}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="rounded-lg border border-line p-1.5 text-ink-3 hover:bg-surface-2 hover:text-ink"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 5-Step Visual Lifecycle Timeline */}
+            {selectedOrder.status !== 'cancelled' && selectedOrder.status !== 'refunded' && (
+              <div className="rounded-xl border border-line bg-surface-2 p-3.5">
+                <div className="flex items-center justify-between">
+                  {ORDER_STEPS.map((step, idx) => {
+                    const isDone = currentStepIdx >= idx;
+                    return (
+                      <div key={step.status} className="flex flex-1 flex-col items-center">
+                        <div
+                          className={cn(
+                            'flex h-7 w-7 items-center justify-center rounded-full font-util text-[0.62rem] font-bold transition-all',
+                            isDone ? 'bg-gold text-white shadow-xs' : 'bg-surface-3 text-ink-3',
+                          )}
+                        >
+                          {step.stepNum}
+                        </div>
+                        <span
+                          className={cn(
+                            'mt-1.5 font-util text-[0.55rem] uppercase tracking-wider',
+                            isDone ? 'font-bold text-ink' : 'text-ink-3',
+                          )}
+                        >
+                          {step.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Order Status Update Controls */}
+            <div className="rounded-xl border border-gold/40 bg-gold/5 p-4">
+              <span className="font-util text-[0.62rem] font-bold uppercase tracking-wider text-copper">
+                Update Order Status
+              </span>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <select
+                  value={nextStatus}
+                  onChange={(e) => setNextStatus(e.target.value as OrderStatus)}
+                  className="rounded-lg border border-line bg-white px-3 py-2 text-xs font-semibold uppercase tracking-wider text-ink outline-none focus:border-gold"
+                >
+                  {ALL_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  type="text"
+                  placeholder="Optional status note (e.g. Courier tracking #)"
+                  value={statusNote}
+                  onChange={(e) => setStatusNote(e.target.value)}
+                  className="min-w-[200px] flex-1 rounded-lg border border-line bg-white px-3 py-2 text-xs text-ink outline-none focus:border-gold"
+                />
+
+                <button
+                  type="button"
+                  onClick={handleStatusUpdate}
+                  disabled={statusUpdating || nextStatus === selectedOrder.status}
+                  className="rounded-lg bg-deep px-4 py-2 font-util text-xs font-semibold uppercase tracking-wider text-white transition-all hover:bg-[#3D2A1E] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {statusUpdating ? 'Updating…' : 'Save Status'}
+                </button>
+              </div>
+            </div>
+
+            {/* Itemized Order Breakdown */}
+            <div className="rounded-xl border border-line bg-white p-4">
+              <span className="font-util text-[0.62rem] font-bold uppercase tracking-wider text-copper">
+                Order Items ({selectedOrder.items.length})
+              </span>
+              <div className="mt-3 divide-y divide-line-soft">
+                {selectedOrder.items.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-3 py-2.5">
+                    <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-line bg-surface-2">
+                      {item.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={resolveImageUrl(item.image)}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            const el = e.currentTarget;
+                            if (!el.src.includes('/assets/Logos/logo.jpeg')) {
+                              el.src = '/assets/Logos/logo.jpeg';
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs">🕯️</div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-display-alt text-base font-semibold text-ink">{item.name}</div>
+                      <div className="text-xs text-ink-3">
+                        {item.variantName ? <span className="text-gold-dk">{item.variantName} · </span> : ''}
+                        Qty: <strong>{item.quantity}</strong>
+                        {item.sku ? ` · SKU: ${item.sku}` : ''}
+                      </div>
+                    </div>
+                    <div className="font-body text-sm font-semibold tabular-nums text-ink">
+                      {formatRupee(item.price * item.quantity)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Financial Totals */}
+              <div className="mt-4 border-t border-line pt-3 text-xs space-y-1.5">
+                <div className="flex justify-between text-ink-2">
+                  <span className="font-util uppercase tracking-wider text-ink-3">Items total:</span>
+                  <span className="font-semibold tabular-nums">{formatRupee(selectedOrder.itemsTotal || selectedOrder.total)}</span>
+                </div>
+                {selectedOrder.discount && selectedOrder.discount > 0 ? (
+                  <div className="flex justify-between text-emerald-700">
+                    <span className="font-util uppercase tracking-wider">
+                      Discount {selectedOrder.promoCode ? `(${selectedOrder.promoCode})` : ''}:
+                    </span>
+                    <span className="font-semibold tabular-nums">-{formatRupee(selectedOrder.discount)}</span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between text-ink-2">
+                  <span className="font-util uppercase tracking-wider text-ink-3">Shipping:</span>
+                  <span className="font-semibold tabular-nums">
+                    {selectedOrder.shippingFee ? formatRupee(selectedOrder.shippingFee) : 'Free'}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t border-line pt-2 text-base font-bold text-ink">
+                  <span className="font-display">Total Amount:</span>
+                  <span className="font-display text-gold-dk tabular-nums">{formatRupee(selectedOrder.total)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Customer & Shipping Details Grid */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-line bg-surface-2/60 p-4 text-xs space-y-1.5">
+                <span className="font-util text-[0.62rem] font-bold uppercase tracking-wider text-copper block mb-2">
+                  Customer Information
+                </span>
+                <div>
+                  <strong className="text-ink">{customerObj?.name || selectedOrder.shippingAddress?.fullName}</strong>
+                </div>
+                <div className="text-ink-2">
+                  Email: {customerObj?.email || '—'}
+                </div>
+                <div className="text-ink-2">
+                  Phone: {selectedOrder.shippingAddress?.phone}
+                </div>
+                <div className="text-ink-3 pt-1">
+                  Payment: <strong>{selectedOrder.paymentMethod?.toUpperCase()}</strong> ({selectedOrder.paymentStatus})
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-line bg-surface-2/60 p-4 text-xs space-y-1.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-util text-[0.62rem] font-bold uppercase tracking-wider text-copper">
+                    Shipping Address
+                  </span>
+                  <button
+                    type="button"
+                    onClick={copyShippingAddress}
+                    className="font-util text-[0.6rem] text-gold hover:underline uppercase tracking-wider"
+                  >
+                    Copy Address
+                  </button>
+                </div>
+                <div className="text-ink-2 leading-relaxed">
+                  <strong>{selectedOrder.shippingAddress?.fullName}</strong><br />
+                  {selectedOrder.shippingAddress?.line1}
+                  {selectedOrder.shippingAddress?.line2 ? `, ${selectedOrder.shippingAddress.line2}` : ''}<br />
+                  {selectedOrder.shippingAddress?.city}, {selectedOrder.shippingAddress?.state} - {selectedOrder.shippingAddress?.postalCode}<br />
+                  {selectedOrder.shippingAddress?.country || 'India'}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="rounded-lg border border-line bg-white px-3 py-2 font-util text-xs uppercase tracking-wider text-ink-2 hover:bg-surface-2"
+                >
+                  🖨️ Print Invoice
+                </button>
+                <a
+                  href={`mailto:${customerObj?.email || ''}?subject=Dev%20Creation%20Order%20%23${selectedOrder.orderNumber}`}
+                  className="rounded-lg border border-line bg-white px-3 py-2 font-util text-xs uppercase tracking-wider text-ink-2 hover:bg-surface-2"
+                >
+                  ✉️ Email Customer
+                </a>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="rounded-lg bg-deep px-4 py-2 font-util text-xs font-semibold uppercase tracking-wider text-white hover:bg-[#3D2A1E]"
+              >
+                Done / Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

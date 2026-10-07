@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { ErrorState, Skeleton } from '@/components/ui';
 import { productService } from '@/services/product.service';
@@ -9,7 +9,9 @@ import type { Product } from '@/types';
 
 export function ProductEditClient() {
   const params = useParams<{ id: string }>();
-  const id = params?.id || '';
+  const searchParams = useSearchParams();
+  const rawId = params?.id;
+  const id = (rawId && rawId !== 'edit' ? rawId : searchParams.get('id')) || '';
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

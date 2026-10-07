@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { adminService } from '@/services/admin.service';
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/OrderStatusBadge';
@@ -32,7 +32,9 @@ const ORDER_STEPS: { status: OrderStatus; label: string; icon: string }[] = [
 
 export function OrderDetailClient() {
   const params = useParams<{ id: string }>();
-  const id = params?.id || '';
+  const searchParams = useSearchParams();
+  const rawId = params?.id;
+  const id = (rawId && rawId !== 'detail' ? rawId : searchParams.get('id')) || '';
   const router = useRouter();
   const { success, error } = useToast();
   const [order, setOrder] = useState<Order | null>(null);

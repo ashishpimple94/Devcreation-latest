@@ -2,19 +2,25 @@ import type { ApiEnvelope } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://lightseagreen-donkey-692988.hostingersite.com/api';
 
-const ACCESS_TOKEN_KEY = 'dc_access_token';
+const ACCESS_TOKEN_KEY = 'dc_admin_access_token';
+const LEGACY_TOKEN_KEY = 'dc_access_token';
 
 /** In-memory + localStorage access token store (client only). */
 export const tokenStore = {
   get(): string | null {
     if (typeof window === 'undefined') return null;
-    return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+    return window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? window.localStorage.getItem(LEGACY_TOKEN_KEY);
   },
   set(token: string) {
-    if (typeof window !== 'undefined') window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    }
   },
   clear() {
-    if (typeof window !== 'undefined') window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+      window.localStorage.removeItem(LEGACY_TOKEN_KEY);
+    }
   },
 };
 

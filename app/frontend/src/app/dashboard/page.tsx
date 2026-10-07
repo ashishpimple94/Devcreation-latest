@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 
-const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3001';
+const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL || 'https://login.devcreation24.in';
 
 export default function DashboardRedirect() {
   useEffect(() => {

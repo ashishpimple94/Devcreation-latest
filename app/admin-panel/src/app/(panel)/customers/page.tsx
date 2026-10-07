@@ -25,6 +25,7 @@ export default function AdminCustomersPage() {
 
   // Customer Profile Modal State
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithStats | null>(null);
+  const [customerOrders, setCustomerOrders] = useState<import('@/types').Order[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const debouncedSearch = useDebounce(search);
@@ -47,10 +48,15 @@ export default function AdminCustomersPage() {
 
   const viewCustomerProfile = async (c: User) => {
     setSelectedCustomer(c);
+    setCustomerOrders([]);
     setDetailLoading(true);
     try {
-      const full = await adminService.getCustomer(c._id);
+      const [full, ordersRes] = await Promise.all([
+        adminService.getCustomer(c._id),
+        adminService.listOrders({ search: c.email, limit: 4 }).catch(() => ({ items: [] })),
+      ]);
       setSelectedCustomer(full);
+      setCustomerOrders(ordersRes.items || []);
     } catch {
       // fallback to basic customer object if stats fetch fails
     } finally {
@@ -242,6 +248,56 @@ export default function AdminCustomersPage() {
               )}
             </div>
 
+            {/* Recent Orders Overview */}
+            <div className="space-y-2 rounded-xl border border-line bg-surface-2/40 p-4 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-util text-[0.62rem] font-bold uppercase tracking-wider text-copper">
+                  Recent Orders ({customerOrders.length})
+                </span>
+                {customerOrders.length > 0 && (
+                  <Link
+                    href={`/orders?search=${encodeURIComponent(selectedCustomer.email)}`}
+                    onClick={() => setSelectedCustomer(null)}
+                    className="font-util text-[0.6rem] text-gold hover:underline uppercase tracking-wider"
+                  >
+                    View All in Orders →
+                  </Link>
+                )}
+              </div>
+
+              {detailLoading ? (
+                <div className="space-y-1.5 pt-1">
+                  <Skeleton className="h-9 rounded-lg" />
+                  <Skeleton className="h-9 rounded-lg" />
+                </div>
+              ) : customerOrders.length === 0 ? (
+                <p className="pt-1 text-xs text-ink-3 italic">No orders found for this customer.</p>
+              ) : (
+                <div className="divide-y divide-line-soft pt-1">
+                  {customerOrders.map((ord) => (
+                    <div key={ord._id} className="flex items-center justify-between py-2">
+                      <div>
+                        <Link
+                          href={`/orders?id=${ord._id}`}
+                          onClick={() => setSelectedCustomer(null)}
+                          className="font-util font-bold text-ink hover:text-gold"
+                        >
+                          {ord.orderNumber}
+                        </Link>
+                        <div className="text-[0.68rem] text-ink-3">{formatDate(ord.placedAt ?? ord.createdAt)}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-ink">{formatRupee(ord.total)}</span>
+                        <span className="rounded-full bg-surface-2 border border-line px-2 py-0.5 font-util text-[0.55rem] uppercase font-bold text-ink-2">
+                          {ord.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Profile Contact Details */}
             <div className="space-y-3 rounded-xl border border-line bg-surface-2/60 p-4 text-xs">
               <span className="font-util text-[0.62rem] font-bold uppercase tracking-wider text-copper">
@@ -252,11 +308,21 @@ export default function AdminCustomersPage() {
                 <span className="text-ink-3">Email Address:</span>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-ink font-semibold">{selectedCustomer.email}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedCustomer.email);
+                      success('Email copied');
+                    }}
+                    className="rounded bg-surface-2 border border-line px-1.5 py-0.5 text-[0.62rem] text-ink-3 hover:text-ink"
+                  >
+                    Copy
+                  </button>
                   <a
                     href={`mailto:${selectedCustomer.email}`}
                     className="rounded bg-gold/15 px-1.5 py-0.5 text-[0.65rem] text-gold-dk hover:underline"
                   >
-                    ✉️ Send Email
+                    ✉️ Send
                   </a>
                 </div>
               </div>
@@ -266,6 +332,16 @@ export default function AdminCustomersPage() {
                 {selectedCustomer.phone ? (
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-ink">{selectedCustomer.phone}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedCustomer.phone || '');
+                        success('Phone copied');
+                      }}
+                      className="rounded bg-surface-2 border border-line px-1.5 py-0.5 text-[0.62rem] text-ink-3 hover:text-ink"
+                    >
+                      Copy
+                    </button>
                     <a
                       href={`tel:${selectedCustomer.phone}`}
                       className="rounded bg-gold/15 px-1.5 py-0.5 text-[0.65rem] text-gold-dk hover:underline"
@@ -284,7 +360,7 @@ export default function AdminCustomersPage() {
               </div>
 
               <div className="flex items-center justify-between py-1.5">
-                <span className="text-ink-3">User ID:</span>
+                <span className="text-ink-3">Customer ID:</span>
                 <span className="font-mono text-[0.68rem] text-ink-3">{selectedCustomer._id}</span>
               </div>
             </div>

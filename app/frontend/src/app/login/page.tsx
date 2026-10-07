@@ -18,12 +18,22 @@ function LoginForm() {
   const logout = useAuthStore((s) => s.logout);
   const refreshCart = useCartStore((s) => s.refresh);
   const refreshNotifications = useNotificationStore((s) => s.refresh);
-  const { error } = useToast();
+  const { error, success } = useToast();
+  const status = useAuthStore((s) => s.status);
+  const user = useAuthStore((s) => s.user);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [takingLong, setTakingLong] = useState(false);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      const redirect = params.get('redirect');
+      const target = redirect && redirect !== '/login' && redirect !== '/account' ? redirect : '/account/profile';
+      router.replace(target);
+    }
+  }, [status, params, router]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -47,17 +57,12 @@ function LoginForm() {
     try {
       await login(email.trim(), password);
 
-      // Staff accounts belong to the admin panel, not the storefront
-      if (isStaff()) {
-        await logout();
-        error('Staff accounts must sign in through the Admin Panel (port 3001)');
-        setLoading(false);
-        return;
-      }
-
       // Background refresh - do NOT block user navigation!
       refreshCart().catch(() => {});
       refreshNotifications().catch(() => {});
+
+      const currentUser = useAuthStore.getState().user;
+      success(`Welcome back, ${currentUser?.name || 'Customer'}!`);
 
       let redirect = params.get('redirect');
       if (!redirect || redirect === '/account' || redirect === '/login') {

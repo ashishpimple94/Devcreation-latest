@@ -26,13 +26,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ status: 'loading' });
     try {
       const res = await api.get<User>('/auth/me');
-      // Staff accounts belong to the admin panel, not the storefront — sign them out here.
-      const staffRoles = ['super_admin', 'admin', 'manager'];
-      if (staffRoles.includes(res.data.role)) {
-        tokenStore.clear();
-        set({ user: null, status: 'unauthenticated' });
-        return;
-      }
       set({ user: res.data, status: 'authenticated' });
     } catch {
       tokenStore.clear();

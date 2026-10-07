@@ -15,6 +15,12 @@ Options -Indexes +FollowSymLinks
   RewriteCond %{REQUEST_FILENAME}/index.html -f
   RewriteRule ^(.*)$ $1/index.html [L]
 
+  # Dynamic Order Detail route: /orders/<id> -> /orders/detail.html?id=<id>
+  RewriteRule ^orders/([a-zA-Z0-9_-]+)/?$ /orders/detail.html?id=$1 [QSA,L]
+
+  # Dynamic Product Edit route: /products/<id> -> /products/edit.html?id=<id>
+  RewriteRule ^products/([a-zA-Z0-9_-]+)/?$ /products/edit.html?id=$1 [QSA,L]
+
   # If requested path with .html exists as a file, serve it
   RewriteCond %{REQUEST_FILENAME}.html -f
   RewriteRule ^(.*)$ $1.html [L]
