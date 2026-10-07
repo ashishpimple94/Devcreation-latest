@@ -35,7 +35,7 @@ const OTHERS: NavItem[] = [
   { href: '/help', label: 'Help Center', icon: <IconHelp /> },
 ];
 
-const STOREFRONT_URL = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? 'http://localhost:3000';
+const STOREFRONT_URL = process.env.NEXT_PUBLIC_STOREFRONT_URL ?? 'https://devcreation24.in';
 
 /**
  * Admin shell styled after the reference SaaS dashboard: a soft gradient app
