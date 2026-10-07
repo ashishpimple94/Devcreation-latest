@@ -4,6 +4,20 @@ import type { Category } from '@/types';
 
 export const revalidate = 300;
 
+export async function generateStaticParams() {
+  try {
+    const categories = await productService.categories();
+    return categories.map((c) => ({ slug: c.slug }));
+  } catch {
+    return [
+      { slug: 'aroma-stones' },
+      { slug: 'gift-sets' },
+      { slug: 'wax-melts' },
+      { slug: 'wax-sachets' },
+    ];
+  }
+}
+
 export default async function CategoryPage({ params }: { params: { slug: string } }) {
   let category: Category | undefined;
   try {

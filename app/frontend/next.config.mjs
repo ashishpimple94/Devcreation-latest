@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
+  output: 'export',
+  trailingSlash: true,
   images: {
-    // Product images are served from the backend (local dev) or a CDN in prod.
+    unoptimized: true,
     remotePatterns: [
       { protocol: 'http', hostname: 'localhost' },
       { protocol: 'http', hostname: '**' },

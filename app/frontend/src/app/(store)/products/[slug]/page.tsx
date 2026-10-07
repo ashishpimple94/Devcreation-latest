@@ -5,6 +5,21 @@ import type { Product } from '@/types';
 
 export const revalidate = 60;
 
+export async function generateStaticParams() {
+  try {
+    const res = await productService.list({ limit: 100 });
+    return res.items.map((p) => ({ slug: p.slug }));
+  } catch {
+    return [
+      { slug: 'wax-sachet' },
+      { slug: 'wax-melt-gift-set' },
+      { slug: 'chocolate-candle-gift-set' },
+      { slug: 'aroma-stone-gift-set' },
+      { slug: 'ocean-breeze' },
+    ];
+  }
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }) {
   try {
     const product = await productService.getBySlug(params.slug);
