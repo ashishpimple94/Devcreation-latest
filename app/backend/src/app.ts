@@ -55,7 +55,7 @@ export function createApp() {
   // Fallback for uploads: restore from MongoDB Atlas if disk was reset on Render redeploy
   app.get('/uploads/*', async (req, res, next) => {
     try {
-      const rawKey = req.params[0] || '';
+      const rawKey = (req.params as Record<string, string>)[0] || (req.params as any)[0] || '';
       const media = await storageService.findMedia(rawKey);
       if (!media) return next();
 

@@ -197,7 +197,21 @@ npm run seed       # seed admin + categories + products
 npm run typecheck  # tsc --noEmit
 ```
 
-## Environment
+## Deployment
 
-See `.env.example`. Required: `MONGODB_URI`, `REDIS_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`.
-Never commit `.env`. No secrets are exposed to the frontend — only `NEXT_PUBLIC_*` values reach the browser.
+For Hostinger VPS, Docker, or hPanel Node.js deployments, see [HOSTINGER_DEPLOYMENT_GUIDE.md](HOSTINGER_DEPLOYMENT_GUIDE.md).
+
+Quick start with Docker Compose:
+```bash
+cp .env.production.example .env
+docker compose up -d --build
+docker compose exec backend npm run seed:prod
+```
+
+Quick start with PM2:
+```bash
+npm install
+npm run build
+pm2 start ecosystem.config.cjs
+```
+

@@ -1,0 +1,40 @@
+version: '3.8'
+
+# ============================================================
+# Dev Creation — Backend + Redis Docker Compose
+# Deploy on Hostinger VPS in 1 command:
+#   docker compose up -d --build
+# ============================================================
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: devcreation-backend
+    restart: always
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: devcreation-redis
+    restart: always
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  backend_uploads:
+  redis_data:
