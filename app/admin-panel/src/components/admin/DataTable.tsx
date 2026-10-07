@@ -26,6 +26,7 @@ export function DataTable<T extends { _id: string }>({
   emptyLabel = 'No records found',
   toolbar,
   onRetry,
+  onRowClick,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -36,6 +37,7 @@ export function DataTable<T extends { _id: string }>({
   emptyLabel?: string;
   toolbar?: React.ReactNode;
   onRetry?: () => void;
+  onRowClick?: (row: T) => void;
 }) {
   return (
     <div className="rounded-xl border border-line bg-white shadow-sm">
@@ -82,7 +84,14 @@ export function DataTable<T extends { _id: string }>({
               </tr>
             ) : (
               rows.map((row) => (
-                <tr key={row._id} className="border-b border-line-soft transition-colors hover:bg-surface-2">
+                <tr
+                  key={row._id}
+                  onClick={() => onRowClick?.(row)}
+                  className={cn(
+                    'border-b border-line-soft transition-colors hover:bg-surface-2',
+                    onRowClick && 'cursor-pointer'
+                  )}
+                >
                   {columns.map((col) => (
                     <td key={col.key} className={cn('px-4 py-4 text-sm text-ink-2', col.className)}>
                       {col.render(row)}
