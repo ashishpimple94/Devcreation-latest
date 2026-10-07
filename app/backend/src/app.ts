@@ -33,6 +33,13 @@ export function createApp() {
       credentials: true,
     }),
   );
+  app.options(
+    '*',
+    cors({
+      origin: corsOriginHandler,
+      credentials: true,
+    }),
+  );
 
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
