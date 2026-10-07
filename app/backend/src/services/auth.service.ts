@@ -6,6 +6,7 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from '@/utils/j
 import { kv } from '@/redis/kv';
 import { ROLES } from '@/constants';
 import { notificationService } from '@/services/notification.service';
+import { emailService } from '@/services/email.service';
 import { logger } from '@/utils/logger';
 
 interface RegisterInput {
@@ -39,6 +40,11 @@ export const authService = {
       forStaff: true,
       relatedEntity: { kind: 'user', id: user._id.toString() },
       dashboardDirty: true,
+    });
+
+    // Send welcome email to customer (best-effort fire-and-forget)
+    void emailService.sendWelcome({ name: user.name, email: user.email }).catch((err) => {
+      logger.warn('Failed to send welcome email', { err: (err as Error).message });
     });
 
     const tokens = issueTokens({ id: user._id.toString(), role: user.role, email: user.email });
@@ -81,6 +87,12 @@ export const authService = {
     const token = crypto.randomBytes(32).toString('hex');
     await kv.set(`pwreset:${token}`, user._id.toString(), 15 * 60);
     logger.info('Password reset requested', { userId: user._id.toString() });
+
+    // Send password reset link to customer (best-effort fire-and-forget)
+    void emailService.sendPasswordReset({ name: user.name, email: user.email }, token).catch((err) => {
+      logger.warn('Failed to send password reset email', { err: (err as Error).message });
+    });
+
     return { delivered: true, devToken: token };
   },
 

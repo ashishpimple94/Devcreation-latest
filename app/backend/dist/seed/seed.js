@@ -51,16 +51,15 @@ var schema = import_zod.z.object({
   SEED_ADMIN_PASSWORD: import_zod.z.string().min(6).default("Admin@12345"),
   RATE_LIMIT_WINDOW_MS: import_zod.z.coerce.number().default(15 * 60 * 1e3),
   RATE_LIMIT_MAX: import_zod.z.coerce.number().default(300),
-  // ── Email (SMTP). All optional — when SMTP_HOST is unset, emails are logged
-  //    to the console instead of sent, so the app works without a mail server. ──
-  SMTP_HOST: import_zod.z.string().optional(),
-  SMTP_PORT: import_zod.z.coerce.number().default(587),
-  SMTP_SECURE: import_zod.z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
-  SMTP_USER: import_zod.z.string().optional(),
-  SMTP_PASS: import_zod.z.string().optional(),
-  EMAIL_FROM: import_zod.z.string().default("Dev Creation <no-reply@devcreation.example>"),
-  ADMIN_NOTIFY_EMAIL: import_zod.z.string().optional(),
-  STORE_URL: import_zod.z.string().default("http://localhost:3000")
+  // ── Email (SMTP Hostinger) ──────────────────────────
+  SMTP_HOST: import_zod.z.string().default("smtp.hostinger.com"),
+  SMTP_PORT: import_zod.z.coerce.number().default(465),
+  SMTP_SECURE: import_zod.z.union([import_zod.z.boolean(), import_zod.z.enum(["true", "false", "1", "0"])]).default("true").transform((v) => v === true || v === "true" || v === "1"),
+  SMTP_USER: import_zod.z.string().default("support@devcreation24.in"),
+  SMTP_PASS: import_zod.z.string().default("Devcreation@890*"),
+  EMAIL_FROM: import_zod.z.string().default("Dev Creation <support@devcreation24.in>"),
+  ADMIN_NOTIFY_EMAIL: import_zod.z.string().default("support@devcreation24.in"),
+  STORE_URL: import_zod.z.string().default("https://devcreation24.in")
 });
 var parsed = schema.safeParse(process.env);
 if (!parsed.success) {

@@ -62,16 +62,15 @@ var schema = import_zod.z.object({
   SEED_ADMIN_PASSWORD: import_zod.z.string().min(6).default("Admin@12345"),
   RATE_LIMIT_WINDOW_MS: import_zod.z.coerce.number().default(15 * 60 * 1e3),
   RATE_LIMIT_MAX: import_zod.z.coerce.number().default(300),
-  // ── Email (SMTP). All optional — when SMTP_HOST is unset, emails are logged
-  //    to the console instead of sent, so the app works without a mail server. ──
-  SMTP_HOST: import_zod.z.string().optional(),
-  SMTP_PORT: import_zod.z.coerce.number().default(587),
-  SMTP_SECURE: import_zod.z.enum(["true", "false"]).default("false").transform((v) => v === "true"),
-  SMTP_USER: import_zod.z.string().optional(),
-  SMTP_PASS: import_zod.z.string().optional(),
-  EMAIL_FROM: import_zod.z.string().default("Dev Creation <no-reply@devcreation.example>"),
-  ADMIN_NOTIFY_EMAIL: import_zod.z.string().optional(),
-  STORE_URL: import_zod.z.string().default("http://localhost:3000")
+  // ── Email (SMTP Hostinger) ──────────────────────────
+  SMTP_HOST: import_zod.z.string().default("smtp.hostinger.com"),
+  SMTP_PORT: import_zod.z.coerce.number().default(465),
+  SMTP_SECURE: import_zod.z.union([import_zod.z.boolean(), import_zod.z.enum(["true", "false", "1", "0"])]).default("true").transform((v) => v === true || v === "true" || v === "1"),
+  SMTP_USER: import_zod.z.string().default("support@devcreation24.in"),
+  SMTP_PASS: import_zod.z.string().default("Devcreation@890*"),
+  EMAIL_FROM: import_zod.z.string().default("Dev Creation <support@devcreation24.in>"),
+  ADMIN_NOTIFY_EMAIL: import_zod.z.string().default("support@devcreation24.in"),
+  STORE_URL: import_zod.z.string().default("https://devcreation24.in")
 });
 var parsed = schema.safeParse(process.env);
 if (!parsed.success) {
@@ -699,6 +698,385 @@ var notificationService = {
   }
 };
 
+// src/config/mailer.ts
+var import_nodemailer = __toESM(require("nodemailer"));
+var smtpConfigured = Boolean(env.SMTP_HOST);
+var transporter = null;
+if (smtpConfigured) {
+  transporter = import_nodemailer.default.createTransport({
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    secure: env.SMTP_SECURE,
+    auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : void 0
+  });
+}
+async function verifyMailer() {
+  if (!transporter) {
+    logger.warn("SMTP not configured \u2014 emails will be logged to the console, not sent");
+    return;
+  }
+  try {
+    await transporter.verify();
+    logger.info("SMTP transport ready");
+  } catch (err) {
+    logger.warn("SMTP verification failed \u2014 emails may not be delivered", {
+      err: err.message
+    });
+  }
+}
+async function sendMail(input) {
+  if (!transporter) {
+    logger.info("\u{1F4E7} [email:log-mode]", {
+      to: input.to,
+      subject: input.subject,
+      attachments: input.attachments?.map((a) => a.filename)
+    });
+    return true;
+  }
+  try {
+    await transporter.sendMail({
+      from: env.EMAIL_FROM,
+      to: input.to,
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+      attachments: input.attachments
+    });
+    logger.info("Email sent", { to: input.to, subject: input.subject });
+    return true;
+  } catch (err) {
+    logger.error("Email send failed", { to: input.to, subject: input.subject, err: err.message });
+    return false;
+  }
+}
+
+// src/utils/invoice.ts
+var import_pdfkit = __toESM(require("pdfkit"));
+var GOLD = "#B8943F";
+var DEEP = "#2C1810";
+var INK = "#1C1410";
+var INK3 = "#5C4F46";
+var LINE = "#E5DCCB";
+var rupee = (n) => "Rs. " + Math.round(n).toLocaleString("en-IN");
+function generateInvoicePdf(order, customerName) {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new import_pdfkit.default({ size: "A4", margin: 50 });
+      const chunks = [];
+      doc.on("data", (c) => chunks.push(c));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+      const pageWidth = doc.page.width;
+      const left = 50;
+      const right = pageWidth - 50;
+      doc.rect(0, 0, pageWidth, 90).fill(DEEP);
+      doc.fillColor("#FFFFFF").fontSize(22).font("Helvetica-Bold").text("DEV CREATION", left, 30);
+      doc.fillColor(GOLD).fontSize(8).font("Helvetica").text("HANDCRAFTED WITH LOVE, SCENTED WITH CARE", left, 58, { characterSpacing: 2 });
+      doc.fillColor("#FFFFFF").fontSize(18).font("Helvetica-Bold").text("INVOICE", left, 30, { align: "right", width: right - left });
+      let y = 115;
+      doc.fillColor(INK).fontSize(11).font("Helvetica-Bold").text(`Invoice: ${order.orderNumber}`, left, y);
+      doc.fillColor(INK3).font("Helvetica").fontSize(10);
+      doc.text(`Date: ${new Date(order.placedAt ?? order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`, left, y += 16);
+      doc.text(`Payment: ${order.paymentMethod.toUpperCase()} (${order.paymentStatus})`, left, y += 14);
+      doc.text(`Status: ${order.status}`, left, y += 14);
+      const a = order.shippingAddress;
+      const boxY = 115;
+      doc.fillColor(GOLD).fontSize(8).font("Helvetica-Bold").text("BILL / SHIP TO", right - 220, boxY, { width: 220, align: "right", characterSpacing: 1 });
+      doc.fillColor(INK).fontSize(10).font("Helvetica-Bold").text(customerName || a.fullName, right - 220, boxY + 14, { width: 220, align: "right" });
+      doc.fillColor(INK3).font("Helvetica").fontSize(9);
+      doc.text(
+        `${a.line1}${a.line2 ? ", " + a.line2 : ""}
+${a.city}, ${a.state} ${a.postalCode}
+${a.country}
+${a.phone}`,
+        right - 220,
+        boxY + 30,
+        { width: 220, align: "right" }
+      );
+      y = 210;
+      doc.rect(left, y, right - left, 24).fill("#FAF6EF");
+      doc.fillColor(INK3).fontSize(9).font("Helvetica-Bold");
+      doc.text("ITEM", left + 10, y + 8);
+      doc.text("QTY", left + 300, y + 8, { width: 40, align: "right" });
+      doc.text("PRICE", left + 350, y + 8, { width: 70, align: "right" });
+      doc.text("AMOUNT", right - 90, y + 8, { width: 80, align: "right" });
+      y += 24;
+      doc.font("Helvetica").fontSize(10);
+      for (const item of order.items) {
+        const name = item.variantName ? `${item.name} (${item.variantName})` : item.name;
+        doc.fillColor(INK).text(name, left + 10, y + 8, { width: 280 });
+        doc.fillColor(INK3).text(String(item.quantity), left + 300, y + 8, { width: 40, align: "right" });
+        doc.text(rupee(item.price), left + 350, y + 8, { width: 70, align: "right" });
+        doc.fillColor(INK).text(rupee(item.price * item.quantity), right - 90, y + 8, { width: 80, align: "right" });
+        const rowH = Math.max(doc.heightOfString(name, { width: 280 }) + 12, 26);
+        y += rowH;
+        doc.moveTo(left, y).lineTo(right, y).strokeColor(LINE).lineWidth(0.5).stroke();
+      }
+      y += 12;
+      const totalsX = right - 220;
+      const totalRow = (label, value, bold = false) => {
+        doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(bold ? 12 : 10).fillColor(bold ? INK : INK3);
+        doc.text(label, totalsX, y, { width: 120 });
+        doc.fillColor(INK).text(value, right - 90, y, { width: 80, align: "right" });
+        y += bold ? 22 : 16;
+      };
+      totalRow("Items total", rupee(order.itemsTotal));
+      totalRow("Shipping", order.shippingFee ? rupee(order.shippingFee) : "Free");
+      doc.moveTo(totalsX, y).lineTo(right, y).strokeColor(LINE).lineWidth(0.5).stroke();
+      y += 8;
+      totalRow("TOTAL", rupee(order.total), true);
+      doc.fillColor(INK3).font("Helvetica").fontSize(9);
+      doc.text("Thank you for shopping with Dev Creation.", left, doc.page.height - 90, { align: "center", width: right - left });
+      doc.fillColor(GOLD).fontSize(8).text("Free shipping over Rs. 999  |  Returns within 14 days", left, doc.page.height - 74, { align: "center", width: right - left, characterSpacing: 1 });
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+// src/emails/templates.ts
+var C = {
+  paper: "#FFFDF8",
+  surface: "#FFFFFF",
+  surface2: "#FAF6EF",
+  ink: "#1C1410",
+  ink3: "#5C4F46",
+  gold: "#B8943F",
+  goldDk: "#8C6F2A",
+  deep: "#2C1810",
+  line: "#EDE6DA"
+};
+var rupee2 = (n) => "&#8377;" + Math.round(n).toLocaleString("en-IN");
+var esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+function layout(bodyHtml, preheader = "") {
+  return `<!doctype html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:${C.paper};font-family:Georgia,'Times New Roman',serif;color:${C.ink3};">
+  <span style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(preheader)}</span>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.paper};padding:24px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:92%;background:${C.surface};border:1px solid ${C.line};border-radius:14px;overflow:hidden;">
+        <!-- header -->
+        <tr><td style="background:${C.deep};padding:26px 32px;text-align:center;">
+          <div style="font-family:Georgia,serif;font-size:22px;letter-spacing:3px;color:#fff;font-weight:600;">DEV CREATION</div>
+          <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:4px;color:${C.gold};margin-top:6px;text-transform:uppercase;">Handcrafted with love, scented with care</div>
+        </td></tr>
+        <!-- body -->
+        <tr><td style="padding:32px;">${bodyHtml}</td></tr>
+        <!-- footer -->
+        <tr><td style="background:${C.surface2};padding:22px 32px;border-top:1px solid ${C.line};text-align:center;">
+          <div style="font-family:Arial,sans-serif;font-size:12px;color:${C.ink3};">Questions? Reply to this email or reach us on WhatsApp.</div>
+          <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:${C.goldDk};margin-top:8px;text-transform:uppercase;">Free shipping over &#8377;999 &middot; Returns within 14 days</div>
+          <div style="font-family:Arial,sans-serif;font-size:11px;color:#9b8f84;margin-top:10px;">&copy; ${(/* @__PURE__ */ new Date()).getFullYear()} Dev Creation</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+function button(label, href) {
+  return `<a href="${esc(href)}" style="display:inline-block;background:${C.deep};color:#fff;font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:13px 26px;border-radius:8px;">${esc(label)}</a>`;
+}
+function itemsTable(items) {
+  const rows = items.map(
+    (i) => `<tr>
+        <td style="padding:10px 0;border-bottom:1px solid ${C.line};font-family:Arial,sans-serif;font-size:13px;color:${C.ink};">
+          ${esc(i.name)}${i.variantName ? ` <span style="color:${C.ink3};">(${esc(i.variantName)})</span>` : ""}
+          <div style="color:${C.ink3};font-size:12px;">Qty ${i.quantity}</div>
+        </td>
+        <td align="right" style="padding:10px 0;border-bottom:1px solid ${C.line};font-family:'Courier New',monospace;font-size:13px;color:${C.ink};white-space:nowrap;">${rupee2(i.price * i.quantity)}</td>
+      </tr>`
+  ).join("");
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>`;
+}
+function totals(order) {
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px;">
+    <tr><td style="font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};padding:3px 0;">Items total</td>
+        <td align="right" style="font-family:'Courier New',monospace;font-size:13px;color:${C.ink};">${rupee2(order.itemsTotal)}</td></tr>
+    <tr><td style="font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};padding:3px 0;">Shipping</td>
+        <td align="right" style="font-family:'Courier New',monospace;font-size:13px;color:${C.ink};">${order.shippingFee ? rupee2(order.shippingFee) : "Free"}</td></tr>
+    <tr><td style="font-family:Arial,sans-serif;font-size:15px;color:${C.ink};font-weight:bold;padding-top:8px;border-top:1px solid ${C.line};">Total</td>
+        <td align="right" style="font-family:'Courier New',monospace;font-size:15px;color:${C.ink};font-weight:bold;padding-top:8px;border-top:1px solid ${C.line};">${rupee2(order.total)}</td></tr>
+  </table>`;
+}
+function addressBlock(order) {
+  const a = order.shippingAddress;
+  return `<div style="font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};line-height:1.6;">
+    <strong style="color:${C.ink};">${esc(a.fullName)}</strong><br>
+    ${esc(a.line1)}${a.line2 ? ", " + esc(a.line2) : ""}<br>
+    ${esc(a.city)}, ${esc(a.state)} ${esc(a.postalCode)}<br>
+    ${esc(a.country)}<br>${esc(a.phone)}
+  </div>`;
+}
+function sectionLabel(text) {
+  return `<div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:${C.goldDk};margin:22px 0 8px;">${esc(text)}</div>`;
+}
+function orderConfirmationEmail(order, customerName) {
+  const body = `
+    <h1 style="font-family:Georgia,serif;font-size:26px;color:${C.ink};margin:0 0 6px;">Thank you for your order!</h1>
+    <p style="font-family:Arial,sans-serif;font-size:14px;color:${C.ink3};margin:0 0 4px;">Hi ${esc(customerName)}, we've received your order and are getting it ready. Your invoice is attached.</p>
+    <p style="font-family:'Courier New',monospace;font-size:13px;color:${C.gold};letter-spacing:1px;margin:14px 0;">Order ${esc(order.orderNumber)}</p>
+    ${sectionLabel("Order summary")}
+    ${itemsTable(order.items)}
+    <div style="margin-top:12px;">${totals(order)}</div>
+    ${sectionLabel("Shipping to")}
+    ${addressBlock(order)}
+    <div style="margin-top:26px;text-align:center;">${button("View your order", `${env.STORE_URL}/account/orders`)}</div>`;
+  return {
+    subject: `Order ${order.orderNumber} confirmed \u2014 Dev Creation`,
+    html: layout(body, `Your Dev Creation order ${order.orderNumber} is confirmed.`),
+    text: `Thank you for your order! Order ${order.orderNumber}. Total ${String(order.total)}. View: ${env.STORE_URL}/account/orders`
+  };
+}
+function adminNewOrderEmail(order, customerName) {
+  const body = `
+    <h1 style="font-family:Georgia,serif;font-size:24px;color:${C.ink};margin:0 0 6px;">New order received</h1>
+    <p style="font-family:Arial,sans-serif;font-size:14px;color:${C.ink3};margin:0;">A new order has been placed and needs processing.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:${C.surface2};border-radius:10px;">
+      <tr><td style="padding:16px 18px;font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};">
+        <div><strong style="color:${C.ink};">Order:</strong> ${esc(order.orderNumber)}</div>
+        <div><strong style="color:${C.ink};">Customer:</strong> ${esc(customerName)}</div>
+        <div><strong style="color:${C.ink};">Total:</strong> ${rupee2(order.total)}</div>
+        <div><strong style="color:${C.ink};">Payment:</strong> ${esc(order.paymentMethod.toUpperCase())}</div>
+      </td></tr>
+    </table>
+    ${sectionLabel("Items")}
+    ${itemsTable(order.items)}
+    ${sectionLabel("Ship to")}
+    ${addressBlock(order)}
+    <div style="margin-top:26px;text-align:center;">${button("Open in admin", `${env.STORE_URL.replace("3000", "3001")}/orders`)}</div>`;
+  return {
+    subject: `\u{1F6CE} New order ${order.orderNumber} \u2014 ${rupee2(order.total).replace("&#8377;", "\u20B9")}`,
+    html: layout(body, `New order ${order.orderNumber} from ${customerName}.`),
+    text: `New order ${order.orderNumber} from ${customerName}. Total ${String(order.total)}.`
+  };
+}
+var STATUS_COPY = {
+  pending: { title: "Order received", line: "We have received your order and it is awaiting confirmation." },
+  confirmed: { title: "Order confirmed", line: "Good news \u2014 your order has been confirmed and will be prepared shortly." },
+  processing: { title: "Order is being processed", line: "We are carefully preparing and packing your items." },
+  shipped: { title: "Your order has shipped", line: "Your order is on its way! You will receive it soon." },
+  delivered: { title: "Order delivered", line: "Your order has been delivered. We hope you love it!" },
+  cancelled: { title: "Order cancelled", line: "Your order has been cancelled. If this was a mistake, please contact us." },
+  refunded: { title: "Order refunded", line: "Your refund has been processed. It may take a few days to reflect." }
+};
+function orderStatusEmail(order, customerName, status, note) {
+  const copy = STATUS_COPY[status];
+  const body = `
+    <h1 style="font-family:Georgia,serif;font-size:25px;color:${C.ink};margin:0 0 6px;">${esc(copy.title)}</h1>
+    <p style="font-family:Arial,sans-serif;font-size:14px;color:${C.ink3};margin:0 0 4px;">Hi ${esc(customerName)}, ${esc(copy.line)}</p>
+    <p style="font-family:'Courier New',monospace;font-size:13px;color:${C.gold};letter-spacing:1px;margin:14px 0;">Order ${esc(order.orderNumber)} &middot; ${esc(status.toUpperCase())}</p>
+    ${note ? `<p style="font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};background:${C.surface2};border-radius:8px;padding:12px 14px;margin:0 0 8px;">${esc(note)}</p>` : ""}
+    ${sectionLabel("Order summary")}
+    ${itemsTable(order.items)}
+    <div style="margin-top:12px;">${totals(order)}</div>
+    <div style="margin-top:26px;text-align:center;">${button("Track your order", `${env.STORE_URL}/account/orders`)}</div>`;
+  return {
+    subject: `${copy.title} \u2014 Order ${order.orderNumber}`,
+    html: layout(body, `${copy.title} for order ${order.orderNumber}.`),
+    text: `${copy.title}. Order ${order.orderNumber} is now ${status}. ${note ?? ""}`
+  };
+}
+function welcomeEmail(customerName) {
+  const body = `
+    <h1 style="font-family:Georgia,serif;font-size:26px;color:${C.ink};margin:0 0 6px;">Welcome to Dev Creation!</h1>
+    <p style="font-family:Arial,sans-serif;font-size:14px;color:${C.ink3};margin:0 0 16px;line-height:1.6;">
+      Dear ${esc(customerName)}, thank you for joining the Dev Creation family. We create luxury handcrafted scented candles, curated home aromas, and artisanal gifting essentials designed to elevate your everyday moments.
+    </p>
+    <div style="background:${C.surface2};border-radius:10px;padding:18px 22px;margin:20px 0;">
+      <div style="font-family:Georgia,serif;font-size:15px;color:${C.ink};font-weight:600;margin-bottom:6px;">What you can enjoy with your account:</div>
+      <ul style="font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};padding-left:20px;margin:0;line-height:1.7;">
+        <li>Seamless order tracking & instant real-time updates</li>
+        <li>Early access to limited editions & scented drops</li>
+        <li>Express checkout and personalized recommendations</li>
+      </ul>
+    </div>
+    <div style="margin-top:28px;text-align:center;">
+      ${button("Explore Our Collections", `${env.STORE_URL}/products`)}
+    </div>`;
+  return {
+    subject: `Welcome to Dev Creation, ${customerName} \u2728`,
+    html: layout(body, `Welcome to Dev Creation \u2014 Handcrafted with love, scented with care.`),
+    text: `Welcome to Dev Creation, ${customerName}! Explore our handcrafted candles & aromas: ${env.STORE_URL}/products`
+  };
+}
+function passwordResetEmail(customerName, resetUrl) {
+  const body = `
+    <h1 style="font-family:Georgia,serif;font-size:24px;color:${C.ink};margin:0 0 6px;">Password Reset Request</h1>
+    <p style="font-family:Arial,sans-serif;font-size:14px;color:${C.ink3};margin:0 0 14px;line-height:1.6;">
+      Hi ${esc(customerName)}, we received a request to reset the password for your Dev Creation account. Click the button below to set a new password:
+    </p>
+    <div style="margin:26px 0;text-align:center;">
+      ${button("Reset My Password", resetUrl)}
+    </div>
+    <p style="font-family:Arial,sans-serif;font-size:12px;color:#9b8f84;line-height:1.5;">
+      This password reset link is valid for <strong>15 minutes</strong>. If you did not request a password reset, you can safely ignore this email.
+    </p>`;
+  return {
+    subject: `Reset your Dev Creation password`,
+    html: layout(body, `Reset your Dev Creation password within 15 minutes.`),
+    text: `Reset your Dev Creation password by opening: ${resetUrl} (Valid for 15 minutes).`
+  };
+}
+
+// src/services/email.service.ts
+async function resolveCustomer(order) {
+  const user = await User.findById(order.user).select("name email").lean();
+  if (!user) return { name: order.shippingAddress.fullName, email: "" };
+  return { name: user.name, email: user.email };
+}
+var emailService = {
+  /** On checkout: confirmation (with PDF invoice) to the customer + alert to admin. */
+  async sendOrderPlaced(order) {
+    const customer = await resolveCustomer(order);
+    const name = customer?.name ?? order.shippingAddress.fullName;
+    let invoice;
+    try {
+      invoice = await generateInvoicePdf(order, name);
+    } catch (err) {
+      logger.warn("Invoice generation failed", { orderId: order._id.toString(), err: err.message });
+    }
+    if (customer?.email) {
+      const tpl = orderConfirmationEmail(order, name);
+      await sendMail({
+        to: customer.email,
+        subject: tpl.subject,
+        html: tpl.html,
+        text: tpl.text,
+        attachments: invoice ? [{ filename: `invoice-${order.orderNumber}.pdf`, content: invoice, contentType: "application/pdf" }] : void 0
+      });
+    }
+    const adminEmail = env.ADMIN_NOTIFY_EMAIL || env.SEED_ADMIN_EMAIL;
+    if (adminEmail) {
+      const adminTpl = adminNewOrderEmail(order, name);
+      await sendMail({ to: adminEmail, subject: adminTpl.subject, html: adminTpl.html, text: adminTpl.text });
+    }
+  },
+  /** On status change: notify the customer. */
+  async sendOrderStatus(order, status, note) {
+    const customer = await resolveCustomer(order);
+    if (!customer?.email) return;
+    const tpl = orderStatusEmail(order, customer.name, status, note);
+    await sendMail({ to: customer.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+  },
+  /** On registration: send a welcome email to the customer. */
+  async sendWelcome(user) {
+    if (!user.email) return;
+    const tpl = welcomeEmail(user.name);
+    await sendMail({ to: user.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+  },
+  /** On forgot password: send password reset email with token link. */
+  async sendPasswordReset(user, token) {
+    if (!user.email) return;
+    const resetUrl = `${env.STORE_URL}/reset-password?token=${encodeURIComponent(token)}`;
+    const tpl = passwordResetEmail(user.name, resetUrl);
+    await sendMail({ to: user.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+  }
+};
+
 // src/services/auth.service.ts
 function issueTokens(user) {
   const payload = { sub: user.id, role: user.role, email: user.email };
@@ -720,6 +1098,9 @@ var authService = {
       forStaff: true,
       relatedEntity: { kind: "user", id: user._id.toString() },
       dashboardDirty: true
+    });
+    void emailService.sendWelcome({ name: user.name, email: user.email }).catch((err) => {
+      logger.warn("Failed to send welcome email", { err: err.message });
     });
     const tokens = issueTokens({ id: user._id.toString(), role: user.role, email: user.email });
     return { user: user.toJSON(), ...tokens };
@@ -754,6 +1135,9 @@ var authService = {
     const token = import_node_crypto.default.randomBytes(32).toString("hex");
     await kv.set(`pwreset:${token}`, user._id.toString(), 15 * 60);
     logger.info("Password reset requested", { userId: user._id.toString() });
+    void emailService.sendPasswordReset({ name: user.name, email: user.email }, token).catch((err) => {
+      logger.warn("Failed to send password reset email", { err: err.message });
+    });
     return { delivered: true, devToken: token };
   },
   async resetPassword(token, password) {
@@ -1890,331 +2274,6 @@ async function supportsTransactions() {
   }
   return transactionsSupported;
 }
-
-// src/config/mailer.ts
-var import_nodemailer = __toESM(require("nodemailer"));
-var smtpConfigured = Boolean(env.SMTP_HOST);
-var transporter = null;
-if (smtpConfigured) {
-  transporter = import_nodemailer.default.createTransport({
-    host: env.SMTP_HOST,
-    port: env.SMTP_PORT,
-    secure: env.SMTP_SECURE,
-    auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : void 0
-  });
-}
-async function verifyMailer() {
-  if (!transporter) {
-    logger.warn("SMTP not configured \u2014 emails will be logged to the console, not sent");
-    return;
-  }
-  try {
-    await transporter.verify();
-    logger.info("SMTP transport ready");
-  } catch (err) {
-    logger.warn("SMTP verification failed \u2014 emails may not be delivered", {
-      err: err.message
-    });
-  }
-}
-async function sendMail(input) {
-  if (!transporter) {
-    logger.info("\u{1F4E7} [email:log-mode]", {
-      to: input.to,
-      subject: input.subject,
-      attachments: input.attachments?.map((a) => a.filename)
-    });
-    return true;
-  }
-  try {
-    await transporter.sendMail({
-      from: env.EMAIL_FROM,
-      to: input.to,
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-      attachments: input.attachments
-    });
-    logger.info("Email sent", { to: input.to, subject: input.subject });
-    return true;
-  } catch (err) {
-    logger.error("Email send failed", { to: input.to, subject: input.subject, err: err.message });
-    return false;
-  }
-}
-
-// src/utils/invoice.ts
-var import_pdfkit = __toESM(require("pdfkit"));
-var GOLD = "#B8943F";
-var DEEP = "#2C1810";
-var INK = "#1C1410";
-var INK3 = "#5C4F46";
-var LINE = "#E5DCCB";
-var rupee = (n) => "Rs. " + Math.round(n).toLocaleString("en-IN");
-function generateInvoicePdf(order, customerName) {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new import_pdfkit.default({ size: "A4", margin: 50 });
-      const chunks = [];
-      doc.on("data", (c) => chunks.push(c));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
-      const pageWidth = doc.page.width;
-      const left = 50;
-      const right = pageWidth - 50;
-      doc.rect(0, 0, pageWidth, 90).fill(DEEP);
-      doc.fillColor("#FFFFFF").fontSize(22).font("Helvetica-Bold").text("DEV CREATION", left, 30);
-      doc.fillColor(GOLD).fontSize(8).font("Helvetica").text("HANDCRAFTED WITH LOVE, SCENTED WITH CARE", left, 58, { characterSpacing: 2 });
-      doc.fillColor("#FFFFFF").fontSize(18).font("Helvetica-Bold").text("INVOICE", left, 30, { align: "right", width: right - left });
-      let y = 115;
-      doc.fillColor(INK).fontSize(11).font("Helvetica-Bold").text(`Invoice: ${order.orderNumber}`, left, y);
-      doc.fillColor(INK3).font("Helvetica").fontSize(10);
-      doc.text(`Date: ${new Date(order.placedAt ?? order.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`, left, y += 16);
-      doc.text(`Payment: ${order.paymentMethod.toUpperCase()} (${order.paymentStatus})`, left, y += 14);
-      doc.text(`Status: ${order.status}`, left, y += 14);
-      const a = order.shippingAddress;
-      const boxY = 115;
-      doc.fillColor(GOLD).fontSize(8).font("Helvetica-Bold").text("BILL / SHIP TO", right - 220, boxY, { width: 220, align: "right", characterSpacing: 1 });
-      doc.fillColor(INK).fontSize(10).font("Helvetica-Bold").text(customerName || a.fullName, right - 220, boxY + 14, { width: 220, align: "right" });
-      doc.fillColor(INK3).font("Helvetica").fontSize(9);
-      doc.text(
-        `${a.line1}${a.line2 ? ", " + a.line2 : ""}
-${a.city}, ${a.state} ${a.postalCode}
-${a.country}
-${a.phone}`,
-        right - 220,
-        boxY + 30,
-        { width: 220, align: "right" }
-      );
-      y = 210;
-      doc.rect(left, y, right - left, 24).fill("#FAF6EF");
-      doc.fillColor(INK3).fontSize(9).font("Helvetica-Bold");
-      doc.text("ITEM", left + 10, y + 8);
-      doc.text("QTY", left + 300, y + 8, { width: 40, align: "right" });
-      doc.text("PRICE", left + 350, y + 8, { width: 70, align: "right" });
-      doc.text("AMOUNT", right - 90, y + 8, { width: 80, align: "right" });
-      y += 24;
-      doc.font("Helvetica").fontSize(10);
-      for (const item of order.items) {
-        const name = item.variantName ? `${item.name} (${item.variantName})` : item.name;
-        doc.fillColor(INK).text(name, left + 10, y + 8, { width: 280 });
-        doc.fillColor(INK3).text(String(item.quantity), left + 300, y + 8, { width: 40, align: "right" });
-        doc.text(rupee(item.price), left + 350, y + 8, { width: 70, align: "right" });
-        doc.fillColor(INK).text(rupee(item.price * item.quantity), right - 90, y + 8, { width: 80, align: "right" });
-        const rowH = Math.max(doc.heightOfString(name, { width: 280 }) + 12, 26);
-        y += rowH;
-        doc.moveTo(left, y).lineTo(right, y).strokeColor(LINE).lineWidth(0.5).stroke();
-      }
-      y += 12;
-      const totalsX = right - 220;
-      const totalRow = (label, value, bold = false) => {
-        doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(bold ? 12 : 10).fillColor(bold ? INK : INK3);
-        doc.text(label, totalsX, y, { width: 120 });
-        doc.fillColor(INK).text(value, right - 90, y, { width: 80, align: "right" });
-        y += bold ? 22 : 16;
-      };
-      totalRow("Items total", rupee(order.itemsTotal));
-      totalRow("Shipping", order.shippingFee ? rupee(order.shippingFee) : "Free");
-      doc.moveTo(totalsX, y).lineTo(right, y).strokeColor(LINE).lineWidth(0.5).stroke();
-      y += 8;
-      totalRow("TOTAL", rupee(order.total), true);
-      doc.fillColor(INK3).font("Helvetica").fontSize(9);
-      doc.text("Thank you for shopping with Dev Creation.", left, doc.page.height - 90, { align: "center", width: right - left });
-      doc.fillColor(GOLD).fontSize(8).text("Free shipping over Rs. 999  |  Returns within 14 days", left, doc.page.height - 74, { align: "center", width: right - left, characterSpacing: 1 });
-      doc.end();
-    } catch (err) {
-      reject(err);
-    }
-  });
-}
-
-// src/emails/templates.ts
-var C = {
-  paper: "#FFFDF8",
-  surface: "#FFFFFF",
-  surface2: "#FAF6EF",
-  ink: "#1C1410",
-  ink3: "#5C4F46",
-  gold: "#B8943F",
-  goldDk: "#8C6F2A",
-  deep: "#2C1810",
-  line: "#EDE6DA"
-};
-var rupee2 = (n) => "&#8377;" + Math.round(n).toLocaleString("en-IN");
-var esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-function layout(bodyHtml, preheader = "") {
-  return `<!doctype html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:${C.paper};font-family:Georgia,'Times New Roman',serif;color:${C.ink3};">
-  <span style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(preheader)}</span>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.paper};padding:24px 0;">
-    <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:92%;background:${C.surface};border:1px solid ${C.line};border-radius:14px;overflow:hidden;">
-        <!-- header -->
-        <tr><td style="background:${C.deep};padding:26px 32px;text-align:center;">
-          <div style="font-family:Georgia,serif;font-size:22px;letter-spacing:3px;color:#fff;font-weight:600;">DEV CREATION</div>
-          <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:4px;color:${C.gold};margin-top:6px;text-transform:uppercase;">Handcrafted with love, scented with care</div>
-        </td></tr>
-        <!-- body -->
-        <tr><td style="padding:32px;">${bodyHtml}</td></tr>
-        <!-- footer -->
-        <tr><td style="background:${C.surface2};padding:22px 32px;border-top:1px solid ${C.line};text-align:center;">
-          <div style="font-family:Arial,sans-serif;font-size:12px;color:${C.ink3};">Questions? Reply to this email or reach us on WhatsApp.</div>
-          <div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;color:${C.goldDk};margin-top:8px;text-transform:uppercase;">Free shipping over &#8377;999 &middot; Returns within 14 days</div>
-          <div style="font-family:Arial,sans-serif;font-size:11px;color:#9b8f84;margin-top:10px;">&copy; ${(/* @__PURE__ */ new Date()).getFullYear()} Dev Creation</div>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-}
-function button(label, href) {
-  return `<a href="${esc(href)}" style="display:inline-block;background:${C.deep};color:#fff;font-family:'Courier New',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;text-decoration:none;padding:13px 26px;border-radius:8px;">${esc(label)}</a>`;
-}
-function itemsTable(items) {
-  const rows = items.map(
-    (i) => `<tr>
-        <td style="padding:10px 0;border-bottom:1px solid ${C.line};font-family:Arial,sans-serif;font-size:13px;color:${C.ink};">
-          ${esc(i.name)}${i.variantName ? ` <span style="color:${C.ink3};">(${esc(i.variantName)})</span>` : ""}
-          <div style="color:${C.ink3};font-size:12px;">Qty ${i.quantity}</div>
-        </td>
-        <td align="right" style="padding:10px 0;border-bottom:1px solid ${C.line};font-family:'Courier New',monospace;font-size:13px;color:${C.ink};white-space:nowrap;">${rupee2(i.price * i.quantity)}</td>
-      </tr>`
-  ).join("");
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}</table>`;
-}
-function totals(order) {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:6px;">
-    <tr><td style="font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};padding:3px 0;">Items total</td>
-        <td align="right" style="font-family:'Courier New',monospace;font-size:13px;color:${C.ink};">${rupee2(order.itemsTotal)}</td></tr>
-    <tr><td style="font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};padding:3px 0;">Shipping</td>
-        <td align="right" style="font-family:'Courier New',monospace;font-size:13px;color:${C.ink};">${order.shippingFee ? rupee2(order.shippingFee) : "Free"}</td></tr>
-    <tr><td style="font-family:Arial,sans-serif;font-size:15px;color:${C.ink};font-weight:bold;padding-top:8px;border-top:1px solid ${C.line};">Total</td>
-        <td align="right" style="font-family:'Courier New',monospace;font-size:15px;color:${C.ink};font-weight:bold;padding-top:8px;border-top:1px solid ${C.line};">${rupee2(order.total)}</td></tr>
-  </table>`;
-}
-function addressBlock(order) {
-  const a = order.shippingAddress;
-  return `<div style="font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};line-height:1.6;">
-    <strong style="color:${C.ink};">${esc(a.fullName)}</strong><br>
-    ${esc(a.line1)}${a.line2 ? ", " + esc(a.line2) : ""}<br>
-    ${esc(a.city)}, ${esc(a.state)} ${esc(a.postalCode)}<br>
-    ${esc(a.country)}<br>${esc(a.phone)}
-  </div>`;
-}
-function sectionLabel(text) {
-  return `<div style="font-family:'Courier New',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:${C.goldDk};margin:22px 0 8px;">${esc(text)}</div>`;
-}
-function orderConfirmationEmail(order, customerName) {
-  const body = `
-    <h1 style="font-family:Georgia,serif;font-size:26px;color:${C.ink};margin:0 0 6px;">Thank you for your order!</h1>
-    <p style="font-family:Arial,sans-serif;font-size:14px;color:${C.ink3};margin:0 0 4px;">Hi ${esc(customerName)}, we've received your order and are getting it ready. Your invoice is attached.</p>
-    <p style="font-family:'Courier New',monospace;font-size:13px;color:${C.gold};letter-spacing:1px;margin:14px 0;">Order ${esc(order.orderNumber)}</p>
-    ${sectionLabel("Order summary")}
-    ${itemsTable(order.items)}
-    <div style="margin-top:12px;">${totals(order)}</div>
-    ${sectionLabel("Shipping to")}
-    ${addressBlock(order)}
-    <div style="margin-top:26px;text-align:center;">${button("View your order", `${env.STORE_URL}/account/orders`)}</div>`;
-  return {
-    subject: `Order ${order.orderNumber} confirmed \u2014 Dev Creation`,
-    html: layout(body, `Your Dev Creation order ${order.orderNumber} is confirmed.`),
-    text: `Thank you for your order! Order ${order.orderNumber}. Total ${String(order.total)}. View: ${env.STORE_URL}/account/orders`
-  };
-}
-function adminNewOrderEmail(order, customerName) {
-  const body = `
-    <h1 style="font-family:Georgia,serif;font-size:24px;color:${C.ink};margin:0 0 6px;">New order received</h1>
-    <p style="font-family:Arial,sans-serif;font-size:14px;color:${C.ink3};margin:0;">A new order has been placed and needs processing.</p>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:${C.surface2};border-radius:10px;">
-      <tr><td style="padding:16px 18px;font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};">
-        <div><strong style="color:${C.ink};">Order:</strong> ${esc(order.orderNumber)}</div>
-        <div><strong style="color:${C.ink};">Customer:</strong> ${esc(customerName)}</div>
-        <div><strong style="color:${C.ink};">Total:</strong> ${rupee2(order.total)}</div>
-        <div><strong style="color:${C.ink};">Payment:</strong> ${esc(order.paymentMethod.toUpperCase())}</div>
-      </td></tr>
-    </table>
-    ${sectionLabel("Items")}
-    ${itemsTable(order.items)}
-    ${sectionLabel("Ship to")}
-    ${addressBlock(order)}
-    <div style="margin-top:26px;text-align:center;">${button("Open in admin", `${env.STORE_URL.replace("3000", "3001")}/orders`)}</div>`;
-  return {
-    subject: `\u{1F6CE} New order ${order.orderNumber} \u2014 ${rupee2(order.total).replace("&#8377;", "\u20B9")}`,
-    html: layout(body, `New order ${order.orderNumber} from ${customerName}.`),
-    text: `New order ${order.orderNumber} from ${customerName}. Total ${String(order.total)}.`
-  };
-}
-var STATUS_COPY = {
-  pending: { title: "Order received", line: "We have received your order and it is awaiting confirmation." },
-  confirmed: { title: "Order confirmed", line: "Good news \u2014 your order has been confirmed and will be prepared shortly." },
-  processing: { title: "Order is being processed", line: "We are carefully preparing and packing your items." },
-  shipped: { title: "Your order has shipped", line: "Your order is on its way! You will receive it soon." },
-  delivered: { title: "Order delivered", line: "Your order has been delivered. We hope you love it!" },
-  cancelled: { title: "Order cancelled", line: "Your order has been cancelled. If this was a mistake, please contact us." },
-  refunded: { title: "Order refunded", line: "Your refund has been processed. It may take a few days to reflect." }
-};
-function orderStatusEmail(order, customerName, status, note) {
-  const copy = STATUS_COPY[status];
-  const body = `
-    <h1 style="font-family:Georgia,serif;font-size:25px;color:${C.ink};margin:0 0 6px;">${esc(copy.title)}</h1>
-    <p style="font-family:Arial,sans-serif;font-size:14px;color:${C.ink3};margin:0 0 4px;">Hi ${esc(customerName)}, ${esc(copy.line)}</p>
-    <p style="font-family:'Courier New',monospace;font-size:13px;color:${C.gold};letter-spacing:1px;margin:14px 0;">Order ${esc(order.orderNumber)} &middot; ${esc(status.toUpperCase())}</p>
-    ${note ? `<p style="font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};background:${C.surface2};border-radius:8px;padding:12px 14px;margin:0 0 8px;">${esc(note)}</p>` : ""}
-    ${sectionLabel("Order summary")}
-    ${itemsTable(order.items)}
-    <div style="margin-top:12px;">${totals(order)}</div>
-    <div style="margin-top:26px;text-align:center;">${button("Track your order", `${env.STORE_URL}/account/orders`)}</div>`;
-  return {
-    subject: `${copy.title} \u2014 Order ${order.orderNumber}`,
-    html: layout(body, `${copy.title} for order ${order.orderNumber}.`),
-    text: `${copy.title}. Order ${order.orderNumber} is now ${status}. ${note ?? ""}`
-  };
-}
-
-// src/services/email.service.ts
-async function resolveCustomer(order) {
-  const user = await User.findById(order.user).select("name email").lean();
-  if (!user) return { name: order.shippingAddress.fullName, email: "" };
-  return { name: user.name, email: user.email };
-}
-var emailService = {
-  /** On checkout: confirmation (with PDF invoice) to the customer + alert to admin. */
-  async sendOrderPlaced(order) {
-    const customer = await resolveCustomer(order);
-    const name = customer?.name ?? order.shippingAddress.fullName;
-    let invoice;
-    try {
-      invoice = await generateInvoicePdf(order, name);
-    } catch (err) {
-      logger.warn("Invoice generation failed", { orderId: order._id.toString(), err: err.message });
-    }
-    if (customer?.email) {
-      const tpl = orderConfirmationEmail(order, name);
-      await sendMail({
-        to: customer.email,
-        subject: tpl.subject,
-        html: tpl.html,
-        text: tpl.text,
-        attachments: invoice ? [{ filename: `invoice-${order.orderNumber}.pdf`, content: invoice, contentType: "application/pdf" }] : void 0
-      });
-    }
-    const adminEmail = env.ADMIN_NOTIFY_EMAIL || env.SEED_ADMIN_EMAIL;
-    if (adminEmail) {
-      const adminTpl = adminNewOrderEmail(order, name);
-      await sendMail({ to: adminEmail, subject: adminTpl.subject, html: adminTpl.html, text: adminTpl.text });
-    }
-  },
-  /** On status change: notify the customer. */
-  async sendOrderStatus(order, status, note) {
-    const customer = await resolveCustomer(order);
-    if (!customer?.email) return;
-    const tpl = orderStatusEmail(order, customer.name, status, note);
-    await sendMail({ to: customer.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
-  }
-};
 
 // src/models/GiftCard.ts
 var import_mongoose16 = require("mongoose");

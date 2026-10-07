@@ -9,6 +9,8 @@ import {
   orderConfirmationEmail,
   adminNewOrderEmail,
   orderStatusEmail,
+  welcomeEmail,
+  passwordResetEmail,
 } from '@/emails/templates';
 
 /** Resolves the customer's name + email for an order (order.user may be an id). */
@@ -64,5 +66,20 @@ export const emailService = {
     if (!customer?.email) return;
     const tpl = orderStatusEmail(order, customer.name, status, note);
     await sendMail({ to: customer.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+  },
+
+  /** On registration: send a welcome email to the customer. */
+  async sendWelcome(user: { name: string; email: string }): Promise<void> {
+    if (!user.email) return;
+    const tpl = welcomeEmail(user.name);
+    await sendMail({ to: user.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+  },
+
+  /** On forgot password: send password reset email with token link. */
+  async sendPasswordReset(user: { name: string; email: string }, token: string): Promise<void> {
+    if (!user.email) return;
+    const resetUrl = `${env.STORE_URL}/reset-password?token=${encodeURIComponent(token)}`;
+    const tpl = passwordResetEmail(user.name, resetUrl);
+    await sendMail({ to: user.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
   },
 };

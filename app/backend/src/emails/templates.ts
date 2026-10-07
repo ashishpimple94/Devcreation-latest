@@ -165,3 +165,48 @@ export function orderStatusEmail(order: IOrder, customerName: string, status: Or
     text: `${copy.title}. Order ${order.orderNumber} is now ${status}. ${note ?? ''}`,
   };
 }
+
+/** Welcome email for newly registered customers. */
+export function welcomeEmail(customerName: string) {
+  const body = `
+    <h1 style="font-family:Georgia,serif;font-size:26px;color:${C.ink};margin:0 0 6px;">Welcome to Dev Creation!</h1>
+    <p style="font-family:Arial,sans-serif;font-size:14px;color:${C.ink3};margin:0 0 16px;line-height:1.6;">
+      Dear ${esc(customerName)}, thank you for joining the Dev Creation family. We create luxury handcrafted scented candles, curated home aromas, and artisanal gifting essentials designed to elevate your everyday moments.
+    </p>
+    <div style="background:${C.surface2};border-radius:10px;padding:18px 22px;margin:20px 0;">
+      <div style="font-family:Georgia,serif;font-size:15px;color:${C.ink};font-weight:600;margin-bottom:6px;">What you can enjoy with your account:</div>
+      <ul style="font-family:Arial,sans-serif;font-size:13px;color:${C.ink3};padding-left:20px;margin:0;line-height:1.7;">
+        <li>Seamless order tracking & instant real-time updates</li>
+        <li>Early access to limited editions & scented drops</li>
+        <li>Express checkout and personalized recommendations</li>
+      </ul>
+    </div>
+    <div style="margin-top:28px;text-align:center;">
+      ${button('Explore Our Collections', `${env.STORE_URL}/products`)}
+    </div>`;
+  return {
+    subject: `Welcome to Dev Creation, ${customerName} ✨`,
+    html: layout(body, `Welcome to Dev Creation — Handcrafted with love, scented with care.`),
+    text: `Welcome to Dev Creation, ${customerName}! Explore our handcrafted candles & aromas: ${env.STORE_URL}/products`,
+  };
+}
+
+/** Password reset email. */
+export function passwordResetEmail(customerName: string, resetUrl: string) {
+  const body = `
+    <h1 style="font-family:Georgia,serif;font-size:24px;color:${C.ink};margin:0 0 6px;">Password Reset Request</h1>
+    <p style="font-family:Arial,sans-serif;font-size:14px;color:${C.ink3};margin:0 0 14px;line-height:1.6;">
+      Hi ${esc(customerName)}, we received a request to reset the password for your Dev Creation account. Click the button below to set a new password:
+    </p>
+    <div style="margin:26px 0;text-align:center;">
+      ${button('Reset My Password', resetUrl)}
+    </div>
+    <p style="font-family:Arial,sans-serif;font-size:12px;color:#9b8f84;line-height:1.5;">
+      This password reset link is valid for <strong>15 minutes</strong>. If you did not request a password reset, you can safely ignore this email.
+    </p>`;
+  return {
+    subject: `Reset your Dev Creation password`,
+    html: layout(body, `Reset your Dev Creation password within 15 minutes.`),
+    text: `Reset your Dev Creation password by opening: ${resetUrl} (Valid for 15 minutes).`,
+  };
+}

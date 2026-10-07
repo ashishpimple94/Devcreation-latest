@@ -45,19 +45,18 @@ const schema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().default(300),
 
-  // ── Email (SMTP). All optional — when SMTP_HOST is unset, emails are logged
-  //    to the console instead of sent, so the app works without a mail server. ──
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.coerce.number().default(587),
+  // ── Email (SMTP Hostinger) ──────────────────────────
+  SMTP_HOST: z.string().default('smtp.hostinger.com'),
+  SMTP_PORT: z.coerce.number().default(465),
   SMTP_SECURE: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((v) => v === 'true'),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  EMAIL_FROM: z.string().default('Dev Creation <no-reply@devcreation.example>'),
-  ADMIN_NOTIFY_EMAIL: z.string().optional(),
-  STORE_URL: z.string().default('http://localhost:3000'),
+    .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
+    .default('true')
+    .transform((v) => v === true || v === 'true' || v === '1'),
+  SMTP_USER: z.string().default('support@devcreation24.in'),
+  SMTP_PASS: z.string().default('Devcreation@890*'),
+  EMAIL_FROM: z.string().default('Dev Creation <support@devcreation24.in>'),
+  ADMIN_NOTIFY_EMAIL: z.string().default('support@devcreation24.in'),
+  STORE_URL: z.string().default('https://devcreation24.in'),
 });
 
 const parsed = schema.safeParse(process.env);
