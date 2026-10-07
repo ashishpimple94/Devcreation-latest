@@ -1,4 +1,4 @@
-# Ensure index.html is the default directory index
+# Dev Creation Admin Panel - Hostinger Apache / LiteSpeed Configuration
 DirectoryIndex index.html
 Options -Indexes +FollowSymLinks
 
@@ -6,26 +6,26 @@ Options -Indexes +FollowSymLinks
   RewriteEngine On
   RewriteBase /
 
-  # Serve existing files directly
+  # Serve existing physical files directly (CSS, JS, images, fonts, etc.)
   RewriteCond %{REQUEST_FILENAME} -f
   RewriteRule ^ - [L]
 
-  # If directory has index.html, serve it directly
+  # Serve existing physical directories containing index.html directly
   RewriteCond %{REQUEST_FILENAME} -d
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^ - [L]
+
+  # Dynamic Order Detail route: /orders/<id> -> orders/detail/index.html?id=<id>
+  RewriteRule ^orders/(?!detail(?:/|$))([a-zA-Z0-9_-]+)/?$ orders/detail/index.html?id=$1 [QSA,L]
+
+  # Dynamic Product Edit route: /products/<id> -> products/edit/index.html?id=<id>
+  RewriteRule ^products/(?!edit(?:/|$)|new(?:/|$))([a-zA-Z0-9_-]+)/?$ products/edit/index.html?id=$1 [QSA,L]
+
+  # If requested path without trailing slash has an index.html directory, serve it
   RewriteCond %{REQUEST_FILENAME}/index.html -f
   RewriteRule ^(.*)$ $1/index.html [L]
 
-  # Dynamic Order Detail route: /orders/<id> -> /orders/detail.html?id=<id>
-  RewriteRule ^orders/([a-zA-Z0-9_-]+)/?$ /orders/detail.html?id=$1 [QSA,L]
-
-  # Dynamic Product Edit route: /products/<id> -> /products/edit.html?id=<id>
-  RewriteRule ^products/([a-zA-Z0-9_-]+)/?$ /products/edit.html?id=$1 [QSA,L]
-
-  # If requested path with .html exists as a file, serve it
-  RewriteCond %{REQUEST_FILENAME}.html -f
-  RewriteRule ^(.*)$ $1.html [L]
-
-  # Fallback all other requests to root index.html (Next.js SPA routing)
+  # Fallback for all other routes to root index.html for client-side routing
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
