@@ -3,7 +3,7 @@ node_modules/
 package-lock.json.bak
 
 # Production build output
-dist/
+# dist/ is tracked so git deployment immediately has production bundle ready
 build/
 
 # Environment variables

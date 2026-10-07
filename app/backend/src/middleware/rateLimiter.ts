@@ -24,6 +24,7 @@ function makeLimiter(options: { windowMs: number; max: number; prefix: string })
     max: options.max,
     standardHeaders: true,
     legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
     ...(store ? { store } : {}),
     message: {
       success: false,

@@ -19,6 +19,10 @@ import { storageService } from '@/services/storage.service';
 export function createApp() {
   const app = express();
 
+  // Trust first proxy hop (Hostinger reverse proxy / Cloudflare / Nginx / Load Balancer)
+  // Required so req.ip and express-rate-limit read X-Forwarded-* headers correctly.
+  app.set('trust proxy', 1);
+
   // Security headers. crossOriginResourcePolicy relaxed so the Next.js app can
   // load images served from /uploads during development.
   app.use(
@@ -77,6 +81,14 @@ export function createApp() {
     } catch (err) {
       return next(err);
     }
+  });
+
+  // Direct health check endpoints (bypass rate limiter for uptime monitoring & frontend checks)
+  app.get('/health', (_req, res) => {
+    res.json({ success: true, message: 'OK', data: { uptime: process.uptime() } });
+  });
+  app.get(`${env.API_PREFIX}/health`, (_req, res) => {
+    res.json({ success: true, message: 'OK', data: { uptime: process.uptime() } });
   });
 
   app.use(env.API_PREFIX, apiLimiter, routes);

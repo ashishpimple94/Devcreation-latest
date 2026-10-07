@@ -8,6 +8,7 @@ build/
 .next/
 out/
 *.tsbuildinfo
+!backend/dist/**
 
 # env — never commit secrets
 .env
