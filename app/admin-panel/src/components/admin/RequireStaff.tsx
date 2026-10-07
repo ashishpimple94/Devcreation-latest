@@ -16,10 +16,10 @@ export function RequireStaff({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.replace('/login');
+      router.replace('/');
     } else if (status === 'authenticated' && !isStaff()) {
       // Signed-in customer with no admin rights — send them back to sign in.
-      router.replace('/login');
+      router.replace('/');
     }
   }, [status, isStaff, router]);
 
