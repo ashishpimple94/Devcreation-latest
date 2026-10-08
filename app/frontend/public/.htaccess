@@ -1,0 +1,51 @@
+# Dev Creation Storefront — Hostinger Apache / LiteSpeed Configuration
+DirectoryIndex index.html
+Options -Indexes +FollowSymLinks
+
+# Ensure correct MIME types for Next.js assets
+<IfModule mod_mime.c>
+  AddType text/css .css
+  AddType application/javascript .js
+  AddType application/json .json
+  AddType image/svg+xml .svg
+  AddType image/webp .webp
+  AddType image/avif .avif
+</IfModule>
+
+# Cache headers: prevent caching HTML so updates are immediate
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|htm)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+  <FilesMatch "\.(js|css|webp|png|jpg|jpeg|gif|ico|svg|woff|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Serve existing physical files directly (CSS, JS, images, fonts, etc.)
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+
+  # Serve existing physical directories containing index.html directly
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^ - [L]
+
+  # Dynamic Customer Order Detail: /account/orders/<id> -> account/orders/detail/index.html?id=<id>
+  RewriteRule ^account/orders/(?!detail(?:/|$))([a-zA-Z0-9_-]+)/?$ account/orders/detail/index.html?id=$1 [QSA,L]
+
+  # If requested path without trailing slash has an index.html directory, serve it
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^(.*)$ $1/index.html [L]
+
+  # Fallback for all other routes to root index.html for client-side routing
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

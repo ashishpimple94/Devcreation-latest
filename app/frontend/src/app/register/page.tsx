@@ -36,8 +36,8 @@ export default function RegisterPage() {
         phone: form.phone || undefined,
       });
       await refreshCart();
-      success('Account created');
-      router.push('/account/profile');
+      success(`Welcome to Dev Creation, ${form.name}! Taking you to our collection…`);
+      router.push('/products');
     } catch (err) {
       error(err instanceof Error ? err.message : 'Registration failed');
     } finally {

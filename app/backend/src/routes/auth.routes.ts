@@ -18,6 +18,8 @@ router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);
 router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
 router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
+router.post('/otp/send', authLimiter, authController.sendOtp);
+router.post('/otp/verify', authLimiter, authController.verifyOtp);
 router.get('/me', authenticate, authController.me);
 
 export default router;

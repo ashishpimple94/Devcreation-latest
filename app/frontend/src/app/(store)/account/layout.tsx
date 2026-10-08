@@ -50,6 +50,13 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
                 </Link>
               );
             })}
+            <Link
+              href="/products"
+              className="mt-3 mb-2 flex items-center justify-center gap-1.5 rounded-[8px] border border-gold/40 bg-gold/10 py-2.5 px-3 font-util text-[0.68rem] font-bold uppercase tracking-wider text-gold-dk hover:bg-gold hover:text-white transition-colors text-center"
+            >
+              <span>🛍️</span>
+              <span>Shop Collection</span>
+            </Link>
             <button
               onClick={onLogout}
               className="mt-1 rounded-[8px] px-4 py-3 text-left font-util text-[0.7rem] uppercase tracking-[0.12em] text-red-500 transition-colors hover:bg-red-50"

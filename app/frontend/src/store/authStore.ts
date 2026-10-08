@@ -7,6 +7,8 @@ interface AuthState {
   status: 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
   init: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
+  sendOtp: (phone: string) => Promise<{ phone: string; message: string; demoOtp?: string; expiresInSeconds?: number }>;
+  loginWithOtp: (phone: string, otp: string) => Promise<void>;
   register: (input: { name: string; email: string; password: string; phone?: string }) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: User) => void;
@@ -37,6 +39,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const res = await api.post<{ user: User; accessToken: string }>(
       '/auth/login',
       { email, password },
+      { auth: false },
+    );
+    tokenStore.set(res.data.accessToken);
+    set({ user: res.data.user, status: 'authenticated' });
+  },
+
+  async sendOtp(phone: string) {
+    const res = await api.post<{ phone: string; message: string; demoOtp?: string; expiresInSeconds?: number }>(
+      '/auth/otp/send',
+      { phone },
+      { auth: false },
+    );
+    return res.data;
+  },
+
+  async loginWithOtp(phone: string, otp: string) {
+    const res = await api.post<{ user: User; accessToken: string }>(
+      '/auth/otp/verify',
+      { phone, otp },
       { auth: false },
     );
     tokenStore.set(res.data.accessToken);

@@ -48,6 +48,19 @@ export const authController = {
     return sendSuccess(res, result, 'Password updated. You can now log in.');
   }),
 
+  sendOtp: asyncHandler(async (req: Request, res: Response) => {
+    const { phone } = req.body;
+    const result = await authService.sendOtp(phone);
+    return sendSuccess(res, result, 'OTP sent successfully');
+  }),
+
+  verifyOtp: asyncHandler(async (req: Request, res: Response) => {
+    const { phone, otp } = req.body;
+    const result = await authService.verifyOtp(phone, otp);
+    res.cookie('refreshToken', result.refreshToken, refreshCookieOptions);
+    return sendSuccess(res, result, 'Logged in successfully via OTP');
+  }),
+
   me: asyncHandler(async (req: Request, res: Response) => {
     const user = await authService.me(req.user!.id);
     return sendSuccess(res, user, 'Current user');

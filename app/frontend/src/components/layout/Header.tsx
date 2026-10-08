@@ -76,17 +76,7 @@ export function Header() {
 
           {user && <NotificationBell unread={unread} />}
 
-          {user && ['super_admin', 'admin', 'manager'].includes(user.role) && (
-            <a
-              href={process.env.NEXT_PUBLIC_ADMIN_URL || 'https://login.devcreation24.in'}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open Management Admin Panel"
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-2.5 py-1 font-util text-[0.62rem] font-bold uppercase tracking-wider text-gold-dk transition-colors hover:bg-gold hover:text-white"
-            >
-              <span>⚡ Admin</span>
-            </a>
-          )}
+
 
           <Link
             href={user ? '/account/profile' : '/login'}
