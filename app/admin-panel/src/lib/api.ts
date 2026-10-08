@@ -1,8 +1,34 @@
 import type { ApiEnvelope } from '@/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://lightseagreen-donkey-692988.hostingersite.com/api';
+const CLOUD_API_URL = 'https://lightseagreen-donkey-692988.hostingersite.com/api';
+
+/**
+ * Dynamically resolves the API endpoint URL for the admin panel:
+ * - On production/cloud domains (login.devcreation24.in / hostingersite.com) -> points to live cloud API.
+ * - On LAN IP (e.g. 192.168.x.x from mobile device) -> points to dev PC's port 4000.
+ * - On localhost -> uses configured environment variable or local backend.
+ */
+export function getApiUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    // 1. Production domain or live deployment (desktop or mobile)
+    if (host.includes('devcreation24.in') || host.includes('hostingersite.com') || host.includes('onrender.com')) {
+      return CLOUD_API_URL;
+    }
+    // 2. Local mobile device testing over LAN IP (e.g. 192.168.1.x)
+    if (/^\d+\.\d+\.\d+\.\d+$/.test(host) && host !== '127.0.0.1') {
+      const configured = process.env.NEXT_PUBLIC_API_URL;
+      if (!configured || configured.includes('localhost') || configured.includes('127.0.0.1')) {
+        return `http://${host}:4000/api`;
+      }
+      return configured;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || CLOUD_API_URL;
+}
 
 const ACCESS_TOKEN_KEY = 'dc_admin_access_token';
+const REFRESH_TOKEN_KEY = 'dc_admin_refresh_token';
 const LEGACY_TOKEN_KEY = 'dc_access_token';
 
 /** In-memory + localStorage access token store (client only). */
@@ -11,14 +37,22 @@ export const tokenStore = {
     if (typeof window === 'undefined') return null;
     return window.localStorage.getItem(ACCESS_TOKEN_KEY) ?? window.localStorage.getItem(LEGACY_TOKEN_KEY);
   },
-  set(token: string) {
+  getRefreshToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage.getItem(REFRESH_TOKEN_KEY);
+  },
+  set(accessToken: string, refreshToken?: string) {
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+      window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+      if (refreshToken) {
+        window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+      }
     }
   },
   clear() {
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+      window.localStorage.removeItem(REFRESH_TOKEN_KEY);
       window.localStorage.removeItem(LEGACY_TOKEN_KEY);
     }
   },
@@ -43,18 +77,25 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
 
 let refreshPromise: Promise<boolean> | null = null;
 
-/** Attempts to refresh the access token using the httpOnly refresh cookie. */
+/** Attempts to refresh the access token using cookie + localStorage fallback (resilient for mobile). */
 async function tryRefresh(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
-        const res = await fetch(`${API_URL}/auth/refresh`, {
+        const storedRefreshToken = tokenStore.getRefreshToken();
+        const res = await fetch(`${getApiUrl()}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            refreshToken: storedRefreshToken || undefined,
+          }),
         });
         if (!res.ok) return false;
-        const json = (await res.json()) as ApiEnvelope<{ accessToken: string }>;
-        tokenStore.set(json.data.accessToken);
+        const json = (await res.json()) as ApiEnvelope<{ accessToken: string; refreshToken?: string }>;
+        tokenStore.set(json.data.accessToken, json.data.refreshToken);
         return true;
       } catch {
         return false;
@@ -83,7 +124,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     if (token) finalHeaders.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${getApiUrl()}${path}`, {
     ...rest,
     headers: finalHeaders,
     credentials: 'include',
@@ -111,7 +152,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 /** Multipart upload helper for product images. */
 export async function apiUpload<T>(path: string, formData: FormData): Promise<ApiEnvelope<T>> {
   const token = tokenStore.get();
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${getApiUrl()}${path}`, {
     method: 'POST',
     credentials: 'include',
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,

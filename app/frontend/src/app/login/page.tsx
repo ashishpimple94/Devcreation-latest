@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { cn } from '@/lib/utils';
+import { getApiUrl } from '@/lib/api';
 
 type LoginMode = 'otp' | 'email';
 
@@ -52,10 +53,10 @@ function LoginForm() {
     }
   }, [status, params, router]);
 
-  // Pre-warm backend when login page opens
+  // Pre-warm backend when login page opens so cold-start delay is eliminated.
+  // getApiUrl() resolves correctly for mobile (LAN IP) and production domain.
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://lightseagreen-donkey-692988.hostingersite.com/api';
-    fetch(`${apiUrl}/health`, { method: 'GET' }).catch(() => {});
+    fetch(`${getApiUrl()}/health`, { method: 'GET' }).catch(() => {});
   }, []);
 
   // OTP Countdown Timer
@@ -152,6 +153,22 @@ function LoginForm() {
       const updated = [...otpDigits];
       updated[index] = '';
       setOtpDigits(updated);
+      return;
+    }
+
+    // Mobile SMS autofill / multi-digit paste: distribute across all 6 boxes
+    if (numeric.length > 1) {
+      const updated = [...otpDigits];
+      for (let i = 0; i < 6; i++) {
+        if (numeric[i] !== undefined) updated[i] = numeric[i];
+      }
+      setOtpDigits(updated);
+      if (numeric.length >= 6) {
+        inputRefs.current[5]?.focus();
+        submitOtpVerification(numeric.slice(0, 6));
+      } else {
+        inputRefs.current[Math.min(numeric.length, 5)]?.focus();
+      }
       return;
     }
 
@@ -272,7 +289,7 @@ function LoginForm() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="Enter 10-digit number"
-                    className="w-full bg-transparent px-3 py-3 text-sm text-ink outline-none placeholder:text-ink-3/60"
+                    className="w-full bg-transparent px-3 py-3 text-base text-ink outline-none placeholder:text-ink-3/60"
                   />
                 </div>
                 <p className="mt-1.5 text-[0.65rem] text-ink-3">
@@ -324,6 +341,7 @@ function LoginForm() {
                       inputMode="numeric"
                       pattern="[0-9]*"
                       maxLength={1}
+                      autoComplete={index === 0 ? 'one-time-code' : 'off'}
                       value={otpDigits[index] || ''}
                       onChange={(e) => handleDigitChange(index, e.target.value)}
                       onKeyDown={(e) => handleDigitKeyDown(index, e)}
