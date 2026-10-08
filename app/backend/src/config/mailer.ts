@@ -80,9 +80,18 @@ export interface SendMailResult {
   portUsed?: number;
 }
 
+export function resolveFromAddress(): string {
+  const configured = (env.EMAIL_FROM || '').trim();
+  // Reject dummy placeholder/example domains that trigger Hostinger 450 4.1.8 Sender address rejected
+  if (!configured || configured.includes('.example') || configured.includes('localhost') || !configured.includes('@')) {
+    return `"Dev Creation" <${env.SMTP_USER || 'support@devcreation24.in'}>`;
+  }
+  return configured;
+}
+
 /** Sends an email with automatic fallback between port 465 and port 587. */
 export async function sendMailWithDetails(input: SendMailInput): Promise<SendMailResult> {
-  const fromAddress = env.EMAIL_FROM || '"Dev Creation" <support@devcreation24.in>';
+  const fromAddress = resolveFromAddress();
 
   // Try Primary (Port 465)
   try {

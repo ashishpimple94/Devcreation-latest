@@ -167,7 +167,7 @@ var userSchema = new import_mongoose.Schema(
       default: ROLES.CUSTOMER,
       index: true
     },
-    phone: { type: String, trim: true },
+    phone: { type: String, trim: true, index: true, sparse: true },
     isActive: { type: Boolean, default: true },
     wishlist: [{ type: import_mongoose.Schema.Types.ObjectId, ref: "Product" }]
   },

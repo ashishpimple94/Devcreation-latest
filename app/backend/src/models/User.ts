@@ -35,7 +35,7 @@ const userSchema = new Schema<IUser>(
       default: ROLES.CUSTOMER,
       index: true,
     },
-    phone: { type: String, trim: true },
+    phone: { type: String, trim: true, index: true, sparse: true },
     isActive: { type: Boolean, default: true },
     wishlist: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
   },

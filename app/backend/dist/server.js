@@ -424,7 +424,7 @@ var userSchema = new import_mongoose2.Schema(
       default: ROLES.CUSTOMER,
       index: true
     },
-    phone: { type: String, trim: true },
+    phone: { type: String, trim: true, index: true, sparse: true },
     isActive: { type: Boolean, default: true },
     wishlist: [{ type: import_mongoose2.Schema.Types.ObjectId, ref: "Product" }]
   },
@@ -749,8 +749,15 @@ async function verifyMailer() {
     }
   }
 }
+function resolveFromAddress() {
+  const configured = (env.EMAIL_FROM || "").trim();
+  if (!configured || configured.includes(".example") || configured.includes("localhost") || !configured.includes("@")) {
+    return `"Dev Creation" <${env.SMTP_USER || "support@devcreation24.in"}>`;
+  }
+  return configured;
+}
 async function sendMailWithDetails(input) {
-  const fromAddress = env.EMAIL_FROM || '"Dev Creation" <support@devcreation24.in>';
+  const fromAddress = resolveFromAddress();
   try {
     const info = await primaryTransporter.sendMail({
       from: fromAddress,
@@ -1688,6 +1695,14 @@ function passwordResetEmail(customerName, resetUrl) {
 }
 
 // src/services/email.service.ts
+function isDeliverableEmail(email) {
+  if (!email || !email.includes("@")) return false;
+  const lower = email.toLowerCase().trim();
+  if (lower.endsWith(".example")) return false;
+  if (lower.startsWith("customer_") && lower.endsWith("@devcreation24.in")) return false;
+  if (/^user\d+@devcreation24\.in$/.test(lower)) return false;
+  return true;
+}
 async function resolveCustomer(order) {
   const userObj = order.user;
   if (userObj && typeof userObj === "object" && userObj.email) {
@@ -1704,7 +1719,7 @@ var emailService = {
   async sendOrderPlaced(order) {
     const customer = await resolveCustomer(order);
     const name = customer?.name ?? order.shippingAddress.fullName;
-    if (customer?.email) {
+    if (customer?.email && isDeliverableEmail(customer.email)) {
       let invoice;
       try {
         invoice = await generateInvoicePdf(order, name);
@@ -1721,8 +1736,13 @@ var emailService = {
         priority: "high",
         attachments: invoice ? [{ filename: `invoice-${order.orderNumber}.pdf`, content: invoice, contentType: "application/pdf" }] : void 0
       });
+    } else {
+      logger.info(`[EMAIL-SERVICE] \u2139\uFE0F Customer has no external email registered (${customer?.email || "none"}), skipping customer invoice email`);
     }
-    const adminEmail = env.ADMIN_NOTIFY_EMAIL || env.SEED_ADMIN_EMAIL || "support@devcreation24.in";
+    let adminEmail = env.ADMIN_NOTIFY_EMAIL || "support@devcreation24.in";
+    if (!adminEmail || adminEmail.includes(".example")) {
+      adminEmail = "support@devcreation24.in";
+    }
     if (adminEmail) {
       const adminTpl = adminNewOrderEmail(order, name);
       mailQueue.enqueue({
@@ -1739,8 +1759,8 @@ var emailService = {
   /** On status change (Confirmed, Packing, Shipped, Delivered): notify customer asynchronously. */
   async sendOrderStatus(order, status, note) {
     const customer = await resolveCustomer(order);
-    if (!customer?.email) {
-      logger.info(`[EMAIL-SERVICE] \u23ED\uFE0F Skipping order status email for Order #${order.orderNumber} (no customer email found)`);
+    if (!customer?.email || !isDeliverableEmail(customer.email)) {
+      logger.info(`[EMAIL-SERVICE] \u23ED\uFE0F Skipping order status email for Order #${order.orderNumber} (no valid customer email found)`);
       return;
     }
     const tpl = orderStatusEmail(order, customer.name, status, note);
@@ -1756,7 +1776,7 @@ var emailService = {
   },
   /** On registration: send a welcome email to the customer. */
   async sendWelcome(user2) {
-    if (!user2.email) return;
+    if (!user2.email || !isDeliverableEmail(user2.email)) return;
     const tpl = welcomeEmail(user2.name);
     mailQueue.enqueue({
       dedupKey: `welcome_${user2.email}`,
@@ -1768,7 +1788,7 @@ var emailService = {
   },
   /** On forgot password: send password reset email with token link. */
   async sendPasswordReset(user2, token) {
-    if (!user2.email) return;
+    if (!user2.email || !isDeliverableEmail(user2.email)) return;
     const resetUrl = `${env.STORE_URL}/reset-password?token=${encodeURIComponent(token)}`;
     const tpl = passwordResetEmail(user2.name, resetUrl);
     mailQueue.enqueue({
@@ -1906,8 +1926,12 @@ var authService = {
     const tokens = issueTokens({ id: user2._id.toString(), role: user2.role, email: user2.email });
     return { user: user2.toJSON(), ...tokens };
   },
-  async login(email, password) {
-    const user2 = await User.findOne({ email: email.toLowerCase() }).select("+password");
+  async login(identifier, password) {
+    const raw = (identifier || "").trim();
+    const cleanPhone = raw.replace(/\D/g, "").slice(-10);
+    const isPhone = /^[6-9]\d{9}$/.test(cleanPhone);
+    const query = isPhone ? { $or: [{ phone: cleanPhone }, { phone: raw }] } : { email: raw.toLowerCase() };
+    const user2 = await User.findOne(query).select("+password");
     if (!user2 || !user2.isActive) throw ApiError.unauthorized("Invalid credentials");
     const ok = await user2.comparePassword(password);
     if (!ok) throw ApiError.unauthorized("Invalid credentials");
@@ -2050,7 +2074,7 @@ var asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next
 var refreshCookieOptions = {
   httpOnly: true,
   secure: env.isProd,
-  sameSite: "lax",
+  sameSite: env.isProd ? "none" : "lax",
   path: "/",
   maxAge: 7 * 24 * 60 * 60 * 1e3
 };
@@ -2061,13 +2085,18 @@ var authController = {
     return sendSuccess(res, result, "Account created successfully", 201);
   }),
   login: asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-    const result = await authService.login(email, password);
+    const identifier = req.body.identifier || req.body.email || "";
+    const { password } = req.body;
+    const result = await authService.login(identifier, password);
     res.cookie("refreshToken", result.refreshToken, refreshCookieOptions);
     return sendSuccess(res, result, "Logged in successfully");
   }),
   refresh: asyncHandler(async (req, res) => {
     const token = req.cookies?.refreshToken ?? req.body.refreshToken;
+    if (!token) {
+      res.status(401).json({ success: false, message: "No refresh token provided" });
+      return;
+    }
     const tokens = await authService.refresh(token);
     res.cookie("refreshToken", tokens.refreshToken, refreshCookieOptions);
     return sendSuccess(res, tokens, "Token refreshed");
@@ -2157,7 +2186,7 @@ var registerSchema = {
 };
 var loginSchema = {
   body: import_zod2.z.object({
-    email: import_zod2.z.string().email("Enter a valid email"),
+    email: import_zod2.z.string().min(3, "Email or mobile number is required"),
     password: import_zod2.z.string().min(1, "Password is required")
   })
 };
@@ -3139,6 +3168,8 @@ var orderSchema = new import_mongoose14.Schema(
 );
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ paymentStatus: 1, createdAt: -1 });
+orderSchema.index({ "shippingAddress.phone": 1 });
 var Order = (0, import_mongoose14.model)("Order", orderSchema);
 
 // src/config/db.ts
@@ -3149,8 +3180,11 @@ async function connectDatabase() {
   import_mongoose15.default.connection.on("error", (err) => logger.error("MongoDB error", { err: err.message }));
   import_mongoose15.default.connection.on("disconnected", () => logger.warn("MongoDB disconnected"));
   await import_mongoose15.default.connect(env.MONGODB_URI, {
-    maxPoolSize: 20,
-    serverSelectionTimeoutMS: 1e4
+    maxPoolSize: 50,
+    minPoolSize: 5,
+    serverSelectionTimeoutMS: 8e3,
+    socketTimeoutMS: 45e3,
+    family: 4
   });
 }
 async function disconnectDatabase() {
@@ -4231,19 +4265,17 @@ function createApp() {
       crossOriginResourcePolicy: { policy: "cross-origin" }
     })
   );
-  app.use(
-    (0, import_cors2.default)({
-      origin: corsOriginHandler,
-      credentials: true
-    })
-  );
-  app.options(
-    "*",
-    (0, import_cors2.default)({
-      origin: corsOriginHandler,
-      credentials: true
-    })
-  );
+  const corsOptions = {
+    origin: corsOriginHandler,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+    exposedHeaders: ["Set-Cookie"],
+    maxAge: 86400
+    // 24 hours preflight cache for fast mobile performance
+  };
+  app.use((0, import_cors2.default)(corsOptions));
+  app.options("*", (0, import_cors2.default)(corsOptions));
   app.use(import_express11.default.json({ limit: "1mb" }));
   app.use(import_express11.default.urlencoded({ extended: true }));
   app.use((0, import_cookie_parser.default)());

@@ -7,7 +7,7 @@ import { env } from '@/config/env';
 const refreshCookieOptions = {
   httpOnly: true,
   secure: env.isProd,
-  sameSite: 'lax' as const,
+  sameSite: (env.isProd ? 'none' : 'lax') as 'none' | 'lax',
   path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
@@ -20,16 +20,26 @@ export const authController = {
   }),
 
   login: asyncHandler(async (req: Request, res: Response) => {
-    const { email, password } = req.body;
-    const result = await authService.login(email, password);
+    // Accept both `email` (legacy field name) and `identifier` (mobile/phone login)
+    const identifier: string = req.body.identifier || req.body.email || '';
+    const { password } = req.body;
+    const result = await authService.login(identifier, password);
     res.cookie('refreshToken', result.refreshToken, refreshCookieOptions);
+    // Also send refreshToken in JSON body so mobile clients can persist in localStorage
+    // (iOS Safari / Android Chrome block cross-site httpOnly cookies on subdomains)
     return sendSuccess(res, result, 'Logged in successfully');
   }),
 
   refresh: asyncHandler(async (req: Request, res: Response) => {
+    // Accept token from: httpOnly cookie (desktop) OR request body (mobile localStorage fallback)
     const token = (req.cookies as Record<string, string>)?.refreshToken ?? req.body.refreshToken;
+    if (!token) {
+      res.status(401).json({ success: false, message: 'No refresh token provided' });
+      return;
+    }
     const tokens = await authService.refresh(token);
     res.cookie('refreshToken', tokens.refreshToken, refreshCookieOptions);
+    // Also return refreshToken in body so mobile can save it to localStorage
     return sendSuccess(res, tokens, 'Token refreshed');
   }),
 
@@ -58,6 +68,7 @@ export const authController = {
     const { phone, otp } = req.body;
     const result = await authService.verifyOtp(phone, otp);
     res.cookie('refreshToken', result.refreshToken, refreshCookieOptions);
+    // Also return refreshToken in body for mobile localStorage fallback
     return sendSuccess(res, result, 'Logged in successfully via OTP');
   }),
 

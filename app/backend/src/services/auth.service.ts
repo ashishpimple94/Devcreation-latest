@@ -53,8 +53,16 @@ export const authService = {
     return { user: user.toJSON(), ...tokens };
   },
 
-  async login(email: string, password: string) {
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+  async login(identifier: string, password: string) {
+    const raw = (identifier || '').trim();
+    const cleanPhone = raw.replace(/\D/g, '').slice(-10);
+    const isPhone = /^[6-9]\d{9}$/.test(cleanPhone);
+
+    const query = isPhone
+      ? { $or: [{ phone: cleanPhone }, { phone: raw }] }
+      : { email: raw.toLowerCase() };
+
+    const user = await User.findOne(query).select('+password');
     if (!user || !user.isActive) throw ApiError.unauthorized('Invalid credentials');
 
     const ok = await user.comparePassword(password);

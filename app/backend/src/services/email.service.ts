@@ -13,6 +13,17 @@ import {
   passwordResetEmail,
 } from '@/emails/templates';
 
+/** Checks if an email is real and deliverable (filters out auto-generated phone user placeholders). */
+function isDeliverableEmail(email: string | undefined): boolean {
+  if (!email || !email.includes('@')) return false;
+  const lower = email.toLowerCase().trim();
+  if (lower.endsWith('.example')) return false;
+  // Ignore dummy placeholder emails generated for phone-only OTP users
+  if (lower.startsWith('customer_') && lower.endsWith('@devcreation24.in')) return false;
+  if (/^user\d+@devcreation24\.in$/.test(lower)) return false;
+  return true;
+}
+
 /** Resolves the customer's name + email for an order (order.user may be an id or populated object). */
 async function resolveCustomer(order: IOrder): Promise<{ name: string; email: string } | null> {
   const userObj = order.user as unknown as { _id?: string; name?: string; email?: string } | undefined;
@@ -41,7 +52,7 @@ export const emailService = {
     const name = customer?.name ?? order.shippingAddress.fullName;
 
     // 1. Customer Confirmation Email
-    if (customer?.email) {
+    if (customer?.email && isDeliverableEmail(customer.email)) {
       // Generate invoice asynchronously in memory
       let invoice: Buffer | undefined;
       try {
@@ -62,10 +73,15 @@ export const emailService = {
           ? [{ filename: `invoice-${order.orderNumber}.pdf`, content: invoice, contentType: 'application/pdf' }]
           : undefined,
       });
+    } else {
+      logger.info(`[EMAIL-SERVICE] ℹ️ Customer has no external email registered (${customer?.email || 'none'}), skipping customer invoice email`);
     }
 
     // 2. Admin Store Alert Email
-    const adminEmail = env.ADMIN_NOTIFY_EMAIL || env.SEED_ADMIN_EMAIL || 'support@devcreation24.in';
+    let adminEmail = env.ADMIN_NOTIFY_EMAIL || 'support@devcreation24.in';
+    if (!adminEmail || adminEmail.includes('.example')) {
+      adminEmail = 'support@devcreation24.in';
+    }
     if (adminEmail) {
       const adminTpl = adminNewOrderEmail(order, name);
       mailQueue.enqueue({
@@ -84,8 +100,8 @@ export const emailService = {
   /** On status change (Confirmed, Packing, Shipped, Delivered): notify customer asynchronously. */
   async sendOrderStatus(order: IOrder, status: OrderStatus, note?: string): Promise<void> {
     const customer = await resolveCustomer(order);
-    if (!customer?.email) {
-      logger.info(`[EMAIL-SERVICE] ⏭️ Skipping order status email for Order #${order.orderNumber} (no customer email found)`);
+    if (!customer?.email || !isDeliverableEmail(customer.email)) {
+      logger.info(`[EMAIL-SERVICE] ⏭️ Skipping order status email for Order #${order.orderNumber} (no valid customer email found)`);
       return;
     }
 
@@ -104,7 +120,7 @@ export const emailService = {
 
   /** On registration: send a welcome email to the customer. */
   async sendWelcome(user: { name: string; email: string }): Promise<void> {
-    if (!user.email) return;
+    if (!user.email || !isDeliverableEmail(user.email)) return;
     const tpl = welcomeEmail(user.name);
     mailQueue.enqueue({
       dedupKey: `welcome_${user.email}`,
@@ -117,7 +133,7 @@ export const emailService = {
 
   /** On forgot password: send password reset email with token link. */
   async sendPasswordReset(user: { name: string; email: string }, token: string): Promise<void> {
-    if (!user.email) return;
+    if (!user.email || !isDeliverableEmail(user.email)) return;
     const resetUrl = `${env.STORE_URL}/reset-password?token=${encodeURIComponent(token)}`;
     const tpl = passwordResetEmail(user.name, resetUrl);
     mailQueue.enqueue({

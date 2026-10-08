@@ -14,8 +14,11 @@ export async function connectDatabase(): Promise<void> {
   mongoose.connection.on('disconnected', () => logger.warn('MongoDB disconnected'));
 
   await mongoose.connect(env.MONGODB_URI, {
-    maxPoolSize: 20,
-    serverSelectionTimeoutMS: 10000,
+    maxPoolSize: 50,
+    minPoolSize: 5,
+    serverSelectionTimeoutMS: 8000,
+    socketTimeoutMS: 45000,
+    family: 4,
   });
 }
 

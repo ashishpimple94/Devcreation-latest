@@ -133,5 +133,9 @@ const orderSchema = new Schema<IOrder>(
 orderSchema.index({ status: 1, createdAt: -1 });
 // A customer's own orders, newest first.
 orderSchema.index({ user: 1, createdAt: -1 });
+// Payment status filtering for admin financials.
+orderSchema.index({ paymentStatus: 1, createdAt: -1 });
+// Rapid lookup by customer contact number.
+orderSchema.index({ 'shippingAddress.phone': 1 });
 
 export const Order = model<IOrder>('Order', orderSchema);
