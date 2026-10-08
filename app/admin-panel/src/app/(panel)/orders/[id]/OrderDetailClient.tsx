@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { adminService } from '@/services/admin.service';
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/OrderStatusBadge';
 import { ErrorState, Skeleton } from '@/components/ui';
-import { ConfirmDialog } from '@/components/ui/Modal';
+import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { formatDateTime, formatRupee, cn, resolveImageUrl } from '@/lib/utils';
 import type { Order, OrderStatus } from '@/types';
@@ -194,22 +194,37 @@ export function OrderDetailClient() {
         {/* Status Transition Action Bar */}
         {transitions.length > 0 && (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-4">
-            <span className="text-xs text-ink-2">Advance order to next stage:</span>
+            <span className="text-xs text-ink-2 font-medium">Advance fulfillment stage:</span>
             <div className="flex flex-wrap gap-2">
-              {transitions.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setPendingStatus(s)}
-                  className={cn(
-                    'rounded-xl px-4 py-2 font-util text-xs font-bold uppercase tracking-wider transition-all',
-                    s === 'cancelled'
-                      ? 'border border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
-                      : 'border border-deep bg-deep text-white hover:bg-[#3D2A1E] shadow-xs',
-                  )}
-                >
-                  Mark as {s} →
-                </button>
-              ))}
+              {transitions.map((s) => {
+                const label =
+                  s === 'confirmed'
+                    ? '2. Mark Confirmed →'
+                    : s === 'processing'
+                      ? '3. Mark Packing →'
+                      : s === 'shipped'
+                        ? '4. Mark Shipped →'
+                        : s === 'delivered'
+                          ? '5. Mark Delivered →'
+                          : s === 'cancelled'
+                            ? 'Cancel Order'
+                            : `Mark as ${s} →`;
+
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setPendingStatus(s)}
+                    className={cn(
+                      'rounded-xl px-4 py-2 font-util text-xs font-bold uppercase tracking-wider transition-all',
+                      s === 'cancelled'
+                        ? 'border border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+                        : 'border border-deep bg-deep text-white hover:bg-[#3D2A1E] shadow-xs',
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -402,27 +417,85 @@ export function OrderDetailClient() {
         </div>
       </div>
 
-      {/* Confirmation Modal */}
-      <ConfirmDialog
+      {/* Status Update & Email Modal */}
+      <Modal
         open={Boolean(pendingStatus)}
-        title={`Advance order to "${pendingStatus}"?`}
-        message="This updates the order and notifies the customer in real time. You can add an optional note below."
-        confirmLabel="Confirm Status Change"
-        loading={updating}
-        onConfirm={applyStatus}
-        onCancel={() => setPendingStatus(null)}
-      />
+        onClose={() => {
+          setPendingStatus(null);
+          setNote('');
+        }}
+        title={`Advance Order #${order.orderNumber} to "${pendingStatus?.toUpperCase()}"?`}
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-ink-3">
+            {pendingStatus === 'confirmed'
+              ? 'Stage 2: Notifies the customer that their order has been confirmed by our artisans and is scheduled for preparation.'
+              : pendingStatus === 'processing'
+                ? 'Stage 3: Notifies the customer that their items are currently being hand-poured, inspected, and packed in luxury gift wrap.'
+                : pendingStatus === 'shipped'
+                  ? 'Stage 4: Notifies the customer that the parcel is dispatched with courier and tracking details.'
+                  : pendingStatus === 'delivered'
+                    ? 'Stage 5: Marks order complete and sends a thank-you email with sachet fragrance care instructions.'
+                    : pendingStatus === 'cancelled'
+                      ? 'Cancels the order, returns inventory to stock, and notifies the customer.'
+                      : 'Updates order status and sends a branded notification email to the customer.'}
+          </p>
 
-      {pendingStatus && (
-        <div className="fixed bottom-6 left-1/2 z-[130] -translate-x-1/2">
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Optional note for customer / tracking (e.g. Courier: BlueDart, AWB: 12345)"
-            className="w-[min(460px,90vw)] rounded-xl border border-line bg-white px-4 py-3 text-sm shadow-card outline-none focus:border-gold"
-          />
+          <div>
+            <label className="util-label mb-1.5 block">
+              {pendingStatus === 'shipped'
+                ? 'Courier Partner & Tracking AWB (Optional)'
+                : 'Concierge / Studio Note for Customer (Optional)'}
+            </label>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={
+                pendingStatus === 'shipped'
+                  ? 'e.g., Courier: BlueDart, AWB: 987654321'
+                  : 'Optional note to display inside the customer email'
+              }
+              className="w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-xs text-ink outline-none focus:border-gold"
+              autoFocus
+            />
+          </div>
+
+          <div className="rounded-xl border border-gold/30 bg-gold/5 p-3 text-[0.72rem] text-ink-2 flex items-center gap-2">
+            <span>📧</span>
+            <span>
+              A luxury branded email will be dispatched automatically via scalable SMTP to{' '}
+              <strong className="text-ink">{customer?.email || 'the customer'}</strong>.
+            </span>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              className="rounded-xl border border-line px-4 py-2 text-xs font-semibold text-ink-3 hover:text-ink"
+              onClick={() => {
+                setPendingStatus(null);
+                setNote('');
+              }}
+              disabled={updating}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={cn(
+                'rounded-xl px-5 py-2 font-util text-xs font-bold uppercase tracking-wider text-white shadow-xs transition-all disabled:opacity-50',
+                pendingStatus === 'cancelled'
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : 'bg-deep hover:bg-[#3D2A1E]',
+              )}
+              onClick={applyStatus}
+              disabled={updating}
+            >
+              {updating ? 'Updating & Sending…' : `Confirm ${pendingStatus}`}
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

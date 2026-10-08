@@ -7,7 +7,7 @@ interface AuthState {
   status: 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
   init: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  sendOtp: (phone: string) => Promise<{ phone: string; message: string; demoOtp?: string; expiresInSeconds?: number }>;
+  sendOtp: (phone: string) => Promise<{ phone: string; message: string; provider?: string; demoOtp?: string; expiresInSeconds?: number }>;
   loginWithOtp: (phone: string, otp: string) => Promise<void>;
   register: (input: { name: string; email: string; password: string; phone?: string }) => Promise<void>;
   logout: () => Promise<void>;
@@ -47,7 +47,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   async sendOtp(phone: string) {
     try {
-      const res = await api.post<{ phone: string; message: string; demoOtp?: string; expiresInSeconds?: number }>(
+      const res = await api.post<{
+        phone: string;
+        message: string;
+        provider?: string;
+        demoOtp?: string;
+        expiresInSeconds?: number;
+      }>(
         '/auth/otp/send',
         { phone },
         { auth: false },

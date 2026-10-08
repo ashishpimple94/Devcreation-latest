@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
@@ -28,8 +28,10 @@ function LoginForm() {
 
   // Mobile OTP States
   const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [otpSent, setOtpSent] = useState(false);
+  const [unverifiedTrialNotice, setUnverifiedTrialNotice] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
@@ -87,49 +89,111 @@ function LoginForm() {
       const res = await sendOtp(clean);
       setOtpSent(true);
       setCountdown(30);
-      if (res.demoOtp) {
-        setOtp(res.demoOtp);
-        success(`Verification code sent! (Test OTP: ${res.demoOtp})`);
+      setOtpDigits(['', '', '', '', '', '']);
+
+      if (res.provider === 'simulated' && res.demoOtp) {
+        setUnverifiedTrialNotice(res.demoOtp);
+        info(`Twilio Trial mode: Real SMS is active for +91 9090385555. For test numbers, code is ${res.demoOtp}`);
       } else {
-        success('Verification code sent to +91 ' + clean);
+        setUnverifiedTrialNotice(null);
+        success(`Verification code sent to +91 ${clean}`);
       }
+
+      // Auto-focus first digit box
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Could not send OTP. Please try again.');
+      error(err instanceof Error ? err.message : 'Could not send verification code. Please try again.');
     } finally {
       setSendingOtp(false);
     }
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitOtpVerification = async (code: string) => {
     const clean = phone.replace(/\D/g, '').slice(-10);
-    if (clean.length !== 10) {
-      error('Invalid phone number');
-      return;
-    }
-    if (!otp || otp.trim().length !== 6) {
-      error('Please enter the 6-digit verification code');
-      return;
-    }
+    if (clean.length !== 10 || code.length !== 6) return;
 
     setVerifyingOtp(true);
     try {
-      await loginWithOtp(clean, otp.trim());
+      await loginWithOtp(clean, code);
       refreshCart().catch(() => {});
       refreshNotifications().catch(() => {});
 
       const currentUser = useAuthStore.getState().user;
       success(`Welcome to Dev Creation, ${currentUser?.name || 'Customer'}!`);
 
-      // Redirect smoothly to the Collection area
       let redirect = params.get('redirect');
       if (!redirect || redirect === '/account' || redirect === '/login') {
         redirect = '/products';
       }
       router.push(redirect);
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Invalid OTP. Please check the code.');
+      error(err instanceof Error ? err.message : 'Invalid verification code. Please check your SMS.');
       setVerifyingOtp(false);
+      // Focus first digit box on error
+      inputRefs.current[0]?.focus();
+    }
+  };
+
+  const handleVerifyOtp = (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = otpDigits.join('');
+    if (code.length !== 6) {
+      error('Please enter the complete 6-digit verification code');
+      return;
+    }
+    submitOtpVerification(code);
+  };
+
+  const handleDigitChange = (index: number, val: string) => {
+    const numeric = val.replace(/\D/g, '');
+    if (!numeric) {
+      const updated = [...otpDigits];
+      updated[index] = '';
+      setOtpDigits(updated);
+      return;
+    }
+
+    const digit = numeric.slice(-1);
+    const updated = [...otpDigits];
+    updated[index] = digit;
+    setOtpDigits(updated);
+
+    // Jump to next input
+    if (index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when all 6 digits are typed
+    const fullCode = updated.join('');
+    if (fullCode.length === 6) {
+      submitOtpVerification(fullCode);
+    }
+  };
+
+  const handleDigitKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePasteOtp = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+
+    const updated = [...otpDigits];
+    for (let i = 0; i < 6; i++) {
+      updated[i] = pasted[i] || '';
+    }
+    setOtpDigits(updated);
+
+    if (pasted.length === 6) {
+      inputRefs.current[5]?.focus();
+      submitOtpVerification(pasted);
+    } else {
+      inputRefs.current[Math.min(pasted.length, 5)]?.focus();
     }
   };
 
@@ -221,42 +285,95 @@ function LoginForm() {
               </Button>
             </form>
           ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div className="rounded-xl border border-gold/30 bg-gold/5 p-3 text-xs text-ink">
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <div className="rounded-xl border border-gold/30 bg-gold/5 p-3.5 text-xs text-ink">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-ink-2">Code sent to:</span>
+                  <span className="font-medium text-ink-2">Code sent via SMS to:</span>
                   <button
                     type="button"
                     onClick={() => {
                       setOtpSent(false);
-                      setOtp('');
+                      setUnverifiedTrialNotice(null);
+                      setOtpDigits(['', '', '', '', '', '']);
                     }}
-                    className="font-util text-[0.6rem] font-bold uppercase tracking-wider text-gold hover:text-gold-dk underline"
+                    className="font-util text-[0.65rem] font-bold uppercase tracking-wider text-gold hover:text-gold-dk underline"
                   >
                     Change Number
                   </button>
                 </div>
-                <div className="mt-0.5 font-display text-base font-semibold text-ink">+91 {phone}</div>
+                <div className="mt-1 font-display text-base font-semibold text-ink">
+                  +91 {phone.length === 10 ? `${phone.slice(0, 5)} ${phone.slice(5)}` : phone}
+                </div>
               </div>
 
               <div>
-                <label className="util-label mb-1.5 block">Enter 6-Digit Code</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  required
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="• • • • • •"
-                  className="w-full rounded-xl border border-line bg-surface px-4 py-3 text-center font-mono text-xl tracking-[0.3em] text-ink outline-none transition-colors focus:border-gold"
-                  autoFocus
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label className="util-label block">Enter 6-Digit Code</label>
+                  <span className="font-util text-[0.62rem] text-ink-3">Auto-advances</span>
+                </div>
+
+                {/* 6-Cell Digit Input Grid */}
+                <div className="grid grid-cols-6 gap-2">
+                  {[0, 1, 2, 3, 4, 5].map((index) => (
+                    <input
+                      key={index}
+                      ref={(el) => {
+                        inputRefs.current[index] = el;
+                      }}
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={1}
+                      value={otpDigits[index] || ''}
+                      onChange={(e) => handleDigitChange(index, e.target.value)}
+                      onKeyDown={(e) => handleDigitKeyDown(index, e)}
+                      onPaste={handlePasteOtp}
+                      autoFocus={index === 0}
+                      className={cn(
+                        'h-12 w-full rounded-xl border bg-surface text-center font-mono text-xl font-bold text-ink outline-none transition-all',
+                        otpDigits[index]
+                          ? 'border-gold bg-gold/5 shadow-xs'
+                          : 'border-line focus:border-gold focus:ring-2 focus:ring-gold/20',
+                      )}
+                    />
+                  ))}
+                </div>
+
+                <p className="mt-2 text-[0.68rem] text-ink-3 flex items-center gap-1.5">
+                  <span>🔒</span>
+                  <span>Code expires in 5 minutes. Never share this OTP with anyone.</span>
+                </p>
+
+                {/* Notice when using random unverified numbers with a Twilio trial account */}
+                {unverifiedTrialNotice && (
+                  <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50/90 p-3 text-xs text-amber-900">
+                    <div className="font-semibold flex items-center gap-1.5">
+                      <span>ℹ️</span>
+                      <span>Twilio Trial Account Notice</span>
+                    </div>
+                    <p className="mt-1 text-[0.72rem] leading-relaxed text-amber-800">
+                      Twilio free trial only delivers live SMS to your pre-verified number (<strong>+91 9090385555</strong>).
+                      For other numbers, test code is: <strong className="font-mono text-xs text-ink bg-white px-1.5 py-0.5 rounded border border-amber-300">{unverifiedTrialNotice}</strong> (or master code <strong className="font-mono">123456</strong>).
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = unverifiedTrialNotice.split('');
+                        setOtpDigits(d);
+                        submitOtpVerification(unverifiedTrialNotice);
+                      }}
+                      className="mt-2 text-[0.65rem] font-bold uppercase tracking-wider text-amber-950 underline hover:text-black flex items-center gap-1"
+                    >
+                      <span>Auto-fill {unverifiedTrialNotice} &amp; Sign In</span>
+                      <span>&rarr;</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-xs pt-1">
                 {countdown > 0 ? (
-                  <span className="font-util text-[0.65rem] text-ink-3">
+                  <span className="font-util text-[0.68rem] text-ink-3">
                     Resend code in <strong className="text-gold-dk">{countdown}s</strong>
                   </span>
                 ) : (
@@ -264,15 +381,20 @@ function LoginForm() {
                     type="button"
                     onClick={() => handleSendOtp()}
                     disabled={sendingOtp}
-                    className="font-util text-[0.65rem] font-bold uppercase tracking-wider text-gold hover:text-gold-dk underline"
+                    className="font-util text-[0.68rem] font-bold uppercase tracking-wider text-gold hover:text-gold-dk underline"
                   >
-                    Resend OTP
+                    Resend SMS Code
                   </button>
                 )}
               </div>
 
-              <Button type="submit" loading={verifyingOtp} className="w-full">
-                {verifyingOtp ? 'Verifying…' : 'Verify & Enter Collection'}
+              <Button
+                type="submit"
+                loading={verifyingOtp}
+                disabled={otpDigits.join('').length !== 6 || verifyingOtp}
+                className="w-full"
+              >
+                {verifyingOtp ? 'Verifying Code…' : 'Verify & Enter Collection'}
               </Button>
             </form>
           )}
@@ -328,8 +450,8 @@ function LoginForm() {
           </Button>
 
           {loadingEmail && takingLong && (
-            <p className="mt-2 text-center text-xs text-amber-600 animate-pulse font-util tracking-wide">
-              Waking up cloud server… (Render free tier cold start)
+            <p className="mt-2 text-center text-xs text-ink-3 animate-pulse font-util tracking-wide">
+              Connecting securely to Dev Creation…
             </p>
           )}
         </form>
