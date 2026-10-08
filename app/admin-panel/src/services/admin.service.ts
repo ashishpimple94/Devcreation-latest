@@ -61,6 +61,8 @@ export const adminService = {
   getOrder: async (id: string): Promise<Order> => (await api.get<Order>(`/admin/orders/${id}`)).data,
   updateOrderStatus: async (id: string, status: OrderStatus, note?: string): Promise<Order> =>
     (await api.patch<Order>(`/admin/orders/${id}/status`, { status, note })).data,
+  deleteOrder: async (id: string): Promise<{ success: boolean; orderNumber: string }> =>
+    (await api.delete<{ success: boolean; orderNumber: string }>(`/admin/orders/${id}`)).data,
 
   // Customers
   listCustomers: async (params: Record<string, unknown>): Promise<Listed<User>> => {

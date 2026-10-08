@@ -37,6 +37,22 @@ const STATUS_MESSAGE: Record<OrderStatus, (n: string) => string> = {
   [ORDER_STATUS.REFUNDED]: (n) => `Order ${n} has been refunded`,
 };
 
+function buildOrderFilter(orderId: string, extraFilter: Record<string, unknown> = {}): FilterQuery<IOrder> {
+  const trimmed = (orderId || '').trim();
+  if (!trimmed) {
+    return { _id: null, ...extraFilter } as unknown as FilterQuery<IOrder>;
+  }
+  if (mongoose.isValidObjectId(trimmed)) {
+    return {
+      $or: [
+        { _id: new Types.ObjectId(trimmed), ...extraFilter },
+        { orderNumber: trimmed, ...extraFilter },
+      ],
+    } as unknown as FilterQuery<IOrder>;
+  }
+  return { orderNumber: trimmed, ...extraFilter } as unknown as FilterQuery<IOrder>;
+}
+
 export const orderService = {
   /**
    * Creates an order from the user's cart inside a transaction: validates stock,
@@ -220,18 +236,20 @@ export const orderService = {
   },
 
   async getForUser(userId: string, orderId: string) {
-    const order = await Order.findOne({ _id: orderId, user: userId }).lean();
+    const filter = buildOrderFilter(orderId, { user: userId });
+    const order = await Order.findOne(filter).lean();
     if (!order) throw ApiError.notFound('Order not found');
     return order;
   },
 
   async cancelByUser(userId: string, orderId: string) {
-    const order = await Order.findOne({ _id: orderId, user: userId });
+    const filter = buildOrderFilter(orderId, { user: userId });
+    const order = await Order.findOne(filter);
     if (!order) throw ApiError.notFound('Order not found');
     if (!ORDER_STATUS_TRANSITIONS[order.status].includes(ORDER_STATUS.CANCELLED)) {
       throw ApiError.badRequest(`An order that is ${order.status} can no longer be cancelled`);
     }
-    return this.changeStatus(orderId, ORDER_STATUS.CANCELLED, userId, 'Cancelled by customer');
+    return this.changeStatus(order._id.toString(), ORDER_STATUS.CANCELLED, userId, 'Cancelled by customer');
   },
 
   // ---- Admin ----
@@ -259,7 +277,8 @@ export const orderService = {
   },
 
   async adminGet(orderId: string) {
-    const order = await Order.findById(orderId)
+    const filter = buildOrderFilter(orderId);
+    const order = await Order.findOne(filter)
       .populate('user', 'name email phone')
       .populate('statusHistory.changedBy', 'name role')
       .lean();
@@ -273,7 +292,8 @@ export const orderService = {
    * notification to the owning customer.
    */
   async changeStatus(orderId: string, next: OrderStatus, actorId: string, note?: string) {
-    const order = await Order.findById(orderId);
+    const filter = buildOrderFilter(orderId);
+    const order = await Order.findOne(filter);
     if (!order) throw ApiError.notFound('Order not found');
 
     const allowed = ORDER_STATUS_TRANSITIONS[order.status];
@@ -318,16 +338,52 @@ export const orderService = {
 
     // Fire-and-forget status-update email to the customer.
     void emailService.sendOrderStatus(order, next, note).catch((err) =>
-      logger.warn('Order-status email failed', { orderId, err: (err as Error).message }),
+      logger.warn('Order-status email failed', { orderId: order._id.toString(), err: (err as Error).message }),
     );
 
     logger.info('Order status changed', {
-      orderId,
+      orderId: order._id.toString(),
       from: allowed,
       to: next,
       actorId,
     });
     return order.toObject();
+  },
+
+  /**
+   * Permanently deletes an order from the database.
+   * If the order was not yet delivered or cancelled, restores item quantities to inventory stock.
+   */
+  async adminDelete(orderId: string, actorId: string) {
+    const filter = buildOrderFilter(orderId);
+    const order = await Order.findOne(filter);
+    if (!order) throw ApiError.notFound('Order not found');
+
+    const deletedOrderNumber = order.orderNumber;
+    const deletedId = order._id.toString();
+
+    // Restore stock if the order was active and not finalized
+    if (order.status !== ORDER_STATUS.DELIVERED && order.status !== ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.REFUNDED) {
+      await Promise.all(
+        order.items.map((item) =>
+          Product.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } }).catch(() => null),
+        ),
+      );
+      await this.invalidateProductCaches();
+    }
+
+    await Order.deleteOne({ _id: order._id });
+
+    // Clear dashboard caches
+    await cache.del(CACHE.KEY.dashboard());
+
+    logger.info(`[ORDER] Order #${deletedOrderNumber} (${deletedId}) permanently deleted by staff ${actorId}`);
+
+    return {
+      success: true,
+      orderNumber: deletedOrderNumber,
+      id: deletedId,
+    };
   },
 
   async invalidateProductCaches() {

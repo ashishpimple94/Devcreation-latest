@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { orderService } from '@/services/order.service';
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/OrderStatusBadge';
-import { ErrorState, Skeleton, Button } from '@/components/ui';
+import { Skeleton, Button } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { useSocket } from '@/hooks/useSocket';
 import { formatDateTime, formatRupee, resolveImageUrl } from '@/lib/utils';
@@ -15,7 +16,23 @@ const TIMELINE = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'] 
 export function OrderDetailClient() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
-  const id = params?.id && params.id !== 'sample' ? params.id : (searchParams?.get('id') || '');
+  const rawId = params?.id;
+  const searchId = searchParams?.get('id') || searchParams?.get('order');
+
+  let id = (rawId && rawId !== 'detail' && rawId !== 'sample' ? rawId : searchId) || '';
+  if (!id && typeof window !== 'undefined') {
+    const sp = new URLSearchParams(window.location.search);
+    const qId = sp.get('id') || sp.get('order');
+    if (qId) {
+      id = qId;
+    } else {
+      const match = window.location.pathname.match(/\/account\/orders\/([^/?#]+)/);
+      if (match && match[1] && match[1] !== 'detail' && match[1] !== 'sample') {
+        id = decodeURIComponent(match[1]);
+      }
+    }
+  }
+
   const { success, error } = useToast();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,15 +40,19 @@ export function OrderDetailClient() {
   const [cancelling, setCancelling] = useState(false);
 
   const load = useCallback(() => {
-    if (!id || id === 'sample') {
+    if (!id || id === 'sample' || id === 'detail') {
       setLoading(false);
       return;
     }
     setLoading(true);
+    setErrorMsg(null);
     orderService
       .getMine(id)
-      .then(setOrder)
-      .catch((err) => setErrorMsg(err instanceof Error ? err.message : 'Failed to load'))
+      .then((ord) => {
+        setOrder(ord);
+        setErrorMsg(null);
+      })
+      .catch((err) => setErrorMsg(err instanceof Error ? err.message : 'Failed to load order'))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -40,15 +61,15 @@ export function OrderDetailClient() {
   // Live-update this order when a real-time status change arrives.
   useSocket({
     onOrderUpdated: (payload) => {
-      if (payload.relatedEntity?.id === id) load();
+      if (payload.relatedEntity?.id === id || payload.relatedEntity?.id === order?._id) load();
     },
   });
 
   const cancel = async () => {
-    if (!id) return;
+    if (!order) return;
     setCancelling(true);
     try {
-      const updated = await orderService.cancel(id);
+      const updated = await orderService.cancel(order._id);
       setOrder(updated);
       success('Order cancelled');
     } catch (err) {
@@ -59,7 +80,39 @@ export function OrderDetailClient() {
   };
 
   if (loading) return <Skeleton className="h-96 w-full" />;
-  if (errorMsg || !order) return <ErrorState message={errorMsg ?? 'Order not found'} onRetry={load} />;
+
+  if (!id || id === 'sample' || id === 'detail') {
+    return (
+      <div className="rounded-2xl border border-line-soft bg-surface-2/60 p-8 text-center">
+        <span className="text-4xl">📋</span>
+        <h2 className="mt-3 font-display text-xl font-medium text-ink">No Order Selected</h2>
+        <p className="mt-2 text-xs text-ink-3">Please choose an order from your order history to view tracking details.</p>
+        <Link href="/account/orders" className="btn-primary mt-5 inline-block text-xs">
+          View All Orders
+        </Link>
+      </div>
+    );
+  }
+
+  if (errorMsg || !order) {
+    return (
+      <div className="rounded-2xl border border-line-soft bg-surface-2/60 p-8 text-center">
+        <span className="text-4xl">🔍</span>
+        <h2 className="mt-3 font-display text-xl font-medium text-ink">Order Not Found</h2>
+        <p className="mt-2 text-xs text-ink-3">
+          {errorMsg || `Could not find order "${id}". Please verify the order number or check your order history.`}
+        </p>
+        <div className="mt-5 flex items-center justify-center gap-3">
+          <button onClick={load} className="btn-secondary text-xs">
+            Try Again
+          </button>
+          <Link href="/account/orders" className="btn-primary text-xs">
+            Back to Orders
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const canCancel = ['pending', 'confirmed', 'processing'].includes(order.status);
   const currentStep = TIMELINE.indexOf(order.status as (typeof TIMELINE)[number]);

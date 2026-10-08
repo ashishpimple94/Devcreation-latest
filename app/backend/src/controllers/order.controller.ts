@@ -45,4 +45,9 @@ export const orderController = {
     );
     return sendSuccess(res, order, 'Order status updated');
   }),
+
+  adminDelete: asyncHandler(async (req: Request, res: Response) => {
+    const result = await orderService.adminDelete(req.params.id, req.user!.id);
+    return sendSuccess(res, result, `Order #${result.orderNumber} deleted successfully`);
+  }),
 };

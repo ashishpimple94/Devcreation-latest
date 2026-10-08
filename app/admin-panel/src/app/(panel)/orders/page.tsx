@@ -61,6 +61,25 @@ export default function AdminOrdersPage() {
   const [nextStatus, setNextStatus] = useState<OrderStatus>('confirmed');
   const [statusNote, setStatusNote] = useState('');
 
+  // Delete Order Confirmation State
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [deletingOrder, setDeletingOrder] = useState(false);
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    setDeletingOrder(true);
+    try {
+      await adminService.deleteOrder(orderToDelete._id);
+      success(`Order #${orderToDelete.orderNumber} deleted successfully`);
+      setOrderToDelete(null);
+      load();
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : 'Failed to delete order');
+    } finally {
+      setDeletingOrder(false);
+    }
+  };
+
   const debouncedSearch = useDebounce(search);
 
   // Initialize search from URL params if present (e.g. ?search=email or ?id=123)
@@ -261,16 +280,29 @@ export default function AdminOrdersPage() {
       key: 'actions',
       header: '',
       render: (o) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            openOrderDetail(o);
-          }}
-          className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-3 py-1.5 font-util text-[0.65rem] font-bold uppercase tracking-wider text-ink transition-colors hover:border-gold hover:text-gold-dk"
-        >
-          <span>View</span>
-          <span>→</span>
-        </button>
+        <div className="flex items-center gap-1.5 justify-end">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openOrderDetail(o);
+            }}
+            className="inline-flex items-center gap-1 rounded-lg border border-line bg-white px-3 py-1.5 font-util text-[0.65rem] font-bold uppercase tracking-wider text-ink transition-colors hover:border-gold hover:text-gold-dk"
+          >
+            <span>View</span>
+            <span>→</span>
+          </button>
+          <button
+            type="button"
+            title="Delete Order"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOrderToDelete(o);
+            }}
+            className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50/70 p-1.5 text-xs text-red-600 transition-colors hover:bg-red-100 hover:border-red-300"
+          >
+            🗑️
+          </button>
+        </div>
       ),
     },
   ];
@@ -595,7 +627,7 @@ export default function AdminOrdersPage() {
                   onClick={() => window.print()}
                   className="rounded-lg border border-line bg-white px-3 py-2 font-util text-xs uppercase tracking-wider text-ink-2 hover:bg-surface-2"
                 >
-                  🖨️ Print Invoice
+                  🖨️ Print Slip
                 </button>
                 <a
                   href={`mailto:${customerObj?.email || ''}?subject=Dev%20Creation%20Order%20%23${selectedOrder.orderNumber}`}
@@ -603,6 +635,17 @@ export default function AdminOrdersPage() {
                 >
                   ✉️ Email Customer
                 </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const toDel = selectedOrder;
+                    setSelectedOrder(null);
+                    setOrderToDelete(toDel);
+                  }}
+                  className="rounded-lg border border-red-200 bg-red-50/70 px-3 py-2 font-util text-xs uppercase tracking-wider text-red-700 hover:bg-red-100 hover:border-red-300"
+                >
+                  🗑️ Delete Order
+                </button>
               </div>
 
               <button
@@ -611,6 +654,53 @@ export default function AdminOrdersPage() {
                 className="rounded-lg bg-deep px-4 py-2 font-util text-xs font-semibold uppercase tracking-wider text-white hover:bg-[#3D2A1E]"
               >
                 Done / Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Order Confirmation Modal */}
+      <Modal
+        open={Boolean(orderToDelete)}
+        onClose={() => {
+          if (!deletingOrder) setOrderToDelete(null);
+        }}
+        title={orderToDelete ? `Delete Order #${orderToDelete.orderNumber}` : 'Delete Order'}
+      >
+        {orderToDelete && (
+          <div className="space-y-4">
+            <p className="text-sm text-ink-2">
+              Are you sure you want to permanently delete order <strong className="text-ink">#{orderToDelete.orderNumber}</strong>?
+            </p>
+
+            <div className="rounded-xl border border-red-200 bg-red-50/80 p-3.5 text-xs text-red-800 space-y-1">
+              <div className="font-semibold flex items-center gap-1.5">
+                <span>⚠️</span>
+                <span>Permanent Deletion</span>
+              </div>
+              <p className="text-[0.72rem] text-red-700">
+                This will completely remove the order from the database and restore any unfulfilled items back to stock inventory. This action cannot be reversed.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
+              <button
+                type="button"
+                disabled={deletingOrder}
+                onClick={() => setOrderToDelete(null)}
+                className="rounded-xl border border-line bg-white px-4 py-2 font-util text-xs font-semibold uppercase tracking-wider text-ink-3 hover:text-ink hover:border-gold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingOrder}
+                onClick={handleDeleteOrder}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-5 py-2 font-util text-xs font-bold uppercase tracking-wider text-white shadow-xs hover:bg-red-700 disabled:opacity-50"
+              >
+                <span>🗑️</span>
+                <span>{deletingOrder ? 'Deleting Order…' : 'Permanently Delete'}</span>
               </button>
             </div>
           </div>

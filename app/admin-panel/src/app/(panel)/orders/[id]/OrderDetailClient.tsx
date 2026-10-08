@@ -34,7 +34,23 @@ export function OrderDetailClient() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const rawId = params?.id;
-  const id = (rawId && rawId !== 'detail' ? rawId : searchParams.get('id')) || '';
+  const searchId = searchParams?.get('id') || searchParams?.get('order');
+
+  // Resolve ID from route params, query string, or window location fallback
+  let id = (rawId && rawId !== 'detail' && rawId !== 'sample' ? rawId : searchId) || '';
+  if (!id && typeof window !== 'undefined') {
+    const sp = new URLSearchParams(window.location.search);
+    const qId = sp.get('id') || sp.get('order');
+    if (qId) {
+      id = qId;
+    } else {
+      const match = window.location.pathname.match(/\/orders\/([^/?#]+)/);
+      if (match && match[1] && match[1] !== 'detail' && match[1] !== 'sample') {
+        id = decodeURIComponent(match[1]);
+      }
+    }
+  }
+
   const router = useRouter();
   const { success, error } = useToast();
   const [order, setOrder] = useState<Order | null>(null);
@@ -43,24 +59,35 @@ export function OrderDetailClient() {
   const [pendingStatus, setPendingStatus] = useState<OrderStatus | null>(null);
   const [note, setNote] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(() => {
-    if (!id) return;
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    setErrorMsg(null);
     adminService
       .getOrder(id)
-      .then(setOrder)
-      .catch((err) => setErrorMsg(err instanceof Error ? err.message : 'Failed to load order'))
+      .then((ord) => {
+        setOrder(ord);
+        setErrorMsg(null);
+      })
+      .catch((err) => {
+        setErrorMsg(err instanceof Error ? err.message : 'Failed to load order');
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
   useEffect(load, [load]);
 
   const applyStatus = async () => {
-    if (!pendingStatus) return;
+    if (!pendingStatus || !order) return;
     setUpdating(true);
     try {
-      const updated = await adminService.updateOrderStatus(id, pendingStatus, note || undefined);
+      const updated = await adminService.updateOrderStatus(order._id, pendingStatus, note || undefined);
       setOrder(updated);
       success(`Order updated to "${pendingStatus}"`);
       setPendingStatus(null);
@@ -69,6 +96,21 @@ export function OrderDetailClient() {
       error(err instanceof Error ? err.message : 'Status update failed');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!order) return;
+    setDeleting(true);
+    try {
+      await adminService.deleteOrder(order._id);
+      success(`Order #${order.orderNumber} deleted successfully`);
+      setShowDeleteModal(false);
+      router.push('/orders');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to delete order');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -85,7 +127,50 @@ export function OrderDetailClient() {
   };
 
   if (loading) return <Skeleton className="h-96 w-full rounded-2xl" />;
-  if (errorMsg || !order) return <ErrorState message={errorMsg ?? 'Order not found'} onRetry={load} />;
+
+  if (!id) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-line bg-white p-8 text-center shadow-xs">
+        <span className="text-4xl">📋</span>
+        <h2 className="mt-3 font-display text-xl font-medium text-ink">No Order Selected</h2>
+        <p className="mt-2 text-xs text-ink-3">
+          Please select an order from the orders management table to view full details and fulfillment actions.
+        </p>
+        <Link
+          href="/orders"
+          className="mt-5 inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 font-util text-xs font-semibold uppercase tracking-wider text-white transition-colors hover:bg-ink-2"
+        >
+          ← Go to Orders List
+        </Link>
+      </div>
+    );
+  }
+
+  if (errorMsg || !order) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-line bg-white p-8 text-center shadow-xs">
+        <span className="text-4xl">🔍</span>
+        <h2 className="mt-3 font-display text-xl font-medium text-ink">Order Not Found</h2>
+        <p className="mt-2 text-xs text-ink-3">
+          {errorMsg || `The requested order "${id}" could not be located in the database.`}
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <button
+            onClick={load}
+            className="rounded-xl border border-line bg-white px-4 py-2 font-util text-xs font-semibold uppercase tracking-wider text-ink transition-colors hover:border-gold"
+          >
+            Try Again
+          </button>
+          <Link
+            href="/orders"
+            className="rounded-xl bg-ink px-4 py-2 font-util text-xs font-semibold uppercase tracking-wider text-white transition-colors hover:bg-ink-2"
+          >
+            Back to Orders
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const customer = typeof order.user === 'object' && order.user ? order.user : null;
   const transitions = NEXT_STATUSES[order.status] ?? [];
@@ -127,6 +212,13 @@ export function OrderDetailClient() {
           >
             <span>🖨️</span>
             <span>Print Slip</span>
+          </button>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50/80 px-3.5 py-2 font-util text-xs font-semibold uppercase tracking-wider text-red-700 transition-colors hover:bg-red-100 hover:border-red-300"
+          >
+            <span>🗑️</span>
+            <span>Delete Order</span>
           </button>
         </div>
       </div>
@@ -492,6 +584,51 @@ export function OrderDetailClient() {
               disabled={updating}
             >
               {updating ? 'Updating & Sending…' : `Confirm ${pendingStatus}`}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Order Confirmation Modal */}
+      <Modal
+        open={showDeleteModal}
+        onClose={() => {
+          if (!deleting) setShowDeleteModal(false);
+        }}
+        title={`Delete Order #${order.orderNumber}`}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-ink-2">
+            Are you sure you want to permanently delete order <strong className="text-ink">#{order.orderNumber}</strong>?
+          </p>
+
+          <div className="rounded-xl border border-red-200 bg-red-50/80 p-3.5 text-xs text-red-800 space-y-1">
+            <div className="font-semibold flex items-center gap-1.5">
+              <span>⚠️</span>
+              <span>Permanent Deletion</span>
+            </div>
+            <p className="text-[0.72rem] text-red-700">
+              This will completely remove the order from the database. Any item stock for unfulfilled items will be restored to inventory. This action cannot be undone.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => setShowDeleteModal(false)}
+              className="rounded-xl border border-line bg-white px-4 py-2 font-util text-xs font-semibold uppercase tracking-wider text-ink-3 hover:text-ink hover:border-gold"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={handleDeleteOrder}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-5 py-2 font-util text-xs font-bold uppercase tracking-wider text-white shadow-xs hover:bg-red-700 disabled:opacity-50"
+            >
+              <span>🗑️</span>
+              <span>{deleting ? 'Deleting Order…' : 'Permanently Delete'}</span>
             </button>
           </div>
         </div>

@@ -46,6 +46,7 @@ router.delete('/categories/:id', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), admi
 router.get('/orders', orderController.adminList);
 router.get('/orders/:id', orderController.adminGet);
 router.patch('/orders/:id/status', validate(updateOrderStatusSchema), orderController.adminUpdateStatus);
+router.delete('/orders/:id', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), orderController.adminDelete);
 
 // Customer management — admin & super admin
 router.get('/customers', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), adminController.listCustomers);
