@@ -59,7 +59,14 @@ var schema = import_zod.z.object({
   SMTP_PASS: import_zod.z.string().default("Devcreation@890*"),
   EMAIL_FROM: import_zod.z.string().default("Dev Creation <support@devcreation24.in>"),
   ADMIN_NOTIFY_EMAIL: import_zod.z.string().default("support@devcreation24.in"),
-  STORE_URL: import_zod.z.string().default("https://devcreation24.in")
+  STORE_URL: import_zod.z.string().default("https://devcreation24.in"),
+  // ── SMS Gateways (Fast2SMS / 2Factor / Twilio) ───────
+  FAST2SMS_API_KEY: import_zod.z.string().optional(),
+  TWO_FACTOR_API_KEY: import_zod.z.string().optional(),
+  TWILIO_ACCOUNT_SID: import_zod.z.string().optional(),
+  TWILIO_AUTH_TOKEN: import_zod.z.string().optional(),
+  TWILIO_PHONE_NUMBER: import_zod.z.string().optional(),
+  ENABLE_SMS_FALLBACK_DEMO: import_zod.z.union([import_zod.z.boolean(), import_zod.z.enum(["true", "false", "1", "0"])]).default("true").transform((v) => v === true || v === "true" || v === "1")
 });
 var parsed = schema.safeParse(process.env);
 if (!parsed.success) {

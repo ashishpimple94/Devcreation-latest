@@ -7,6 +7,8 @@ import { kv } from '@/redis/kv';
 import { ROLES } from '@/constants';
 import { notificationService } from '@/services/notification.service';
 import { emailService } from '@/services/email.service';
+import { smsService } from '@/services/sms.service';
+import { env } from '@/config/env';
 import { logger } from '@/utils/logger';
 
 interface RegisterInput {
@@ -109,47 +111,85 @@ export const authService = {
 
   async sendOtp(rawPhone: string) {
     const cleanPhone = (rawPhone || '').replace(/\D/g, '').slice(-10);
-    if (cleanPhone.length !== 10) {
-      throw ApiError.badRequest('Please provide a valid 10-digit mobile number');
+    // Real Indian mobile number check: 10 digits starting with 6, 7, 8, or 9
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      throw ApiError.badRequest('Please enter a valid 10-digit Indian mobile number');
     }
+
+    // Cooldown check (prevent spam clicks within 30 seconds)
+    const cooldownKey = `otp_cooldown:${cleanPhone}`;
+    const inCooldown = await kv.get(cooldownKey);
+    if (inCooldown) {
+      throw ApiError.badRequest('Please wait 30 seconds before requesting another code');
+    }
+
+    // Rate limiting: max 5 OTP requests per 10 minutes per phone
+    const rateKey = `otp_ratelimit:${cleanPhone}`;
+    const attempts = await kv.get(rateKey);
+    const count = attempts ? parseInt(attempts, 10) : 0;
+    if (count >= 5) {
+      throw ApiError.badRequest('Too many OTP attempts. Please wait 10 minutes before trying again.');
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const key = `otp:${cleanPhone}`;
-    await kv.set(key, otp, 300);
+    await kv.set(key, otp, 300); // 5 minutes validity
+    await kv.set(cooldownKey, '1', 30); // 30s cooldown
+    await kv.set(rateKey, (count + 1).toString(), 600); // 10 minutes tracking
 
-    logger.info(`[AUTH-OTP] Generated OTP ${otp} for mobile +91 ${cleanPhone}`);
+    // Send real SMS via configured SMS gateway (Fast2SMS / 2Factor / Twilio / simulated)
+    const smsResult = await smsService.sendOtp(cleanPhone, otp);
+
+    logger.info(`[AUTH-OTP] Dispatched OTP to +91 ${cleanPhone} via ${smsResult.provider}`);
 
     return {
       phone: cleanPhone,
-      message: 'OTP sent successfully to your mobile number',
-      demoOtp: otp,
+      message:
+        smsResult.provider === 'simulated'
+          ? 'Verification code generated (Test Mode)'
+          : 'Verification code sent to your mobile phone via SMS',
+      provider: smsResult.provider,
+      demoOtp:
+        smsResult.provider === 'simulated' || !env.isProd || env.ENABLE_SMS_FALLBACK_DEMO
+          ? otp
+          : undefined,
       expiresInSeconds: 300,
     };
   },
 
   async verifyOtp(rawPhone: string, code: string) {
     const cleanPhone = (rawPhone || '').replace(/\D/g, '').slice(-10);
-    if (cleanPhone.length !== 10) {
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
       throw ApiError.badRequest('Please provide a valid 10-digit mobile number');
     }
-    if (!code || code.length !== 6) {
-      throw ApiError.badRequest('Please enter a valid 6-digit OTP');
+    const cleanCode = (code || '').trim();
+    if (!cleanCode || cleanCode.length !== 6) {
+      throw ApiError.badRequest('Please enter a valid 6-digit verification code');
     }
+
     const key = `otp:${cleanPhone}`;
     const stored = await kv.get(key);
-    if (!stored || stored !== code) {
-      if (code !== '123456') {
-        throw ApiError.unauthorized('Invalid or expired OTP. Please request a new code.');
-      }
+
+    const isMatch = stored && stored === cleanCode;
+    const isMasterDemo = env.ENABLE_SMS_FALLBACK_DEMO && cleanCode === '123456';
+
+    if (!isMatch && !isMasterDemo) {
+      throw ApiError.unauthorized('Invalid or expired verification code. Please request a new one.');
     }
+
+    // Invalidate OTP immediately upon successful verification (single-use protection)
     await kv.del(key);
+    await kv.del(`otp_cooldown:${cleanPhone}`);
 
     let user = await User.findOne({ phone: cleanPhone });
     if (!user) {
       user = await User.findOne({ phone: { $regex: cleanPhone } });
     }
 
+    let isNewCustomer = false;
     if (!user) {
-      const fallbackEmail = `user${cleanPhone}@devcreation24.in`;
+      isNewCustomer = true;
+      const fallbackEmail = `customer_${cleanPhone}@devcreation24.in`;
       const randomPassword = crypto.randomBytes(12).toString('hex') + 'A1!';
       user = await User.create({
         name: `Customer ${cleanPhone.slice(-4)}`,
@@ -162,7 +202,7 @@ export const authService = {
       await notificationService.create({
         type: 'customer_registered',
         title: 'New customer (Mobile OTP)',
-        message: `Customer with phone +91 ${cleanPhone} registered via OTP`,
+        message: `Customer with mobile +91 ${cleanPhone} registered via OTP`,
         forStaff: true,
         relatedEntity: { kind: 'user', id: user._id.toString() },
         dashboardDirty: true,
@@ -170,11 +210,15 @@ export const authService = {
     }
 
     if (!user.isActive) {
-      throw ApiError.unauthorized('Account unavailable');
+      throw ApiError.unauthorized('Your account is currently disabled. Please contact support.');
     }
 
     const tokens = issueTokens({ id: user._id.toString(), role: user.role, email: user.email });
-    return { user: user.toJSON(), ...tokens };
+    return {
+      user: user.toJSON(),
+      isNewCustomer,
+      ...tokens,
+    };
   },
 
   async me(userId: string) {

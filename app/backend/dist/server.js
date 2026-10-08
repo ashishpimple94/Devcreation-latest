@@ -70,7 +70,14 @@ var schema = import_zod.z.object({
   SMTP_PASS: import_zod.z.string().default("Devcreation@890*"),
   EMAIL_FROM: import_zod.z.string().default("Dev Creation <support@devcreation24.in>"),
   ADMIN_NOTIFY_EMAIL: import_zod.z.string().default("support@devcreation24.in"),
-  STORE_URL: import_zod.z.string().default("https://devcreation24.in")
+  STORE_URL: import_zod.z.string().default("https://devcreation24.in"),
+  // ── SMS Gateways (Fast2SMS / 2Factor / Twilio) ───────
+  FAST2SMS_API_KEY: import_zod.z.string().optional(),
+  TWO_FACTOR_API_KEY: import_zod.z.string().optional(),
+  TWILIO_ACCOUNT_SID: import_zod.z.string().optional(),
+  TWILIO_AUTH_TOKEN: import_zod.z.string().optional(),
+  TWILIO_PHONE_NUMBER: import_zod.z.string().optional(),
+  ENABLE_SMS_FALLBACK_DEMO: import_zod.z.union([import_zod.z.boolean(), import_zod.z.enum(["true", "false", "1", "0"])]).default("true").transform((v) => v === true || v === "true" || v === "1")
 });
 var parsed = schema.safeParse(process.env);
 if (!parsed.success) {
@@ -1391,6 +1398,103 @@ var emailService = {
   }
 };
 
+// src/services/sms.service.ts
+var smsService = {
+  async sendOtp(phone, otp) {
+    const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+    const message = `Your Dev Creation verification code is ${otp}. Valid for 5 minutes. Do not share this OTP with anyone.`;
+    if (env.FAST2SMS_API_KEY) {
+      try {
+        const response = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+          method: "POST",
+          headers: {
+            authorization: env.FAST2SMS_API_KEY,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            route: "otp",
+            variables_values: otp,
+            numbers: cleanPhone
+          })
+        });
+        const data = await response.json();
+        if (data.return) {
+          logger.info(`[SMS-SERVICE] \u2705 Sent OTP to +91 ${cleanPhone} via Fast2SMS (ReqId: ${data.request_id})`);
+          return {
+            delivered: true,
+            provider: "fast2sms",
+            messageId: data.request_id
+          };
+        } else {
+          logger.warn(`[SMS-SERVICE] Fast2SMS returned error: ${JSON.stringify(data.message)}`);
+        }
+      } catch (err) {
+        logger.error(`[SMS-SERVICE] Fast2SMS request failed: ${err.message}`);
+      }
+    }
+    if (env.TWO_FACTOR_API_KEY) {
+      try {
+        const url = `https://2factor.in/v1/API/V1/${env.TWO_FACTOR_API_KEY}/SMS/${cleanPhone}/${otp}/OTP1`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.Status === "Success") {
+          logger.info(`[SMS-SERVICE] \u2705 Sent OTP to +91 ${cleanPhone} via 2Factor (Session: ${data.Details})`);
+          return {
+            delivered: true,
+            provider: "2factor",
+            messageId: data.Details
+          };
+        } else {
+          logger.warn(`[SMS-SERVICE] 2Factor returned error: ${JSON.stringify(data)}`);
+        }
+      } catch (err) {
+        logger.error(`[SMS-SERVICE] 2Factor request failed: ${err.message}`);
+      }
+    }
+    if (env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_PHONE_NUMBER) {
+      try {
+        const auth = Buffer.from(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`).toString("base64");
+        const params = new URLSearchParams({
+          To: `+91${cleanPhone}`,
+          From: env.TWILIO_PHONE_NUMBER,
+          Body: message
+        });
+        const response = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Basic ${auth}`,
+              "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: params.toString()
+          }
+        );
+        const data = await response.json();
+        if (data.sid) {
+          logger.info(`[SMS-SERVICE] \u2705 Sent OTP to +91 ${cleanPhone} via Twilio (SID: ${data.sid})`);
+          return {
+            delivered: true,
+            provider: "twilio",
+            messageId: data.sid
+          };
+        } else {
+          logger.warn(`[SMS-SERVICE] Twilio returned error: ${data.message || JSON.stringify(data)}`);
+        }
+      } catch (err) {
+        logger.error(`[SMS-SERVICE] Twilio request failed: ${err.message}`);
+      }
+    }
+    logger.info(
+      `[SMS-SERVICE] \u{1F4F1} Simulated OTP for +91 ${cleanPhone}: [${otp}] (Configure FAST2SMS_API_KEY in .env to deliver real SMS to mobile phones)`
+    );
+    return {
+      delivered: true,
+      provider: "simulated"
+    };
+  }
+};
+
 // src/services/auth.service.ts
 function issueTokens(user2) {
   const payload = { sub: user2.id, role: user2.role, email: user2.email };
@@ -1466,42 +1570,61 @@ var authService = {
   },
   async sendOtp(rawPhone) {
     const cleanPhone = (rawPhone || "").replace(/\D/g, "").slice(-10);
-    if (cleanPhone.length !== 10) {
-      throw ApiError.badRequest("Please provide a valid 10-digit mobile number");
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
+      throw ApiError.badRequest("Please enter a valid 10-digit Indian mobile number");
+    }
+    const cooldownKey = `otp_cooldown:${cleanPhone}`;
+    const inCooldown = await kv.get(cooldownKey);
+    if (inCooldown) {
+      throw ApiError.badRequest("Please wait 30 seconds before requesting another code");
+    }
+    const rateKey = `otp_ratelimit:${cleanPhone}`;
+    const attempts = await kv.get(rateKey);
+    const count = attempts ? parseInt(attempts, 10) : 0;
+    if (count >= 5) {
+      throw ApiError.badRequest("Too many OTP attempts. Please wait 10 minutes before trying again.");
     }
     const otp = Math.floor(1e5 + Math.random() * 9e5).toString();
     const key = `otp:${cleanPhone}`;
     await kv.set(key, otp, 300);
-    logger.info(`[AUTH-OTP] Generated OTP ${otp} for mobile +91 ${cleanPhone}`);
+    await kv.set(cooldownKey, "1", 30);
+    await kv.set(rateKey, (count + 1).toString(), 600);
+    const smsResult = await smsService.sendOtp(cleanPhone, otp);
+    logger.info(`[AUTH-OTP] Dispatched OTP to +91 ${cleanPhone} via ${smsResult.provider}`);
     return {
       phone: cleanPhone,
-      message: "OTP sent successfully to your mobile number",
-      demoOtp: otp,
+      message: smsResult.provider === "simulated" ? "Verification code generated (Test Mode)" : "Verification code sent to your mobile phone via SMS",
+      provider: smsResult.provider,
+      demoOtp: smsResult.provider === "simulated" || !env.isProd || env.ENABLE_SMS_FALLBACK_DEMO ? otp : void 0,
       expiresInSeconds: 300
     };
   },
   async verifyOtp(rawPhone, code) {
     const cleanPhone = (rawPhone || "").replace(/\D/g, "").slice(-10);
-    if (cleanPhone.length !== 10) {
+    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
       throw ApiError.badRequest("Please provide a valid 10-digit mobile number");
     }
-    if (!code || code.length !== 6) {
-      throw ApiError.badRequest("Please enter a valid 6-digit OTP");
+    const cleanCode = (code || "").trim();
+    if (!cleanCode || cleanCode.length !== 6) {
+      throw ApiError.badRequest("Please enter a valid 6-digit verification code");
     }
     const key = `otp:${cleanPhone}`;
     const stored = await kv.get(key);
-    if (!stored || stored !== code) {
-      if (code !== "123456") {
-        throw ApiError.unauthorized("Invalid or expired OTP. Please request a new code.");
-      }
+    const isMatch = stored && stored === cleanCode;
+    const isMasterDemo = env.ENABLE_SMS_FALLBACK_DEMO && cleanCode === "123456";
+    if (!isMatch && !isMasterDemo) {
+      throw ApiError.unauthorized("Invalid or expired verification code. Please request a new one.");
     }
     await kv.del(key);
+    await kv.del(`otp_cooldown:${cleanPhone}`);
     let user2 = await User.findOne({ phone: cleanPhone });
     if (!user2) {
       user2 = await User.findOne({ phone: { $regex: cleanPhone } });
     }
+    let isNewCustomer = false;
     if (!user2) {
-      const fallbackEmail = `user${cleanPhone}@devcreation24.in`;
+      isNewCustomer = true;
+      const fallbackEmail = `customer_${cleanPhone}@devcreation24.in`;
       const randomPassword = import_node_crypto.default.randomBytes(12).toString("hex") + "A1!";
       user2 = await User.create({
         name: `Customer ${cleanPhone.slice(-4)}`,
@@ -1514,17 +1637,21 @@ var authService = {
       await notificationService.create({
         type: "customer_registered",
         title: "New customer (Mobile OTP)",
-        message: `Customer with phone +91 ${cleanPhone} registered via OTP`,
+        message: `Customer with mobile +91 ${cleanPhone} registered via OTP`,
         forStaff: true,
         relatedEntity: { kind: "user", id: user2._id.toString() },
         dashboardDirty: true
       });
     }
     if (!user2.isActive) {
-      throw ApiError.unauthorized("Account unavailable");
+      throw ApiError.unauthorized("Your account is currently disabled. Please contact support.");
     }
     const tokens = issueTokens({ id: user2._id.toString(), role: user2.role, email: user2.email });
-    return { user: user2.toJSON(), ...tokens };
+    return {
+      user: user2.toJSON(),
+      isNewCustomer,
+      ...tokens
+    };
   },
   async me(userId) {
     const user2 = await User.findById(userId);

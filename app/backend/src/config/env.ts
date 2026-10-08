@@ -57,6 +57,17 @@ const schema = z.object({
   EMAIL_FROM: z.string().default('Dev Creation <support@devcreation24.in>'),
   ADMIN_NOTIFY_EMAIL: z.string().default('support@devcreation24.in'),
   STORE_URL: z.string().default('https://devcreation24.in'),
+
+  // ── SMS Gateways (Fast2SMS / 2Factor / Twilio) ───────
+  FAST2SMS_API_KEY: z.string().optional(),
+  TWO_FACTOR_API_KEY: z.string().optional(),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_PHONE_NUMBER: z.string().optional(),
+  ENABLE_SMS_FALLBACK_DEMO: z
+    .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
+    .default('true')
+    .transform((v) => v === true || v === 'true' || v === '1'),
 });
 
 const parsed = schema.safeParse(process.env);
