@@ -87,9 +87,11 @@ function LoginForm() {
       const res = await sendOtp(clean);
       setOtpSent(true);
       setCountdown(30);
-      success('Verification code sent to +91 ' + clean);
       if (res.demoOtp) {
-        info(`Verification code: ${res.demoOtp}`);
+        setOtp(res.demoOtp);
+        success(`Verification code sent! (Test OTP: ${res.demoOtp})`);
+      } else {
+        success('Verification code sent to +91 ' + clean);
       }
     } catch (err) {
       error(err instanceof Error ? err.message : 'Could not send OTP. Please try again.');
