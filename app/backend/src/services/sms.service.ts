@@ -18,7 +18,7 @@ export interface SendSmsResult {
 export const smsService = {
   async sendOtp(phone: string, otp: string): Promise<SendSmsResult> {
     const cleanPhone = phone.replace(/\D/g, '').slice(-10);
-    const message = `Your Dev Creation verification code is ${otp}. Valid for 5 minutes. Do not share this OTP with anyone.`;
+    const message = `Dev Creation: Your verification code is ${otp}. Valid for 5 mins.`;
 
     // 1. Try Fast2SMS if configured
     if (env.FAST2SMS_API_KEY) {
@@ -30,8 +30,8 @@ export const smsService = {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            route: 'otp',
-            variables_values: otp,
+            route: 'q',
+            message: message,
             numbers: cleanPhone,
           }),
         });

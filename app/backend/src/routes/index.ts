@@ -9,7 +9,7 @@ import notificationRoutes from '@/routes/notification.routes';
 import adminRoutes from '@/routes/admin.routes';
 import giftCardRoutes from '@/routes/giftCard.routes';
 
-import { sendMail, sendMailWithDetails } from '@/config/mailer';
+import { sendMailWithDetails } from '@/config/mailer';
 import { env } from '@/config/env';
 
 const router = Router();

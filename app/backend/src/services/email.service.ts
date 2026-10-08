@@ -2,7 +2,7 @@ import { User } from '@/models/User';
 import type { IOrder } from '@/models/Order';
 import type { OrderStatus } from '@/constants';
 import { env } from '@/config/env';
-import { sendMail } from '@/config/mailer';
+import { mailQueue } from '@/services/mailQueue.service';
 import { logger } from '@/utils/logger';
 import { generateInvoicePdf } from '@/utils/invoice';
 import {
@@ -27,58 +27,92 @@ async function resolveCustomer(order: IOrder): Promise<{ name: string; email: st
 }
 
 /**
- * Order-related transactional emails. All methods are best-effort: failures are
- * logged and swallowed so they never disrupt the order flow. Callers invoke
- * these fire-and-forget.
+ * Scalable Order-Related Transactional Email Service.
+ * Powered by an asynchronous, concurrency-controlled background queue (`mailQueue`).
+ * 
+ * - API requests return in milliseconds without waiting on SMTP roundtrips.
+ * - Concurrency is capped to protect SMTP server connections.
+ * - Deduplication guards against accidental duplicate status clicks.
  */
 export const emailService = {
-  /** On checkout: confirmation (with PDF invoice) to the customer + alert to admin. */
+  /** On checkout: async confirmation (with PDF invoice) to customer + alert to admin. */
   async sendOrderPlaced(order: IOrder): Promise<void> {
     const customer = await resolveCustomer(order);
     const name = customer?.name ?? order.shippingAddress.fullName;
 
-    // Generate the invoice once, attach to the customer email.
-    let invoice: Buffer | undefined;
-    try {
-      invoice = await generateInvoicePdf(order, name);
-    } catch (err) {
-      logger.warn('Invoice generation failed', { orderId: order._id.toString(), err: (err as Error).message });
-    }
-
+    // 1. Customer Confirmation Email
     if (customer?.email) {
+      // Generate invoice asynchronously in memory
+      let invoice: Buffer | undefined;
+      try {
+        invoice = await generateInvoicePdf(order, name);
+      } catch (err) {
+        logger.warn('Invoice generation warning', { orderId: order._id.toString(), err: (err as Error).message });
+      }
+
       const tpl = orderConfirmationEmail(order, name);
-      await sendMail({
+      mailQueue.enqueue({
+        dedupKey: `order_placed_cust_${order._id.toString()}`,
         to: customer.email,
         subject: tpl.subject,
         html: tpl.html,
         text: tpl.text,
+        priority: 'high',
         attachments: invoice
           ? [{ filename: `invoice-${order.orderNumber}.pdf`, content: invoice, contentType: 'application/pdf' }]
           : undefined,
       });
     }
 
-    // Admin alert.
-    const adminEmail = env.ADMIN_NOTIFY_EMAIL || env.SEED_ADMIN_EMAIL;
+    // 2. Admin Store Alert Email
+    const adminEmail = env.ADMIN_NOTIFY_EMAIL || env.SEED_ADMIN_EMAIL || 'support@devcreation24.in';
     if (adminEmail) {
       const adminTpl = adminNewOrderEmail(order, name);
-      await sendMail({ to: adminEmail, subject: adminTpl.subject, html: adminTpl.html, text: adminTpl.text });
+      mailQueue.enqueue({
+        dedupKey: `order_placed_admin_${order._id.toString()}`,
+        to: adminEmail,
+        subject: adminTpl.subject,
+        html: adminTpl.html,
+        text: adminTpl.text,
+        priority: 'normal',
+      });
     }
+
+    logger.info(`[EMAIL-SERVICE] 📨 Queued order-placed emails for Order #${order.orderNumber}`);
   },
 
-  /** On status change: notify the customer. */
+  /** On status change (Confirmed, Packing, Shipped, Delivered): notify customer asynchronously. */
   async sendOrderStatus(order: IOrder, status: OrderStatus, note?: string): Promise<void> {
     const customer = await resolveCustomer(order);
-    if (!customer?.email) return;
+    if (!customer?.email) {
+      logger.info(`[EMAIL-SERVICE] ⏭️ Skipping order status email for Order #${order.orderNumber} (no customer email found)`);
+      return;
+    }
+
     const tpl = orderStatusEmail(order, customer.name, status, note);
-    await sendMail({ to: customer.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    mailQueue.enqueue({
+      dedupKey: `order_status_${order._id.toString()}_${status}`,
+      to: customer.email,
+      subject: tpl.subject,
+      html: tpl.html,
+      text: tpl.text,
+      priority: status === 'shipped' || status === 'delivered' ? 'high' : 'normal',
+    });
+
+    logger.info(`[EMAIL-SERVICE] 📨 Queued status email "${status}" for Order #${order.orderNumber} to <${customer.email}>`);
   },
 
   /** On registration: send a welcome email to the customer. */
   async sendWelcome(user: { name: string; email: string }): Promise<void> {
     if (!user.email) return;
     const tpl = welcomeEmail(user.name);
-    await sendMail({ to: user.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    mailQueue.enqueue({
+      dedupKey: `welcome_${user.email}`,
+      to: user.email,
+      subject: tpl.subject,
+      html: tpl.html,
+      text: tpl.text,
+    });
   },
 
   /** On forgot password: send password reset email with token link. */
@@ -86,6 +120,12 @@ export const emailService = {
     if (!user.email) return;
     const resetUrl = `${env.STORE_URL}/reset-password?token=${encodeURIComponent(token)}`;
     const tpl = passwordResetEmail(user.name, resetUrl);
-    await sendMail({ to: user.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    mailQueue.enqueue({
+      to: user.email,
+      subject: tpl.subject,
+      html: tpl.html,
+      text: tpl.text,
+      priority: 'high',
+    });
   },
 };

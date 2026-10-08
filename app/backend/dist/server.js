@@ -803,10 +803,133 @@ async function sendMailWithDetails(input) {
     }
   }
 }
-async function sendMail(input) {
-  const res = await sendMailWithDetails(input);
-  return res.success;
-}
+
+// src/services/mailQueue.service.ts
+var MailQueue = class {
+  queue = [];
+  activeWorkers = 0;
+  maxConcurrency = 2;
+  // Maximum concurrent SMTP connections
+  paceIntervalMs = 300;
+  // Polite delay between emails
+  defaultMaxRetries = 3;
+  dedupSet = /* @__PURE__ */ new Map();
+  // dedupKey -> timestamp
+  totalProcessed = 0;
+  totalFailed = 0;
+  constructor() {
+    setInterval(() => {
+      const now = Date.now();
+      for (const [key, ts] of this.dedupSet.entries()) {
+        if (now - ts > 12e4) {
+          this.dedupSet.delete(key);
+        }
+      }
+    }, 6e4).unref();
+  }
+  /**
+   * Enqueues an email for asynchronous delivery.
+   * Returns immediately with the generated job ID.
+   */
+  enqueue(job) {
+    const id = job.id || `mail_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    if (job.dedupKey) {
+      const lastSent = this.dedupSet.get(job.dedupKey);
+      if (lastSent && Date.now() - lastSent < 6e4) {
+        logger.warn(`[MAIL-QUEUE] \u23E9 Deduplicating email with key "${job.dedupKey}" (already sent within 60s)`);
+        return id;
+      }
+      this.dedupSet.set(job.dedupKey, Date.now());
+    }
+    const internalJob = {
+      ...job,
+      id,
+      attempts: 0,
+      createdAt: Date.now(),
+      maxRetries: job.maxRetries ?? this.defaultMaxRetries
+    };
+    if (job.priority === "high") {
+      this.queue.unshift(internalJob);
+    } else {
+      this.queue.push(internalJob);
+    }
+    logger.debug(`[MAIL-QUEUE] \u{1F4E5} Enqueued job ${id}: "${job.subject}" to <${job.to}> (Queue depth: ${this.queue.length})`);
+    this.scheduleNext();
+    return id;
+  }
+  /**
+   * Spawns worker loops while there are queued jobs and capacity.
+   */
+  scheduleNext() {
+    while (this.activeWorkers < this.maxConcurrency && this.queue.length > 0) {
+      const job = this.queue.shift();
+      if (!job) break;
+      this.activeWorkers++;
+      this.processJob(job);
+    }
+  }
+  /**
+   * Processes an individual email job with pacing and retry logic.
+   */
+  async processJob(job) {
+    const startTime = Date.now();
+    job.attempts++;
+    try {
+      logger.info(`[MAIL-QUEUE] \u{1F680} Sending [Job ${job.id}] (Attempt ${job.attempts}/${job.maxRetries}): "${job.subject}" to <${job.to}>`);
+      const result = await sendMailWithDetails({
+        to: job.to,
+        subject: job.subject,
+        html: job.html,
+        text: job.text,
+        attachments: job.attachments
+      });
+      if (!result.success) {
+        throw new Error(result.error || "SMTP delivery returned unsuccessful");
+      }
+      const elapsed = Date.now() - startTime;
+      this.totalProcessed++;
+      logger.info(`[MAIL-QUEUE] \u2705 Delivered [Job ${job.id}] in ${elapsed}ms (Port: ${result.portUsed}, MsgId: ${result.messageId || "ok"})`);
+      try {
+        job.onSuccess?.(result);
+      } catch (err) {
+        logger.warn(`[MAIL-QUEUE] onSuccess callback error: ${err.message}`);
+      }
+    } catch (err) {
+      const errorMsg = err?.message || String(err);
+      logger.warn(`[MAIL-QUEUE] \u26A0\uFE0F Delivery failed for [Job ${job.id}] (Attempt ${job.attempts}/${job.maxRetries}): ${errorMsg}`);
+      if (job.attempts < (job.maxRetries || this.defaultMaxRetries)) {
+        const delay = Math.pow(2, job.attempts) * 1e3;
+        logger.info(`[MAIL-QUEUE] \u23F3 Scheduling retry for [Job ${job.id}] in ${delay}ms`);
+        setTimeout(() => {
+          this.queue.unshift(job);
+          this.scheduleNext();
+        }, delay);
+      } else {
+        this.totalFailed++;
+        logger.error(`[MAIL-QUEUE] \u274C Permanently failed [Job ${job.id}] after ${job.attempts} attempts: ${errorMsg}`);
+        try {
+          job.onError?.(err instanceof Error ? err : new Error(errorMsg));
+        } catch {
+        }
+      }
+    } finally {
+      setTimeout(() => {
+        this.activeWorkers--;
+        this.scheduleNext();
+      }, this.paceIntervalMs);
+    }
+  }
+  /** Returns queue health & statistics */
+  getStats() {
+    return {
+      queueLength: this.queue.length,
+      activeWorkers: this.activeWorkers,
+      totalProcessed: this.totalProcessed,
+      totalFailed: this.totalFailed
+    };
+  }
+};
+var mailQueue = new MailQueue();
 
 // src/utils/invoice.ts
 var import_pdfkit = __toESM(require("pdfkit"));
@@ -1044,7 +1167,7 @@ function renderTimeline(currentStatus) {
   const steps = ["pending", "confirmed", "processing", "shipped", "delivered"];
   const labels = ["Placed", "Confirmed", "Packing", "Shipped", "Delivered"];
   const currentIdx = steps.indexOf(currentStatus.toLowerCase());
-  const items = steps.map((step, idx) => {
+  const items = steps.map((_step, idx) => {
     const isPastOrCurrent = currentIdx >= idx;
     const circleBg = isPastOrCurrent ? C.gold : C.surface3;
     const circleColor = isPastOrCurrent ? "#FFFFFF" : C.ink3;
@@ -1129,7 +1252,7 @@ function orderConfirmationEmail(order, customerName) {
             ${esc(order.orderNumber)}
           </h1>
           <div style="font-size:12px;color:${C.ink3};margin-top:3px;">
-            Placed ${formattedDate}
+            Thank you, <strong style="color:${C.ink};">${esc(customerName)}</strong> &bull; Placed ${formattedDate}
           </div>
         </td>
         <td align="right" style="vertical-align:top;">
@@ -1246,35 +1369,262 @@ function adminNewOrderEmail(order, customerName) {
     text: `New order #${order.orderNumber} placed by ${customerName} for Rs. ${order.total}. Manage: https://login.devcreation24.in/orders`
   };
 }
-function orderStatusEmail(order, customerName, status, note) {
+function parseTrackingFromNote(note) {
+  if (!note) return {};
+  const cleaned = note.trim();
+  const urlMatch = cleaned.match(/(https?:\/\/[^\s]+)/i);
+  const trackingUrl = urlMatch ? urlMatch[1] : void 0;
+  let carrier;
+  let trackingNumber;
+  const carriers = ["BlueDart", "Delhivery", "DTDC", "India Post", "Ekart", "Xpressbees", "Shadowfax", "Shiprocket", "FedEx", "DHL"];
+  for (const c of carriers) {
+    if (new RegExp(`\\b${c}\\b`, "i").test(cleaned)) {
+      carrier = c;
+      break;
+    }
+  }
+  const codeMatch = cleaned.match(/(?:AWB|Tracking|Tracking Number|Track ID|Docket|Ref)[:\s#]+([A-Z0-9_-]{6,30})/i);
+  if (codeMatch) {
+    trackingNumber = codeMatch[1];
+  } else if (!trackingUrl) {
+    const standaloneMatch = cleaned.match(/\b([A-Z0-9]{8,24})\b/i);
+    if (standaloneMatch && !carrier) {
+      trackingNumber = standaloneMatch[1];
+    }
+  }
+  return { carrier, trackingNumber, trackingUrl };
+}
+function orderConfirmedEmail(order, customerName, note) {
   const body = `
-    <div style="margin-bottom:16px;">
-      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:24px;color:${C.ink};margin:0 0 6px;">
-        Order #${esc(order.orderNumber)} Update
-      </h1>
-      <div style="font-size:13px;color:${C.ink3};">
-        Current Status: ${statusBadge(status)}
+    <div style="margin-bottom:20px;text-align:center;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${C.copper};margin-bottom:6px;">
+        STAGE 2 OF 5 &bull; ORDER CONFIRMED
       </div>
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:700;color:${C.ink};margin:0 0 8px;">
+        Order #${esc(order.orderNumber)} Confirmed
+      </h1>
+      <p style="font-size:14px;color:${C.ink3};line-height:1.6;margin:0 auto;max-width:480px;">
+        Dear ${esc(customerName)}, thank you for choosing Dev Creation. Our master artisans have confirmed your order and are preparing your selected artisanal wax sachets.
+      </p>
     </div>
 
-    ${renderTimeline(status)}
+    ${renderTimeline("confirmed")}
 
     ${note ? `
-    <div style="background-color:${C.surface2};border-left:4px solid ${C.gold};padding:12px 16px;border-radius:4px;margin-bottom:20px;font-size:13px;color:${C.ink2};">
-      <strong>Note from Concierge:</strong> ${esc(note)}
+    <div style="background-color:${C.surface2};border-left:4px solid ${C.gold};padding:14px 18px;border-radius:6px;margin:20px 0;font-size:13px;color:${C.ink2};">
+      <strong style="color:${C.ink};">Note from Concierge:</strong> ${esc(note)}
     </div>` : ""}
 
     ${renderItemsCard(order.items)}
 
-    <div style="text-align:center;">
-      ${button("View Order on Website", `${env.STORE_URL}/account/orders/${order._id}`)}
+    <div style="text-align:center;margin-top:24px;">
+      ${button("View Order Status", `${env.STORE_URL}/account/orders/${order._id}`)}
     </div>
   `;
   return {
-    subject: `Order #${order.orderNumber} Status: ${status.toUpperCase()} \u2014 Dev Creation`,
-    html: layout(body, `Your order #${order.orderNumber} is now ${status}.`),
-    text: `Order #${order.orderNumber} status update: ${status}. View: ${env.STORE_URL}/account/orders/${order._id}`
+    subject: `\u2728 Order #${order.orderNumber} Confirmed \u2014 Dev Creation`,
+    html: layout(body, `Your Dev Creation order #${order.orderNumber} is confirmed and being prepared.`),
+    text: `Your Dev Creation order #${order.orderNumber} is confirmed! View status: ${env.STORE_URL}/account/orders/${order._id}`
   };
+}
+function orderPackingEmail(order, customerName, note) {
+  const body = `
+    <div style="margin-bottom:20px;text-align:center;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${C.copper};margin-bottom:6px;">
+        STAGE 3 OF 5 &bull; PACKING WITH CARE
+      </div>
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:700;color:${C.ink};margin:0 0 8px;">
+        Your Order Is Being Packed
+      </h1>
+      <p style="font-size:14px;color:${C.ink3};line-height:1.6;margin:0 auto;max-width:480px;">
+        Dear ${esc(customerName)}, your handcrafted pieces are receiving their finishing touches. Each wax sachet is lovingly inspected, scented with care, and cushioned in eco-conscious packaging.
+      </p>
+    </div>
+
+    ${renderTimeline("processing")}
+
+    <div style="background-color:${C.surface2};border:1px solid ${C.line};border-radius:10px;padding:16px 20px;margin:20px 0;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${C.copper};margin-bottom:6px;">
+        ARTISANAL PACKAGING PROMISE
+      </div>
+      <div style="font-size:13px;color:${C.ink2};line-height:1.6;">
+        &bull; 100% Biodegradable protective honeycomb wrap<br>
+        &bull; Signature gold-embossed fragrance seal<br>
+        &bull; Fragrance notes care card included with every box
+      </div>
+    </div>
+
+    ${note ? `
+    <div style="background-color:${C.surface2};border-left:4px solid ${C.gold};padding:14px 18px;border-radius:6px;margin:20px 0;font-size:13px;color:${C.ink2};">
+      <strong style="color:${C.ink};">Note from Studio:</strong> ${esc(note)}
+    </div>` : ""}
+
+    ${renderItemsCard(order.items)}
+
+    <div style="text-align:center;margin-top:24px;">
+      ${button("Track Fulfillment", `${env.STORE_URL}/account/orders/${order._id}`)}
+    </div>
+  `;
+  return {
+    subject: `\u{1F4E6} Packing With Care: Order #${order.orderNumber} \u2014 Dev Creation`,
+    html: layout(body, `Your Dev Creation order #${order.orderNumber} is now being packed with care.`),
+    text: `Your Dev Creation order #${order.orderNumber} is being packed with care! View: ${env.STORE_URL}/account/orders/${order._id}`
+  };
+}
+function orderShippedEmail(order, customerName, note) {
+  const tracking = parseTrackingFromNote(note);
+  const a = order.shippingAddress;
+  const trackHref = tracking.trackingUrl || `${env.STORE_URL}/account/orders/${order._id}`;
+  const body = `
+    <div style="margin-bottom:20px;text-align:center;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${C.copper};margin-bottom:6px;">
+        STAGE 4 OF 5 &bull; DISPATCHED
+      </div>
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:700;color:${C.ink};margin:0 0 8px;">
+        Your Order Has Shipped! \u{1F69A}
+      </h1>
+      <p style="font-size:14px;color:${C.ink3};line-height:1.6;margin:0 auto;max-width:480px;">
+        Great news, ${esc(customerName)}! Your parcel has been securely handed to our courier partner and is on its journey to you.
+      </p>
+    </div>
+
+    ${renderTimeline("shipped")}
+
+    <!-- Logistics & Tracking Card -->
+    <div style="background-color:${C.surface2};border:1.5px solid ${C.gold};border-radius:12px;padding:20px;margin:22px 0;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${C.copper};margin-bottom:10px;">
+        LOGISTICS &amp; TRACKING DETAILS
+      </div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:13px;color:${C.ink};">
+        <tr>
+          <td style="padding:6px 0;color:${C.ink3};">Courier Partner:</td>
+          <td align="right" style="padding:6px 0;font-weight:700;color:${C.deep};">
+            ${esc(tracking.carrier || "Express Courier Partner")}
+          </td>
+        </tr>
+        ${tracking.trackingNumber ? `
+        <tr>
+          <td style="padding:6px 0;color:${C.ink3};">AWB / Tracking No:</td>
+          <td align="right" style="padding:6px 0;font-family:'JetBrains Mono',monospace;font-weight:700;color:${C.goldDk};font-size:14px;">
+            ${esc(tracking.trackingNumber)}
+          </td>
+        </tr>` : ""}
+        <tr>
+          <td style="padding:6px 0;color:${C.ink3};">Delivering To:</td>
+          <td align="right" style="padding:6px 0;font-weight:500;">
+            ${esc(a.city)}, ${esc(a.state)} (${esc(a.postalCode)})
+          </td>
+        </tr>
+      </table>
+
+      ${note && !tracking.trackingNumber ? `
+      <div style="margin-top:12px;padding-top:10px;border-top:1px dashed ${C.line};font-size:12px;color:${C.ink2};">
+        <strong>Dispatch Note:</strong> ${esc(note)}
+      </div>` : ""}
+    </div>
+
+    <div style="text-align:center;margin:16px 0 24px;">
+      ${button("Track Your Parcel", trackHref)}
+    </div>
+
+    ${renderItemsCard(order.items)}
+  `;
+  return {
+    subject: `\u{1F69A} On Its Way! Order #${order.orderNumber} Has Shipped \u2014 Dev Creation`,
+    html: layout(body, `Your Dev Creation order #${order.orderNumber} has shipped. Track your parcel now.`),
+    text: `Your Dev Creation order #${order.orderNumber} has shipped! Track delivery: ${trackHref}`
+  };
+}
+function orderDeliveredEmail(order, customerName, note) {
+  const body = `
+    <div style="margin-bottom:20px;text-align:center;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${C.copper};margin-bottom:6px;">
+        FINAL STAGE &bull; COMPLETED
+      </div>
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:700;color:${C.ink};margin:0 0 8px;">
+        Your Order Has Arrived! \u{1F389}
+      </h1>
+      <p style="font-size:14px;color:${C.ink3};line-height:1.6;margin:0 auto;max-width:480px;">
+        Dear ${esc(customerName)}, your Dev Creation package has been delivered. We hope your new fragrances bring exquisite aroma and serenity to your sanctuary.
+      </p>
+    </div>
+
+    ${renderTimeline("delivered")}
+
+    <!-- Wax Sachet & Fragrance Care Tips Card -->
+    <div style="background-color:${C.surface2};border:1px solid ${C.line};border-radius:12px;padding:20px;margin:22px 0;">
+      <div style="font-family:'Playfair Display',Georgia,serif;font-size:16px;font-weight:600;color:${C.ink};margin-bottom:8px;">
+        \u2728 How to Enjoy Your Artisanal Wax Sachets:
+      </div>
+      <div style="font-size:13px;color:${C.ink2};line-height:1.8;">
+        &bull; <strong>Ideal Placement:</strong> Hang or place in your wardrobe, linen closet, or entryway.<br>
+        &bull; <strong>Keep Cool:</strong> Keep away from direct sunlight or open heat sources.<br>
+        &bull; <strong>Aroma Refresh:</strong> After a few months, gently scrape the wax edge to release a fresh burst of perfumed oils.
+      </div>
+    </div>
+
+    ${note ? `
+    <div style="background-color:${C.surface2};border-left:4px solid ${C.gold};padding:14px 18px;border-radius:6px;margin:20px 0;font-size:13px;color:${C.ink2};">
+      <strong style="color:${C.ink};">Delivery Note:</strong> ${esc(note)}
+    </div>` : ""}
+
+    ${renderItemsCard(order.items)}
+
+    <div style="text-align:center;margin-top:24px;">
+      ${button("Leave a Review & View Order", `${env.STORE_URL}/account/orders/${order._id}`)}
+    </div>
+  `;
+  return {
+    subject: `\u{1F389} Delivered: Order #${order.orderNumber} \u2014 Enjoy Your Fragrance!`,
+    html: layout(body, `Your Dev Creation order #${order.orderNumber} has arrived. Enjoy your artisanal fragrance!`),
+    text: `Your Dev Creation order #${order.orderNumber} has arrived! Thank you for choosing Dev Creation: ${env.STORE_URL}/account/orders/${order._id}`
+  };
+}
+function orderCancelledEmail(order, customerName, note) {
+  const body = `
+    <div style="margin-bottom:20px;text-align:center;">
+      <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:24px;color:#B91C1C;margin:0 0 8px;">
+        Order #${esc(order.orderNumber)} Cancelled
+      </h1>
+      <p style="font-size:14px;color:${C.ink3};line-height:1.6;margin:0 auto;max-width:480px;">
+        Dear ${esc(customerName)}, your order #${esc(order.orderNumber)} has been cancelled.
+      </p>
+    </div>
+
+    ${note ? `
+    <div style="background-color:#FEF2F2;border:1px solid #FECACA;padding:14px 18px;border-radius:8px;margin:20px 0;font-size:13px;color:#991B1B;">
+      <strong>Reason / Note:</strong> ${esc(note)}
+    </div>` : ""}
+
+    <p style="font-size:13px;color:${C.ink2};line-height:1.6;text-align:center;">
+      If you already completed an online payment, a full refund has been initiated to your original payment method within 5\u20137 business days.
+    </p>
+
+    <div style="text-align:center;margin-top:24px;">
+      ${button("Browse Collection", `${env.STORE_URL}/products`)}
+    </div>
+  `;
+  return {
+    subject: `Order #${order.orderNumber} Cancelled \u2014 Dev Creation`,
+    html: layout(body, `Your order #${order.orderNumber} has been cancelled.`),
+    text: `Your Dev Creation order #${order.orderNumber} has been cancelled. Details: ${env.STORE_URL}/account/orders/${order._id}`
+  };
+}
+function orderStatusEmail(order, customerName, status, note) {
+  switch (status) {
+    case "confirmed":
+      return orderConfirmedEmail(order, customerName, note);
+    case "processing":
+      return orderPackingEmail(order, customerName, note);
+    case "shipped":
+      return orderShippedEmail(order, customerName, note);
+    case "delivered":
+      return orderDeliveredEmail(order, customerName, note);
+    case "cancelled":
+      return orderCancelledEmail(order, customerName, note);
+    default:
+      return orderConfirmedEmail(order, customerName, note);
+  }
 }
 function welcomeEmail(customerName) {
   const body = `
@@ -1350,51 +1700,84 @@ async function resolveCustomer(order) {
   return { name: user2.name, email: user2.email };
 }
 var emailService = {
-  /** On checkout: confirmation (with PDF invoice) to the customer + alert to admin. */
+  /** On checkout: async confirmation (with PDF invoice) to customer + alert to admin. */
   async sendOrderPlaced(order) {
     const customer = await resolveCustomer(order);
     const name = customer?.name ?? order.shippingAddress.fullName;
-    let invoice;
-    try {
-      invoice = await generateInvoicePdf(order, name);
-    } catch (err) {
-      logger.warn("Invoice generation failed", { orderId: order._id.toString(), err: err.message });
-    }
     if (customer?.email) {
+      let invoice;
+      try {
+        invoice = await generateInvoicePdf(order, name);
+      } catch (err) {
+        logger.warn("Invoice generation warning", { orderId: order._id.toString(), err: err.message });
+      }
       const tpl = orderConfirmationEmail(order, name);
-      await sendMail({
+      mailQueue.enqueue({
+        dedupKey: `order_placed_cust_${order._id.toString()}`,
         to: customer.email,
         subject: tpl.subject,
         html: tpl.html,
         text: tpl.text,
+        priority: "high",
         attachments: invoice ? [{ filename: `invoice-${order.orderNumber}.pdf`, content: invoice, contentType: "application/pdf" }] : void 0
       });
     }
-    const adminEmail = env.ADMIN_NOTIFY_EMAIL || env.SEED_ADMIN_EMAIL;
+    const adminEmail = env.ADMIN_NOTIFY_EMAIL || env.SEED_ADMIN_EMAIL || "support@devcreation24.in";
     if (adminEmail) {
       const adminTpl = adminNewOrderEmail(order, name);
-      await sendMail({ to: adminEmail, subject: adminTpl.subject, html: adminTpl.html, text: adminTpl.text });
+      mailQueue.enqueue({
+        dedupKey: `order_placed_admin_${order._id.toString()}`,
+        to: adminEmail,
+        subject: adminTpl.subject,
+        html: adminTpl.html,
+        text: adminTpl.text,
+        priority: "normal"
+      });
     }
+    logger.info(`[EMAIL-SERVICE] \u{1F4E8} Queued order-placed emails for Order #${order.orderNumber}`);
   },
-  /** On status change: notify the customer. */
+  /** On status change (Confirmed, Packing, Shipped, Delivered): notify customer asynchronously. */
   async sendOrderStatus(order, status, note) {
     const customer = await resolveCustomer(order);
-    if (!customer?.email) return;
+    if (!customer?.email) {
+      logger.info(`[EMAIL-SERVICE] \u23ED\uFE0F Skipping order status email for Order #${order.orderNumber} (no customer email found)`);
+      return;
+    }
     const tpl = orderStatusEmail(order, customer.name, status, note);
-    await sendMail({ to: customer.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    mailQueue.enqueue({
+      dedupKey: `order_status_${order._id.toString()}_${status}`,
+      to: customer.email,
+      subject: tpl.subject,
+      html: tpl.html,
+      text: tpl.text,
+      priority: status === "shipped" || status === "delivered" ? "high" : "normal"
+    });
+    logger.info(`[EMAIL-SERVICE] \u{1F4E8} Queued status email "${status}" for Order #${order.orderNumber} to <${customer.email}>`);
   },
   /** On registration: send a welcome email to the customer. */
   async sendWelcome(user2) {
     if (!user2.email) return;
     const tpl = welcomeEmail(user2.name);
-    await sendMail({ to: user2.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    mailQueue.enqueue({
+      dedupKey: `welcome_${user2.email}`,
+      to: user2.email,
+      subject: tpl.subject,
+      html: tpl.html,
+      text: tpl.text
+    });
   },
   /** On forgot password: send password reset email with token link. */
   async sendPasswordReset(user2, token) {
     if (!user2.email) return;
     const resetUrl = `${env.STORE_URL}/reset-password?token=${encodeURIComponent(token)}`;
     const tpl = passwordResetEmail(user2.name, resetUrl);
-    await sendMail({ to: user2.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    mailQueue.enqueue({
+      to: user2.email,
+      subject: tpl.subject,
+      html: tpl.html,
+      text: tpl.text,
+      priority: "high"
+    });
   }
 };
 
@@ -1402,7 +1785,7 @@ var emailService = {
 var smsService = {
   async sendOtp(phone, otp) {
     const cleanPhone = phone.replace(/\D/g, "").slice(-10);
-    const message = `Your Dev Creation verification code is ${otp}. Valid for 5 minutes. Do not share this OTP with anyone.`;
+    const message = `Dev Creation: Your verification code is ${otp}. Valid for 5 mins.`;
     if (env.FAST2SMS_API_KEY) {
       try {
         const response = await fetch("https://www.fast2sms.com/dev/bulkV2", {
@@ -1412,8 +1795,8 @@ var smsService = {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            route: "otp",
-            variables_values: otp,
+            route: "q",
+            message,
             numbers: cleanPhone
           })
         });
