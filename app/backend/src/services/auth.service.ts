@@ -205,12 +205,13 @@ export const authService = {
         password: randomPassword,
         phone: cleanPhone,
         role: ROLES.CUSTOMER,
+        profileComplete: false, // Will be set true after profile form is submitted
       });
       await Cart.create({ user: user._id, items: [] });
       await notificationService.create({
         type: 'customer_registered',
         title: 'New customer (Mobile OTP)',
-        message: `Customer with mobile +91 ${cleanPhone} registered via OTP`,
+        message: `Customer with mobile +91 ${cleanPhone} registered via OTP — profile pending`,
         forStaff: true,
         relatedEntity: { kind: 'user', id: user._id.toString() },
         dashboardDirty: true,
@@ -233,5 +234,59 @@ export const authService = {
     const user = await User.findById(userId);
     if (!user) throw ApiError.notFound('User not found');
     return user.toJSON();
+  },
+
+  /**
+   * Called after OTP login when isNewCustomer=true.
+   * Saves real email, password, name, and delivery address, then marks
+   * profileComplete=true so the user is not redirected again.
+   */
+  async completeProfile(
+    userId: string,
+    input: {
+      name: string;
+      email: string;
+      password: string;
+      address: {
+        line1: string;
+        line2?: string;
+        city: string;
+        state: string;
+        pincode: string;
+        country?: string;
+      };
+    },
+  ) {
+    const user = await User.findById(userId).select('+password');
+    if (!user) throw ApiError.notFound('User not found');
+
+    // Ensure the new email is not already taken by someone else
+    const emailInUse = await User.findOne({
+      email: input.email.toLowerCase().trim(),
+      _id: { $ne: user._id },
+    });
+    if (emailInUse) throw ApiError.conflict('This email address is already registered. Please use a different email.');
+
+    user.name = input.name.trim();
+    user.email = input.email.toLowerCase().trim();
+    user.password = input.password; // pre-save hook will hash it
+    user.address = {
+      line1: input.address.line1.trim(),
+      line2: input.address.line2?.trim(),
+      city: input.address.city.trim(),
+      state: input.address.state.trim(),
+      pincode: input.address.pincode.trim(),
+      country: (input.address.country || 'India').trim(),
+    };
+    user.profileComplete = true;
+    await user.save();
+
+    // Send welcome email now that we have a real email address
+    void emailService.sendWelcome({ name: user.name, email: user.email }).catch((err) => {
+      logger.warn('Failed to send welcome email after profile completion', { err: (err as Error).message });
+    });
+
+    const tokens = issueTokens({ id: user._id.toString(), role: user.role, email: user.email });
+    return { user: user.toJSON(), ...tokens };
   },
 };

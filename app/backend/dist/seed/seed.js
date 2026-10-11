@@ -169,6 +169,15 @@ var userSchema = new import_mongoose.Schema(
     },
     phone: { type: String, trim: true, index: true, sparse: true },
     isActive: { type: Boolean, default: true },
+    profileComplete: { type: Boolean, default: false },
+    address: {
+      line1: { type: String, trim: true },
+      line2: { type: String, trim: true },
+      city: { type: String, trim: true },
+      state: { type: String, trim: true },
+      pincode: { type: String, trim: true },
+      country: { type: String, trim: true, default: "India" }
+    },
     wishlist: [{ type: import_mongoose.Schema.Types.ObjectId, ref: "Product" }]
   },
   {

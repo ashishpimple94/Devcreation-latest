@@ -8,8 +8,9 @@ interface AuthState {
   init: () => Promise<void>;
   login: (identifier: string, password: string) => Promise<void>;
   sendOtp: (phone: string) => Promise<{ phone: string; message: string; provider?: string; demoOtp?: string; expiresInSeconds?: number }>;
-  loginWithOtp: (phone: string, otp: string) => Promise<void>;
+  loginWithOtp: (phone: string, otp: string) => Promise<{ isNewCustomer: boolean }>;
   register: (input: { name: string; email: string; password: string; phone?: string }) => Promise<void>;
+  completeProfile: (input: { name: string; email: string; password: string; address: { line1: string; line2?: string; city: string; state: string; pincode: string; country?: string } }) => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: User) => void;
   isStaff: () => boolean;
@@ -121,13 +122,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   async loginWithOtp(phone: string, otp: string) {
     try {
-      const res = await api.post<{ user: User; accessToken: string; refreshToken?: string }>(
+      const res = await api.post<{ user: User; accessToken: string; refreshToken?: string; isNewCustomer?: boolean }>(
         '/auth/otp/verify',
         { phone, otp },
         { auth: false },
       );
       tokenStore.set(res.data.accessToken, res.data.refreshToken);
       set({ user: res.data.user, status: 'authenticated' });
+      return { isNewCustomer: res.data.isNewCustomer ?? false };
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
         const stored = typeof window !== 'undefined' ? window.sessionStorage.getItem('dc_demo_otp_' + phone) : null;
@@ -142,7 +144,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             createdAt: new Date().toISOString(),
           };
           set({ user: fallbackUser, status: 'authenticated' });
-          return;
+          return { isNewCustomer: true };
         }
         throw new Error('Invalid verification code. Please enter 123456');
       }
@@ -154,6 +156,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const res = await api.post<{ user: User; accessToken: string; refreshToken?: string }>('/auth/register', input, {
       auth: false,
     });
+    tokenStore.set(res.data.accessToken, res.data.refreshToken);
+    set({ user: res.data.user, status: 'authenticated' });
+  },
+
+  async completeProfile(input) {
+    const res = await api.post<{ user: User; accessToken: string; refreshToken?: string }>(
+      '/auth/complete-profile',
+      input,
+    );
     tokenStore.set(res.data.accessToken, res.data.refreshToken);
     set({ user: res.data.user, status: 'authenticated' });
   },

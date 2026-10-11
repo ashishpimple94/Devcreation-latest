@@ -117,7 +117,15 @@ function LoginForm() {
 
     setVerifyingOtp(true);
     try {
-      await loginWithOtp(clean, code);
+      const { isNewCustomer } = await loginWithOtp(clean, code);
+
+      // New user — redirect to profile completion form before entering the store
+      if (isNewCustomer) {
+        router.push(`/complete-profile?phone=${encodeURIComponent(clean)}`);
+        return;
+      }
+
+      // Existing user — proceed normally
       refreshCart().catch(() => {});
       refreshNotifications().catch(() => {});
 

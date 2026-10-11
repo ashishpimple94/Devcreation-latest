@@ -426,6 +426,15 @@ var userSchema = new import_mongoose2.Schema(
     },
     phone: { type: String, trim: true, index: true, sparse: true },
     isActive: { type: Boolean, default: true },
+    profileComplete: { type: Boolean, default: false },
+    address: {
+      line1: { type: String, trim: true },
+      line2: { type: String, trim: true },
+      city: { type: String, trim: true },
+      state: { type: String, trim: true },
+      pincode: { type: String, trim: true },
+      country: { type: String, trim: true, default: "India" }
+    },
     wishlist: [{ type: import_mongoose2.Schema.Types.ObjectId, ref: "Product" }]
   },
   {
@@ -2038,13 +2047,15 @@ var authService = {
         email: fallbackEmail,
         password: randomPassword,
         phone: cleanPhone,
-        role: ROLES.CUSTOMER
+        role: ROLES.CUSTOMER,
+        profileComplete: false
+        // Will be set true after profile form is submitted
       });
       await Cart.create({ user: user2._id, items: [] });
       await notificationService.create({
         type: "customer_registered",
         title: "New customer (Mobile OTP)",
-        message: `Customer with mobile +91 ${cleanPhone} registered via OTP`,
+        message: `Customer with mobile +91 ${cleanPhone} registered via OTP \u2014 profile pending`,
         forStaff: true,
         relatedEntity: { kind: "user", id: user2._id.toString() },
         dashboardDirty: true
@@ -2064,6 +2075,38 @@ var authService = {
     const user2 = await User.findById(userId);
     if (!user2) throw ApiError.notFound("User not found");
     return user2.toJSON();
+  },
+  /**
+   * Called after OTP login when isNewCustomer=true.
+   * Saves real email, password, name, and delivery address, then marks
+   * profileComplete=true so the user is not redirected again.
+   */
+  async completeProfile(userId, input) {
+    const user2 = await User.findById(userId).select("+password");
+    if (!user2) throw ApiError.notFound("User not found");
+    const emailInUse = await User.findOne({
+      email: input.email.toLowerCase().trim(),
+      _id: { $ne: user2._id }
+    });
+    if (emailInUse) throw ApiError.conflict("This email address is already registered. Please use a different email.");
+    user2.name = input.name.trim();
+    user2.email = input.email.toLowerCase().trim();
+    user2.password = input.password;
+    user2.address = {
+      line1: input.address.line1.trim(),
+      line2: input.address.line2?.trim(),
+      city: input.address.city.trim(),
+      state: input.address.state.trim(),
+      pincode: input.address.pincode.trim(),
+      country: (input.address.country || "India").trim()
+    };
+    user2.profileComplete = true;
+    await user2.save();
+    void emailService.sendWelcome({ name: user2.name, email: user2.email }).catch((err) => {
+      logger.warn("Failed to send welcome email after profile completion", { err: err.message });
+    });
+    const tokens = issueTokens({ id: user2._id.toString(), role: user2.role, email: user2.email });
+    return { user: user2.toJSON(), ...tokens };
   }
 };
 
@@ -2127,6 +2170,11 @@ var authController = {
   me: asyncHandler(async (req, res) => {
     const user2 = await authService.me(req.user.id);
     return sendSuccess(res, user2, "Current user");
+  }),
+  completeProfile: asyncHandler(async (req, res) => {
+    const result = await authService.completeProfile(req.user.id, req.body);
+    res.cookie("refreshToken", result.refreshToken, refreshCookieOptions);
+    return sendSuccess(res, result, "Profile completed successfully");
   })
 };
 
@@ -2213,6 +2261,7 @@ router.post("/reset-password", authLimiter, validate(resetPasswordSchema), authC
 router.post("/otp/send", authLimiter, authController.sendOtp);
 router.post("/otp/verify", authLimiter, authController.verifyOtp);
 router.get("/me", authenticate, authController.me);
+router.post("/complete-profile", authenticate, authController.completeProfile);
 var auth_routes_default = router;
 
 // src/routes/user.routes.ts

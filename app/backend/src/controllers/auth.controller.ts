@@ -76,4 +76,10 @@ export const authController = {
     const user = await authService.me(req.user!.id);
     return sendSuccess(res, user, 'Current user');
   }),
+
+  completeProfile: asyncHandler(async (req: Request, res: Response) => {
+    const result = await authService.completeProfile(req.user!.id, req.body);
+    res.cookie('refreshToken', result.refreshToken, refreshCookieOptions);
+    return sendSuccess(res, result, 'Profile completed successfully');
+  }),
 };

@@ -40,6 +40,7 @@ const config: Config = {
         card: '10px',
       },
       boxShadow: {
+        xs: '0 1px 4px 0 rgba(28,20,16,.08)',
         card: '0 14px 34px -12px rgba(28,20,16,.15)',
         'card-hover': '0 24px 48px -14px rgba(184,148,63,.18)',
         rule: '0 12px 32px -10px rgba(28,20,16,.12)',

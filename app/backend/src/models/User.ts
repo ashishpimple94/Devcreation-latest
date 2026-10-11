@@ -2,6 +2,15 @@ import { Schema, model, type Document, type Types } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { ROLES, type Role } from '@/constants';
 
+export interface IAddress {
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country: string;
+}
+
 export interface IUser extends Document {
   _id: Types.ObjectId;
   name: string;
@@ -10,6 +19,8 @@ export interface IUser extends Document {
   role: Role;
   phone?: string;
   isActive: boolean;
+  profileComplete: boolean;
+  address?: IAddress;
   wishlist: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
@@ -37,6 +48,15 @@ const userSchema = new Schema<IUser>(
     },
     phone: { type: String, trim: true, index: true, sparse: true },
     isActive: { type: Boolean, default: true },
+    profileComplete: { type: Boolean, default: false },
+    address: {
+      line1: { type: String, trim: true },
+      line2: { type: String, trim: true },
+      city:  { type: String, trim: true },
+      state: { type: String, trim: true },
+      pincode: { type: String, trim: true },
+      country: { type: String, trim: true, default: 'India' },
+    },
     wishlist: [{ type: Schema.Types.ObjectId, ref: 'Product' }],
   },
   {

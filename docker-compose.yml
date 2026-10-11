@@ -68,7 +68,7 @@ services:
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      EMAIL_FROM: ${EMAIL_FROM:-Dev Creation <no-reply@devcreation.example>}
+      EMAIL_FROM: ${EMAIL_FROM:-Dev Creation <support@devcreation24.in>}
     volumes:
       - backend_uploads:/app/uploads
     depends_on:

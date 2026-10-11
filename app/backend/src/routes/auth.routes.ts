@@ -21,5 +21,6 @@ router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authC
 router.post('/otp/send', authLimiter, authController.sendOtp);
 router.post('/otp/verify', authLimiter, authController.verifyOtp);
 router.get('/me', authenticate, authController.me);
+router.post('/complete-profile', authenticate, authController.completeProfile);
 
 export default router;
