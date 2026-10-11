@@ -1,5 +1,4 @@
-import { notFound } from 'next/navigation';
-import { ProductDetail } from '@/components/product/ProductDetail';
+import { ProductDetailWrapper } from '@/components/product/ProductDetailWrapper';
 import { productService } from '@/services/product.service';
 import type { Product } from '@/types';
 
@@ -25,19 +24,26 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     const product = await productService.getBySlug(params.slug);
     return { title: `${product.name} — Dev Creation`, description: product.description };
   } catch {
-    return { title: 'Product — Dev Creation' };
+    return { title: 'Product Detail — Dev Creation Handcrafted Candles' };
   }
 }
 
 export default async function ProductDetailPage({ params }: { params: { slug: string } }) {
-  let product: Product;
+  let product: Product | null = null;
   let related: Product[] = [];
+
   try {
     product = await productService.getBySlug(params.slug);
     related = await productService.related(params.slug).catch(() => []);
   } catch {
-    notFound();
+    product = null;
   }
 
-  return <ProductDetail product={product} related={related} />;
+  return (
+    <ProductDetailWrapper
+      initialProduct={product}
+      initialRelated={related}
+      slug={params.slug}
+    />
+  );
 }

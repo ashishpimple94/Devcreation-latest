@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { formatRupee, cn, resolveImageUrl } from '@/lib/utils';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
@@ -117,6 +118,16 @@ export function ProductCard({
     }
   };
 
+  const router = useRouter();
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('a')) {
+      return;
+    }
+    router.push(`/products/${product.slug}`);
+  };
+
   const discountPercent =
     product.compareAtPrice && product.compareAtPrice > product.price
       ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
@@ -124,12 +135,13 @@ export function ProductCard({
 
   return (
     <article
+      onClick={handleCardClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
         setActive(0);
       }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-line/60 bg-surface transition-all duration-500 ease-spring hover:-translate-y-2 hover:border-gold/40 hover:shadow-[0_22px_45px_-14px_rgba(44,24,16,0.14)]"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-line/60 bg-surface cursor-pointer transition-all duration-500 ease-spring hover:-translate-y-2 hover:border-gold/40 hover:shadow-[0_22px_45px_-14px_rgba(44,24,16,0.14)]"
     >
       {/* Product Image Stage */}
       <div className="relative block aspect-square w-full overflow-hidden bg-[#F7F6F3]">
