@@ -14,6 +14,7 @@ interface AuthState {
   logout: () => Promise<void>;
   setUser: (user: User) => void;
   isStaff: () => boolean;
+  toggleWishlist: (productId: string) => Promise<boolean>;
 }
 
 type TokenApiResponse = { accessToken: string; refreshToken?: string };
@@ -187,5 +188,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isStaff() {
     const role = get().user?.role;
     return role === 'super_admin' || role === 'admin' || role === 'manager';
+  },
+
+  async toggleWishlist(productId: string) {
+    const currentUser = get().user;
+    if (!currentUser) return false;
+    try {
+      const res = await api.post<{ inWishlist: boolean }>(`/users/me/wishlist/${productId}`);
+      const inWishlist = res.data.inWishlist;
+      const currentList = currentUser.wishlist || [];
+      const updatedList = inWishlist
+        ? [...currentList, productId]
+        : currentList.filter((id) => id !== productId);
+      set({ user: { ...currentUser, wishlist: updatedList } });
+      return inWishlist;
+    } catch {
+      return false;
+    }
   },
 }));
