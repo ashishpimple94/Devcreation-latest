@@ -115,6 +115,36 @@ a {
     background-size: 200% 100%;
     animation: shimmer 4s infinite linear;
   }
+
+  /* Radiant animated gold text gradient for headline emphasis */
+  .gold-shimmer-text {
+    background: linear-gradient(
+      110deg,
+      #E0C280 0%,
+      #FFFFFF 20%,
+      #E0C280 40%,
+      #D4AF37 60%,
+      #FFFFFF 80%,
+      #E0C280 100%
+    );
+    background-size: 200% auto;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: gold-text-flow 4.5s ease-in-out infinite;
+  }
+}
+
+@keyframes gold-text-flow {
+  0% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+  100% {
+    background-position: 0% center;
+  }
 }
 
 /* Reduced-motion preference, matching original behaviour. */

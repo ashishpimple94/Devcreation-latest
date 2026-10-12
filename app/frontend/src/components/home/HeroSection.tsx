@@ -159,25 +159,39 @@ export function HeroSection() {
                 {/* Centered Editorial Content with Staggered Cascading Reveal */}
                 <div className="relative z-20 flex h-full flex-col items-center justify-center px-6 sm:px-12 text-center text-white">
                   <div className="max-w-4xl pt-8 pb-12">
-                    {/* Eyebrow */}
-                    <p
-                      className={`font-util text-[0.68rem] sm:text-xs font-semibold uppercase tracking-[0.24em] text-gold-lt transition-all duration-700 ease-spring ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+                    {/* Eyebrow with Animated Glass Pill & Glowing Accent */}
+                    <div className="overflow-hidden pb-1">
+                      <p
+                        className={`inline-flex items-center gap-2 rounded-full border border-gold-lt/35 bg-black/40 px-4 py-1.5 font-util text-[0.68rem] sm:text-xs font-semibold uppercase tracking-[0.26em] text-gold-lt shadow-[0_4px_24px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all duration-700 ease-spring ${
+                          isActive
+                            ? 'opacity-100 translate-y-0 scale-100'
+                            : 'opacity-0 -translate-y-4 scale-95'
                         }`}
-                    >
-                      {slide.eyebrow}
-                    </p>
+                      >
+                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-gold-lt animate-ping" />
+                        <span>{slide.eyebrow}</span>
+                      </p>
+                    </div>
 
-                    {/* Headline with Gold Cursive Accent */}
+                    {/* Headline with Gold Cursive Accent and Liquid Shimmer */}
                     <h1
-                      className={`mt-3.5 sm:mt-5 font-display-alt text-[clamp(2.5rem,6.2vw,5.2rem)] font-medium leading-[1.06] tracking-[-0.015em] text-white drop-shadow-sm transition-all duration-700 delay-100 ease-spring ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                        }`}
+                      className={`mt-4 sm:mt-5 font-display-alt text-[clamp(2.5rem,6.2vw,5.2rem)] font-medium leading-[1.06] tracking-[-0.015em] text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-1000 delay-150 ease-spring ${
+                        isActive
+                          ? 'opacity-100 translate-y-0 filter-none'
+                          : 'opacity-0 translate-y-7 blur-sm'
+                      }`}
                     >
-                      {slide.titlePart1}
-                      <span className="relative inline-block font-normal not-italic text-gold-lt italic">
-                        {slide.titleHighlight}
+                      <span className="inline-block transition-transform duration-700">
+                        {slide.titlePart1}
+                      </span>
+                      <span className="relative inline-block font-normal not-italic italic mx-1 sm:mx-1.5">
+                        <span className="gold-shimmer-text relative z-10 drop-shadow-[0_0_24px_rgba(224,194,128,0.5)]">
+                          {slide.titleHighlight}
+                        </span>
                         <svg
-                          className={`absolute -bottom-2 left-0 w-full text-gold-lt/70 transition-transform duration-1000 delay-200 ease-spring origin-left ${isActive ? 'scale-x-100 opacity-100' : 'scale-x-0 opacity-0'
-                            }`}
+                          className={`absolute -bottom-2.5 left-0 w-full text-gold-lt transition-transform duration-1000 delay-300 ease-spring origin-left ${
+                            isActive ? 'scale-x-100 opacity-100 drop-shadow-[0_2px_10px_rgba(184,148,63,0.7)]' : 'scale-x-0 opacity-0'
+                          }`}
                           viewBox="0 0 100 12"
                           preserveAspectRatio="none"
                           aria-hidden="true"
@@ -186,12 +200,14 @@ export function HeroSection() {
                             d="M0,9 Q50,1 100,9"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2.5"
+                            strokeWidth="3"
                             strokeLinecap="round"
                           />
                         </svg>
                       </span>
-                      {slide.titlePart2}
+                      <span className="inline-block transition-transform duration-700">
+                        {slide.titlePart2}
+                      </span>
                     </h1>
 
                     {/* Narrative Subtext */}
