@@ -27,7 +27,7 @@ const C = {
 
 function resolveItemImg(url?: string | null): string {
   if (!url || typeof url !== 'string' || !url.trim()) {
-    return `${env.STORE_URL}/assets/Logos/logo.jpeg`;
+    return `${env.STORE_URL}/assets/Logos/Logo2.png`;
   }
   const trimmed = url.trim();
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
@@ -35,7 +35,7 @@ function resolveItemImg(url?: string | null): string {
   if (trimmed.startsWith('assets/')) return `${env.STORE_URL}/${trimmed}`;
   if (trimmed.startsWith('/uploads/')) return `${env.PUBLIC_ASSET_BASE}${trimmed}`;
   if (trimmed.startsWith('uploads/')) return `${env.PUBLIC_ASSET_BASE}/${trimmed}`;
-  return `${env.STORE_URL}/assets/Logos/logo.jpeg`;
+  return `${env.STORE_URL}/assets/Logos/Logo2.png`;
 }
 
 /** Shared responsive email shell matching the website styling and fonts */

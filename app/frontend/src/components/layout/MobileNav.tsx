@@ -33,8 +33,17 @@ export function MobileNav({
           open ? 'translate-x-0' : 'translate-x-full',
         )}
       >
-        <div className="flex items-center justify-between border-b border-line px-6 py-5">
-          <Image src="/assets/Logos/logo.jpeg" alt="Dev Creation" width={100} height={50} className="h-[50px] w-auto" />
+        <div className="flex items-center justify-between border-b border-line px-6 py-4">
+          <Link href="/" onClick={onClose} className="flex items-center gap-2.5">
+            <Image
+              src="/assets/Logos/Logo2.png"
+              alt="Dev Creation"
+              width={48}
+              height={48}
+              className="h-11 w-11 object-contain rounded-full"
+            />
+            <span className="font-display-alt text-base font-medium text-ink">Dev Creation</span>
+          </Link>
           <button onClick={onClose} aria-label="Close menu" className="p-1 text-[1.8rem] leading-none text-ink-2 hover:text-ink">
             &times;
           </button>

@@ -65,12 +65,12 @@ export function Header() {
       >
         <Link href="/" prefetch={true} className="flex flex-shrink-0 items-center leading-none">
           <Image
-            src="/assets/Logos/logo.jpeg"
+            src="/assets/Logos/Logo2.png"
             alt="Dev Creation"
-            width={160}
-            height={80}
+            width={64}
+            height={64}
             priority
-            className="h-20 w-auto object-contain max-[860px]:h-14"
+            className="h-14 w-14 object-contain rounded-full max-[860px]:h-12 max-[860px]:w-12 transition-transform duration-200 hover:scale-105"
           />
         </Link>
 

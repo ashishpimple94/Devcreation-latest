@@ -112,7 +112,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       {/* Store switcher */}
       <div className="flex items-center gap-2.5 border-b border-line px-4 py-4">
         <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-deep text-white">
-          <Image src="/assets/Logos/logo.jpeg" alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" />
+          <Image src="/assets/Logos/Logo2.png" alt="" width={36} height={36} className="h-9 w-9 rounded-full object-cover" />
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">

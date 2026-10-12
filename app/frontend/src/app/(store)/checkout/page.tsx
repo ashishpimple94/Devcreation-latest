@@ -216,8 +216,8 @@ export default function CheckoutPage() {
                         className="h-full w-full object-cover"
                         onError={(e) => {
                           const el = e.currentTarget;
-                          if (!el.src.includes('/assets/Logos/logo.jpeg')) {
-                            el.src = '/assets/Logos/logo.jpeg';
+                          if (!el.src.includes('/assets/Logos/Logo2.png')) {
+                            el.src = '/assets/Logos/Logo2.png';
                           }
                         }}
                       />

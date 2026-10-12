@@ -103,13 +103,13 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 md:grid-cols-12 lg:gap-14">
           {/* Column 1: Brand & Story (4 cols) */}
           <div className="md:col-span-4">
-            <Link href="/" className="inline-block">
+            <Link href="/" className="inline-block transition-transform duration-200 hover:scale-105">
               <Image
-                src="/assets/Logos/logo.jpeg"
+                src="/assets/Logos/Logo2.png"
                 alt="Dev Creation"
-                width={160}
+                width={80}
                 height={80}
-                className="h-16 w-auto object-contain"
+                className="h-16 w-16 object-contain rounded-full shadow-xs"
               />
             </Link>
 

@@ -66,7 +66,7 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-[#f7f5f0] px-4 py-8 sm:px-6">
       <div className="w-full max-w-sm rounded-2xl border border-line bg-white p-6 sm:p-8 shadow-card">
         <div className="mb-6 flex flex-col items-center">
-          <Image src="/assets/Logos/logo.jpeg" alt="Dev Creation" width={120} height={60} className="h-14 w-auto object-contain" priority />
+          <Image src="/assets/Logos/Logo2.png" alt="Dev Creation" width={60} height={60} className="h-14 w-14 rounded-full object-contain shadow-xs" priority />
           <span className="mt-3 font-util text-[0.55rem] uppercase tracking-[0.2em] text-copper">Admin Panel</span>
         </div>
         <h1 className="text-center font-display-alt text-2xl font-medium text-ink">Sign in</h1>

@@ -709,11 +709,11 @@ export default function LoginPage() {
             <div className="text-center mb-7">
               <Link href="/" className="inline-block transition-transform hover:scale-105 duration-200">
                 <Image
-                  src="/assets/Logos/logo.jpeg"
+                  src="/assets/Logos/Logo2.png"
                   alt="Dev Creation"
-                  width={140}
-                  height={70}
-                  className="h-14 w-auto object-contain mx-auto"
+                  width={80}
+                  height={80}
+                  className="h-16 w-16 object-contain rounded-full mx-auto shadow-sm"
                   priority
                 />
               </Link>

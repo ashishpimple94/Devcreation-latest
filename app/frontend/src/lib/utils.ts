@@ -52,7 +52,7 @@ const ASSET_BACKEND_BASE = (
  * Handles data URIs, local Next.js static /assets, localhost:4000 uploads,
  * relative /uploads, and remote URLs with fallback.
  */
-export function resolveImageUrl(url?: string | null, fallback = '/assets/Logos/logo.jpeg'): string {
+export function resolveImageUrl(url?: string | null, fallback = '/assets/Logos/Logo2.png'): string {
   if (!url || typeof url !== 'string' || !url.trim()) {
     return fallback;
   }

@@ -14,7 +14,7 @@ export function AuthShell({
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6 py-16">
       <Link href="/" className="mb-8">
-        <Image src="/assets/Logos/logo.jpeg" alt="Dev Creation" width={140} height={70} className="h-16 w-auto object-contain" priority />
+        <Image src="/assets/Logos/Logo2.png" alt="Dev Creation" width={64} height={64} className="h-16 w-16 rounded-full object-contain shadow-xs" priority />
       </Link>
       <h1 className="font-display-alt text-3xl font-medium text-ink">{title}</h1>
       <p className="mb-8 mt-2 text-center text-sm text-body">{subtitle}</p>
