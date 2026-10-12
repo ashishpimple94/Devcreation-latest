@@ -29,7 +29,7 @@ export function MobileNav({
       />
       <div
         className={cn(
-          'fixed right-0 top-0 z-[100] flex h-[100dvh] w-[min(320px,85vw)] flex-col bg-paper shadow-[-16px_0_40px_rgba(28,20,16,.15)] transition-transform duration-[350ms]',
+          'fixed right-0 top-0 z-[100] flex h-[100dvh] w-[min(320px,85vw)] flex-col bg-paper shadow-[-16px_0_40px_rgba(28,20,16,.15)] transition-transform duration-300 ease-spring will-change-transform',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
       >
@@ -45,7 +45,21 @@ export function MobileNav({
             <Link
               key={link.label}
               href={link.href}
-              onClick={onClose}
+              prefetch={true}
+              onClick={(e) => {
+                onClose();
+                if (link.href.startsWith('/#')) {
+                  const hashId = link.href.substring(2);
+                  const target = document.getElementById(hashId);
+                  if (typeof window !== 'undefined' && window.location.pathname === '/') {
+                    e.preventDefault();
+                    if (target) {
+                      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      window.history.pushState(null, '', link.href);
+                    }
+                  }
+                }
+              }}
               className="border-b border-line-soft py-4 font-body text-base font-medium tracking-[0.04em] text-ink-2 transition-colors hover:text-ink"
             >
               {link.label}
@@ -53,15 +67,15 @@ export function MobileNav({
           ))}
           {user ? (
             <>
-              <Link href="/account/profile" onClick={onClose} className="border-b border-line-soft py-4 font-body text-base font-medium text-ink-2 hover:text-ink">
+              <Link href="/account/profile" prefetch={true} onClick={onClose} className="border-b border-line-soft py-4 font-body text-base font-medium text-ink-2 hover:text-ink">
                 My Account
               </Link>
-              <Link href="/account/orders" onClick={onClose} className="border-b border-line-soft py-4 font-body text-base font-medium text-ink-2 hover:text-ink">
+              <Link href="/account/orders" prefetch={true} onClick={onClose} className="border-b border-line-soft py-4 font-body text-base font-medium text-ink-2 hover:text-ink">
                 My Orders
               </Link>
             </>
           ) : (
-            <Link href="/login" onClick={onClose} className="border-b border-line-soft py-4 font-body text-base font-medium text-ink-2 hover:text-ink">
+            <Link href="/login" prefetch={true} onClick={onClose} className="border-b border-line-soft py-4 font-body text-base font-medium text-ink-2 hover:text-ink">
               Login / Register
             </Link>
           )}

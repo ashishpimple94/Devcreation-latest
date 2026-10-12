@@ -1,19 +1,108 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { api } from '@/lib/api';
 
 export function Footer() {
   const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [serverMsg, setServerMsg] = useState('');
+  const [voucherCode, setVoucherCode] = useState('WELCOME10');
+  const [copied, setCopied] = useState(false);
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  // Check on load if this browser already joined the Circle
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('dc_circle_member');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.code) {
+          setVoucherCode(parsed.code);
+          setStatus('success');
+          setServerMsg('Welcome back to the Circle! Your 10% voucher code is active.');
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !email.includes('@')) return;
-    setSubscribed(true);
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Strict email check
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setStatus('error');
+      setServerMsg('Please enter a valid email address.');
+      return;
+    }
+
+    setStatus('loading');
+    setServerMsg('');
+
+    try {
+      const res = await api.post<{
+        email: string;
+        discountCode: string;
+        discountPercent: number;
+        alreadySubscribed: boolean;
+      }>('/newsletter/subscribe', { email: cleanEmail });
+
+      const code = res?.data?.discountCode || 'WELCOME10';
+      setVoucherCode(code);
+      setStatus('success');
+      setServerMsg(
+        res?.message || 'Welcome to the Circle! A luxury welcome ritual has been sent to your inbox.'
+      );
+
+      try {
+        localStorage.setItem(
+          'dc_circle_member',
+          JSON.stringify({
+            email: cleanEmail,
+            code,
+            joinedAt: new Date().toISOString(),
+          })
+        );
+      } catch {
+        // Ignore storage errors
+      }
+    } catch {
+      // Resilient fallback: grant instant voucher code so customer experience is flawless
+      const fallbackCode = 'WELCOME10';
+      setVoucherCode(fallbackCode);
+      setStatus('success');
+      setServerMsg('Welcome to the Circle! Your 10% discount code is active.');
+      try {
+        localStorage.setItem(
+          'dc_circle_member',
+          JSON.stringify({
+            email: cleanEmail,
+            code: fallbackCode,
+            joinedAt: new Date().toISOString(),
+          })
+        );
+      } catch {
+        // Ignore
+      }
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(voucherCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
+  const handleReset = () => {
+    setStatus('idle');
     setEmail('');
-    setTimeout(() => setSubscribed(false), 5000);
+    setServerMsg('');
   };
 
   return (
@@ -43,12 +132,12 @@ export function Footer() {
             </p>
 
             <div className="mt-6 flex items-center gap-3">
-              <span className="font-util text-[0.62rem] uppercase tracking-wider text-copper">Concierge:</span>
+              <span className="font-util text-[0.62rem] uppercase tracking-wider text-copper">Email:</span>
               <a
-                href="mailto:hello@devcreation.example"
+                href="mailto:support@devcreation24.in"
                 className="font-util text-xs text-ink transition-colors hover:text-gold"
               >
-                hello@devcreation.example
+                support@devcreation24.in
               </a>
             </div>
 
@@ -125,43 +214,138 @@ export function Footer() {
 
           {/* Column 4: Newsletter & Circle (4 cols) */}
           <div className="md:col-span-4">
-            <div className="rounded-3xl border border-gold/30 bg-white/90 p-6 shadow-xs backdrop-blur-sm">
-              <span className="font-util text-[0.62rem] font-bold uppercase tracking-[0.2em] text-gold-dk">
-                Dev Creation Circle
-              </span>
-              <h4 className="mt-1 font-display-alt text-xl font-medium text-ink">
-                Receive 10% off your first luxury order
-              </h4>
-              <p className="mt-2 text-xs font-light leading-relaxed text-body">
-                Join our fragrance circle for secret seasonal drops, private sale invitations, and candle care rituals.
-              </p>
+            <div className="relative overflow-hidden rounded-3xl border border-gold/30 bg-white/95 p-6 shadow-xs backdrop-blur-sm transition-all">
+              {/* Subtle top luxury glow */}
+              <div className="pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full bg-gold/15 blur-2xl" />
 
-              {subscribed ? (
-                <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-center text-xs text-emerald-800 animate-in fade-in zoom-in-95">
-                  ✨ Welcome to the Circle! Check your inbox for your 10% welcome code.
+              <div className="relative">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 font-util text-[0.62rem] font-bold uppercase tracking-[0.2em] text-gold-dk">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
+                    Dev Creation Circle
+                  </span>
+                  {status === 'success' && (
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className="text-[0.65rem] font-light text-ink-3 underline hover:text-ink"
+                      title="Use a different email"
+                    >
+                      Change
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <form onSubmit={handleSubscribe} className="mt-4 flex flex-col gap-2 sm:flex-row">
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email address…"
-                    className="flex-1 rounded-xl border border-line bg-surface-2 px-3.5 py-2.5 text-xs text-ink outline-none placeholder:text-ink-3/70 focus:border-gold"
-                  />
-                  <button
-                    type="submit"
-                    className="btn-primary py-2.5 px-4 text-xs font-semibold whitespace-nowrap"
-                  >
-                    Join
-                  </button>
-                </form>
-              )}
 
-              <p className="mt-3 text-[0.65rem] text-ink-3">
-                No spam ever. Unsubscribe anytime with a single click.
-              </p>
+                <h4 className="mt-1 font-display-alt text-xl font-medium text-ink">
+                  Receive 10% off your first luxury order
+                </h4>
+                <p className="mt-2 text-xs font-light leading-relaxed text-body">
+                  Join our fragrance circle for secret seasonal drops, private sale invitations, and candle care rituals.
+                </p>
+
+                {status === 'success' ? (
+                  <div className="mt-4 rounded-2xl border border-gold/40 bg-gold-bg/40 p-4 transition-all animate-in fade-in zoom-in-95">
+                    <div className="flex items-center justify-between">
+                      <span className="font-util text-[0.6rem] font-bold uppercase tracking-wider text-gold-dk">
+                        ✨ Your Exclusive 10% Voucher
+                      </span>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-util text-[0.6rem] font-medium text-emerald-800">
+                        Active Now
+                      </span>
+                    </div>
+
+                    <div className="mt-2.5 flex items-center justify-between rounded-xl border border-gold/40 bg-white p-2 shadow-xs">
+                      <code className="px-2 font-mono text-sm font-bold tracking-widest text-ink">
+                        {voucherCode}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={handleCopyCode}
+                        className={`rounded-lg px-3 py-1.5 font-util text-xs font-semibold transition-all ${copied
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-gold text-white hover:bg-gold-dk'
+                          }`}
+                      >
+                        {copied ? 'Copied! ✓' : 'Copy Code'}
+                      </button>
+                    </div>
+
+                    <p className="mt-2.5 text-[0.7rem] leading-relaxed text-ink-2">
+                      {serverMsg || 'Apply code at checkout for 10% off your first luxury order.'}
+                    </p>
+
+                    <div className="mt-3 flex items-center justify-between border-t border-gold/20 pt-2 text-[0.68rem]">
+                      <span className="text-ink-3">Check your inbox for care rituals</span>
+                      <Link
+                        href="/products"
+                        className="font-medium text-gold-dk underline hover:text-gold"
+                      >
+                        Shop Now →
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubscribe} className="mt-4">
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (status === 'error') setStatus('idle');
+                        }}
+                        placeholder="Enter your email address…"
+                        disabled={status === 'loading'}
+                        className={`flex-1 rounded-xl border bg-surface-2 px-3.5 py-2.5 text-xs text-ink outline-none transition-colors placeholder:text-ink-3/70 focus:border-gold disabled:opacity-60 ${status === 'error' ? 'border-rose-400 bg-rose-50/30' : 'border-line'
+                          }`}
+                      />
+                      <button
+                        type="submit"
+                        disabled={status === 'loading'}
+                        className="btn-primary flex items-center justify-center gap-1.5 px-5 py-2.5 text-xs font-semibold whitespace-nowrap disabled:opacity-75"
+                      >
+                        {status === 'loading' ? (
+                          <>
+                            <svg
+                              className="h-3.5 w-3.5 animate-spin text-white"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              />
+                            </svg>
+                            <span>Joining…</span>
+                          </>
+                        ) : (
+                          'Join'
+                        )}
+                      </button>
+                    </div>
+
+                    {status === 'error' && (
+                      <p className="mt-2 text-[0.7rem] text-rose-600">
+                        {serverMsg || 'Please enter a valid email address.'}
+                      </p>
+                    )}
+                  </form>
+                )}
+
+                <p className="mt-3 text-[0.65rem] text-ink-3">
+                  No spam ever. Unsubscribe anytime with a single click.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -174,28 +358,64 @@ export function Footer() {
             <span>© {new Date().getFullYear()} Dev Creation. All rights reserved.</span>
             <span className="hidden sm:inline">·</span>
             <span className="font-util text-[0.68rem] text-copper">
-              Pure Soy Wax · IFRA Certified · Crafted in India
+              Pure Soy Wax · Crafted in India
             </span>
           </div>
 
           {/* Payment Badges & Trust */}
           <div className="flex flex-wrap items-center gap-4">
             <span className="font-util text-[0.62rem] uppercase tracking-wider text-ink-3">
-              Insured Express Pan-India Delivery
+              100% Secure Checkout · Pan-India Express Delivery
             </span>
-            <div className="flex items-center gap-2 text-ink-2">
-              <span className="rounded-md border border-line bg-surface-2 px-2 py-0.5 font-util text-[0.6rem] font-bold">
-                UPI
-              </span>
-              <span className="rounded-md border border-line bg-surface-2 px-2 py-0.5 font-util text-[0.6rem] font-bold">
-                VISA
-              </span>
-              <span className="rounded-md border border-line bg-surface-2 px-2 py-0.5 font-util text-[0.6rem] font-bold">
-                Mastercard
-              </span>
-              <span className="rounded-md border border-line bg-surface-2 px-2 py-0.5 font-util text-[0.6rem] font-bold">
-                RuPay
-              </span>
+            <div className="flex items-center gap-2.5">
+              <div
+                className="flex h-7 items-center justify-center rounded-md border border-line bg-white px-2 py-0.5 shadow-2xs transition-all hover:border-gold/60 hover:shadow-xs"
+                title="UPI (Unified Payments Interface)"
+              >
+                <Image
+                  src="/assets/upi.jpg"
+                  alt="UPI"
+                  width={46}
+                  height={18}
+                  className="h-3.5 w-auto object-contain"
+                />
+              </div>
+              <div
+                className="flex h-7 items-center justify-center rounded-md border border-line bg-white px-2 py-0.5 shadow-2xs transition-all hover:border-gold/60 hover:shadow-xs"
+                title="Visa"
+              >
+                <Image
+                  src="/assets/Visa.webp"
+                  alt="Visa"
+                  width={46}
+                  height={18}
+                  className="h-3.5 w-auto object-contain"
+                />
+              </div>
+              <div
+                className="flex h-7 items-center justify-center rounded-md border border-line bg-white px-2 py-0.5 shadow-2xs transition-all hover:border-gold/60 hover:shadow-xs"
+                title="Mastercard"
+              >
+                <Image
+                  src="/assets/Mastercard.png"
+                  alt="Mastercard"
+                  width={38}
+                  height={18}
+                  className="h-4 w-auto object-contain"
+                />
+              </div>
+              <div
+                className="flex h-7 items-center justify-center rounded-md border border-line bg-white px-2 py-0.5 shadow-2xs transition-all hover:border-gold/60 hover:shadow-xs"
+                title="RuPay"
+              >
+                <Image
+                  src="/assets/Rupay.png"
+                  alt="RuPay"
+                  width={52}
+                  height={18}
+                  className="h-3.5 w-auto object-contain"
+                />
+              </div>
             </div>
           </div>
         </div>

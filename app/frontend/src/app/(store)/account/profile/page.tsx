@@ -182,8 +182,8 @@ export default function ProfilePage() {
         <div className="flex items-center gap-3 px-2 border-t sm:border-t-0 sm:border-l border-line/50 pt-2 sm:pt-0">
           <span className="text-2xl">🚚</span>
           <div>
-            <div className="font-util text-[0.62rem] font-bold uppercase tracking-wider text-copper">Free Pan-India Delivery</div>
-            <div className="text-xs text-ink-2">On all orders above ₹999</div>
+            <div className="font-util text-[0.62rem] font-bold uppercase tracking-wider text-copper">Express Pan-India Delivery</div>
+            <div className="text-xs text-ink-2">Insured door-to-door shipping</div>
           </div>
         </div>
         <div className="flex items-center gap-3 px-2 border-t sm:border-t-0 sm:border-l border-line/50 pt-2 sm:pt-0">

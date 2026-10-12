@@ -105,6 +105,13 @@ export default function AdminLoginPage() {
             </p>
           )}
         </form>
+
+        <p className="mt-5 text-center text-xs text-ink-3">
+          Need access or help? Contact{' '}
+          <a href="mailto:support@devcreation24.in" className="font-medium text-copper transition-colors hover:text-gold">
+            support@devcreation24.in
+          </a>
+        </p>
       </div>
     </div>
   );

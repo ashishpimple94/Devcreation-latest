@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { useCartStore } from '@/store/cartStore';
 import { useNotificationStore } from '@/store/notificationStore';
@@ -10,16 +11,17 @@ import { MobileNav } from '@/components/layout/MobileNav';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { cn } from '@/lib/utils';
 
-const NAV_LINKS = [
+export const NAV_LINKS = [
   { label: 'Collection', href: '/products' },
   { label: 'Care', href: '/#care' },
   { label: 'Our Story', href: '/our-story' },
   { label: 'Gifting', href: '/categories/gift-sets' },
-  { label: 'Refills', href: '/products' },
+  { label: 'Refills', href: '/categories/wax-melts' },
 ];
 
 /** Sticky header with centered nav and smooth scroll elevation. */
 export function Header() {
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const count = useCartStore((s) => s.count);
@@ -35,17 +37,33 @@ export function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith('/#')) {
+      const hashId = href.substring(2);
+      const target = document.getElementById(hashId);
+      if (pathname === '/') {
+        e.preventDefault();
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          if (typeof window !== 'undefined') {
+            window.history.pushState(null, '', href);
+          }
+        }
+      }
+    }
+  };
+
   return (
     <>
       <header
         className={cn(
-          'sticky top-0 z-[60] flex items-center justify-between gap-6 px-[var(--pad)] py-[10px] transition-all duration-500 ease-spring backdrop-blur-[16px]',
+          'sticky top-0 z-[60] flex items-center justify-between gap-6 px-[var(--pad)] py-[10px] transition-all duration-300 ease-spring backdrop-blur-[16px]',
           scrolled
-            ? 'border-b border-gold/25 bg-paper/90 shadow-[0_8px_30px_-10px_rgba(44,24,16,.08)]'
+            ? 'border-b border-gold/25 bg-paper/95 shadow-[0_8px_30px_-10px_rgba(44,24,16,.08)]'
             : 'border-b border-line bg-paper/95',
         )}
       >
-        <Link href="/" className="flex flex-shrink-0 items-center leading-none">
+        <Link href="/" prefetch={true} className="flex flex-shrink-0 items-center leading-none">
           <Image
             src="/assets/Logos/logo.jpeg"
             alt="Dev Creation"
@@ -57,31 +75,51 @@ export function Header() {
         </Link>
 
         <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-8 min-[861px]:flex">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              className="group relative whitespace-nowrap font-body text-[0.82rem] font-medium uppercase tracking-[0.1em] text-ink-3 transition-colors hover:text-ink"
-            >
-              {link.label}
-              <span className="absolute -bottom-1 left-0 h-[1.5px] w-0 bg-gold transition-all duration-[250ms] group-hover:w-full" />
-            </Link>
-          ))}
+          {NAV_LINKS.map((link) => {
+            const isActive =
+              link.href === '/products'
+                ? pathname === '/products'
+                : link.href !== '/#care' && pathname.startsWith(link.href);
+
+            return (
+              <Link
+                key={link.label}
+                href={link.href}
+                prefetch={true}
+                onClick={(e) => handleNavClick(e, link.href)}
+                className={cn(
+                  'group relative whitespace-nowrap font-body text-[0.82rem] font-medium uppercase tracking-[0.1em] transition-colors',
+                  isActive ? 'text-ink font-semibold' : 'text-ink-3 hover:text-ink',
+                )}
+              >
+                {link.label}
+                <span
+                  className={cn(
+                    'absolute -bottom-1 left-0 h-[1.5px] bg-gold transition-all duration-[200ms]',
+                    isActive ? 'w-full' : 'w-0 group-hover:w-full',
+                  )}
+                />
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="flex flex-shrink-0 items-center gap-4">
-          <Link href="/search" aria-label="Search" className="p-1.5 text-ink-2 transition-colors hover:text-ink">
+          <Link
+            href="/search"
+            prefetch={true}
+            aria-label="Search"
+            className="p-1.5 text-ink-2 transition-all duration-200 hover:text-ink hover:scale-110 active:scale-95"
+          >
             <SearchIcon />
           </Link>
 
           {user && <NotificationBell unread={unread} />}
 
-
-
           <Link
             href={user ? '/account/profile' : '/login'}
             aria-label="Account"
-            className="p-1.5 text-ink-2 transition-colors hover:text-ink"
+            className="p-1.5 text-ink-2 transition-all duration-200 hover:text-ink hover:scale-110 active:scale-95"
           >
             <UserIcon />
           </Link>

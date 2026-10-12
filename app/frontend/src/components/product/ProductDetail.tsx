@@ -480,7 +480,7 @@ export function ProductDetail({ product, related }: { product: Product; related:
                 onClick={handleAdd}
                 disabled={stock <= 0 || adding || buying}
                 className={cn(
-                  'w-full rounded-xl py-3 px-4 font-util text-[0.68rem] uppercase tracking-[0.16em] transition-all duration-300 active:scale-[0.98]',
+                  'w-full rounded-xl py-3.5 px-4 font-util text-[0.68rem] uppercase tracking-[0.16em] transition-all duration-200 ease-spring hover:-translate-y-0.5 hover:shadow-md active:scale-[0.96]',
                   'bg-deep text-white border border-deep hover:bg-[#3D2A1E] shadow-sm',
                   stock <= 0 && 'opacity-50 cursor-not-allowed',
                 )}
@@ -494,7 +494,7 @@ export function ProductDetail({ product, related }: { product: Product; related:
                 onClick={handleBuyNow}
                 disabled={stock <= 0 || buying || adding}
                 className={cn(
-                  'w-full rounded-xl py-3 px-4 font-util text-[0.68rem] uppercase tracking-[0.16em] transition-all duration-300 active:scale-[0.98]',
+                  'w-full rounded-xl py-3.5 px-4 font-util text-[0.68rem] uppercase tracking-[0.16em] transition-all duration-200 ease-spring hover:-translate-y-0.5 hover:shadow-md active:scale-[0.96]',
                   'bg-gold text-white border border-gold hover:bg-gold-dk shadow-sm',
                   stock <= 0 && 'opacity-50 cursor-not-allowed',
                 )}

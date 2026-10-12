@@ -84,6 +84,27 @@ const config: Config = {
           '50%': { transform: 'scale(1.2)' },
           '100%': { transform: 'scale(1)' },
         },
+        'page-enter': {
+          '0%': { opacity: '0', transform: 'translateY(12px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'slide-up': {
+          '0%': { opacity: '0', transform: 'translateY(18px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'scale-in': {
+          '0%': { opacity: '0', transform: 'scale(0.96)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        'cart-bump': {
+          '0%, 100%': { transform: 'scale(1)' },
+          '35%': { transform: 'scale(1.3)' },
+          '70%': { transform: 'scale(0.92)' },
+        },
+        'slide-progress': {
+          '0%': { width: '0%' },
+          '100%': { width: '100%' },
+        },
       },
       animation: {
         breathe: 'breathe 7s ease-in-out infinite',
@@ -92,6 +113,11 @@ const config: Config = {
         shimmer: 'shimmer 3s ease-in-out infinite',
         'pulse-glow': 'pulse-glow 5s ease-in-out infinite',
         'badge-pop': 'badge-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'page-enter': 'page-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'slide-up': 'slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'scale-in': 'scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'cart-bump': 'cart-bump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'slide-progress': 'slide-progress 5.5s linear forwards',
       },
     },
   },

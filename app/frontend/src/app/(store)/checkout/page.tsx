@@ -11,6 +11,7 @@ import { Button, EmptyState } from '@/components/ui';
 import { RedeemGiftCard } from '@/components/cart/RedeemGiftCard';
 import type { Address, PaymentMethod, ShippingAddress } from '@/types';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const EMPTY_ADDRESS: ShippingAddress = {
   fullName: '',
@@ -129,17 +130,57 @@ export default function CheckoutPage() {
 
             <div>
               <span className="util-label">Payment method</span>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                 {(['cod', 'upi', 'card'] as PaymentMethod[]).map((m) => (
                   <button
                     key={m}
                     type="button"
                     onClick={() => setPayment(m)}
-                    className={`rounded-[8px] border px-4 py-3 font-util text-[0.68rem] uppercase tracking-[0.1em] transition-colors ${
-                      payment === m ? 'border-deep bg-deep text-white' : 'border-line text-ink hover:border-gold'
+                    className={`flex flex-col items-center justify-center gap-1.5 rounded-[10px] border px-4 py-3 font-util text-[0.68rem] uppercase tracking-[0.1em] transition-all ${
+                      payment === m
+                        ? 'border-deep bg-deep text-white shadow-xs'
+                        : 'border-line bg-white text-ink hover:border-gold'
                     }`}
                   >
-                    {m === 'cod' ? 'Cash on Delivery' : m.toUpperCase()}
+                    <span className="font-semibold">
+                      {m === 'cod' ? 'Cash on Delivery' : m === 'upi' ? 'Instant UPI' : 'Cards / Net Banking'}
+                    </span>
+                    {m === 'upi' && (
+                      <div className="flex h-5 items-center justify-center rounded bg-white px-2 py-0.5">
+                        <Image
+                          src="/assets/upi.jpg"
+                          alt="UPI"
+                          width={38}
+                          height={14}
+                          className="h-3 w-auto object-contain"
+                        />
+                      </div>
+                    )}
+                    {m === 'card' && (
+                      <div className="flex h-5 items-center justify-center gap-1.5 rounded bg-white px-1.5 py-0.5">
+                        <Image
+                          src="/assets/Visa.webp"
+                          alt="Visa"
+                          width={26}
+                          height={12}
+                          className="h-2.5 w-auto object-contain"
+                        />
+                        <Image
+                          src="/assets/Mastercard.png"
+                          alt="Mastercard"
+                          width={20}
+                          height={12}
+                          className="h-3 w-auto object-contain"
+                        />
+                        <Image
+                          src="/assets/Rupay.png"
+                          alt="RuPay"
+                          width={28}
+                          height={12}
+                          className="h-2.5 w-auto object-contain"
+                        />
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>

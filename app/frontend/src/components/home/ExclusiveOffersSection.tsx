@@ -26,8 +26,8 @@ const PERKS = [
     ),
   },
   {
-    title: 'Free Shipping',
-    highlight: 'Pan-India Over ₹999',
+    title: 'Express Shipping',
+    highlight: 'Pan-India Delivery',
     description: 'Safe, temperature-insulated express courier delivery right to your doorstep.',
     icon: (
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -81,10 +81,10 @@ export function ExclusiveOffersSection() {
                 onMouseEnter={() => setHoveredIdx(idx)}
                 onMouseLeave={() => setHoveredIdx(null)}
                 className={cn(
-                  'group relative flex flex-col justify-between rounded-2xl border p-6 transition-all duration-300',
+                  'group relative flex flex-col justify-between rounded-2xl border p-6 transition-all duration-300 ease-spring will-change-transform',
                   isHovered
-                    ? 'border-gold/60 bg-white/[0.07] shadow-xl -translate-y-1'
-                    : 'border-white/10 bg-white/[0.03] hover:border-gold/30',
+                    ? 'border-gold/60 bg-white/[0.08] shadow-xl -translate-y-1.5'
+                    : 'border-white/10 bg-white/[0.03] hover:border-gold/30 hover:-translate-y-1',
                 )}
               >
                 <div>

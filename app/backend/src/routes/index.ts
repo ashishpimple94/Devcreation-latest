@@ -8,6 +8,7 @@ import orderRoutes from '@/routes/order.routes';
 import notificationRoutes from '@/routes/notification.routes';
 import adminRoutes from '@/routes/admin.routes';
 import giftCardRoutes from '@/routes/giftCard.routes';
+import newsletterRoutes from '@/routes/newsletter.routes';
 
 import { sendMailWithDetails } from '@/config/mailer';
 import { env } from '@/config/env';
@@ -81,5 +82,6 @@ router.use('/orders', orderRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin', adminRoutes);
 router.use('/gift-cards', giftCardRoutes);
+router.use('/newsletter', newsletterRoutes);
 
 export default router;

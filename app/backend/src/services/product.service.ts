@@ -1,5 +1,6 @@
 import { FilterQuery, Types } from 'mongoose';
 import { Product, type IProduct } from '@/models/Product';
+import { Category } from '@/models/Category';
 import { ApiError } from '@/utils/ApiError';
 import { cache } from '@/redis/cache';
 import { CACHE, LOW_STOCK_THRESHOLD } from '@/constants';
@@ -17,11 +18,11 @@ const SORT_MAP: Record<string, Record<string, 1 | -1>> = {
   popular: { ratingAverage: -1, ratingCount: -1 },
 };
 
-function buildFilter(q: ListQuery): FilterQuery<IProduct> {
+function buildFilter(q: ListQuery, resolvedCategoryId?: Types.ObjectId | null): FilterQuery<IProduct> {
   const filter: FilterQuery<IProduct> = {};
   if (!q.includeInactive) filter.isActive = true;
   if (q.featured !== undefined) filter.isFeatured = q.featured as boolean;
-  if (q.category) filter.category = new Types.ObjectId(String(q.category));
+  if (resolvedCategoryId) filter.category = resolvedCategoryId;
   if (q.tag) filter.tags = String(q.tag);
   if (q.search) filter.$text = { $search: String(q.search) };
   if (q.minPrice !== undefined || q.maxPrice !== undefined) {
@@ -57,7 +58,17 @@ export const productService = {
   /** Public/admin listing with search, filter, sort, pagination. List responses are cached. */
   async list(q: ListQuery) {
     const { page, limit, skip } = getPageParams(q);
-    const filter = buildFilter(q);
+    let resolvedCategoryId: Types.ObjectId | null = null;
+    if (q.category) {
+      const catStr = String(q.category);
+      if (Types.ObjectId.isValid(catStr)) {
+        resolvedCategoryId = new Types.ObjectId(catStr);
+      } else {
+        const cat = await Category.findOne({ slug: catStr });
+        if (cat) resolvedCategoryId = cat._id;
+      }
+    }
+    const filter = buildFilter(q, resolvedCategoryId);
     const sort = SORT_MAP[String(q.sort ?? 'newest')] ?? SORT_MAP.newest;
 
     // Only cache anonymous public lists; skip cache when inactive items are included (admin).

@@ -222,6 +222,31 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
           {/* Content — fills full width and height */}
           <main className="flex-1 p-4 lg:p-8 w-full">{children}</main>
+
+          {/* Admin Footer */}
+          <footer className="mt-auto border-t border-line bg-white/60 px-4 py-3 text-xs text-ink-3 lg:px-8">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>© {new Date().getFullYear()} Dev Creation · Admin Console</span>
+              <div className="flex items-center gap-3">
+                <span>Support:</span>
+                <a
+                  href="mailto:support@devcreation24.in"
+                  className="font-medium text-copper transition-colors hover:text-gold"
+                >
+                  support@devcreation24.in
+                </a>
+                <span>·</span>
+                <a
+                  href={STOREFRONT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-colors hover:text-ink"
+                >
+                  Storefront ↗
+                </a>
+              </div>
+            </div>
+          </footer>
         </div>
       </div>
     </div>

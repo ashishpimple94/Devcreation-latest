@@ -43,7 +43,7 @@ export function CartDrawer() {
     <>
       <div
         className={cn(
-          'fixed inset-0 z-[80] bg-[rgba(28,20,16,.35)] backdrop-blur-[6px] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
+          'fixed inset-0 z-[80] bg-[rgba(28,20,16,.35)] backdrop-blur-[6px] transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)]',
           isOpen ? 'opacity-100' : 'pointer-events-none opacity-0 backdrop-blur-none',
         )}
         onClick={close}
@@ -53,7 +53,7 @@ export function CartDrawer() {
         aria-label="Shopping cart"
         aria-hidden={!isOpen}
         className={cn(
-          'fixed right-0 top-0 z-[90] flex h-[100dvh] w-[min(420px,100%)] flex-col border-l border-line bg-surface shadow-drawer transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform',
+          'fixed right-0 top-0 z-[90] flex h-[100dvh] w-[min(420px,100%)] flex-col border-l border-line bg-surface shadow-drawer transition-transform duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform',
           isOpen ? 'translate-x-0' : 'translate-x-full',
         )}
       >

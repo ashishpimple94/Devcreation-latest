@@ -28,7 +28,7 @@ var import_node_http = require("http");
 // src/app.ts
 var import_node_path2 = __toESM(require("path"));
 var import_promises2 = __toESM(require("fs/promises"));
-var import_express11 = __toESM(require("express"));
+var import_express12 = __toESM(require("express"));
 var import_helmet = __toESM(require("helmet"));
 var import_cors2 = __toESM(require("cors"));
 var import_compression = __toESM(require("compression"));
@@ -305,7 +305,7 @@ var corsOriginHandler = (_origin, callback) => {
 };
 
 // src/routes/index.ts
-var import_express10 = require("express");
+var import_express11 = require("express");
 
 // src/routes/auth.routes.ts
 var import_express = require("express");
@@ -2440,7 +2440,7 @@ var user_routes_default = router2;
 var import_express3 = require("express");
 
 // src/services/product.service.ts
-var import_mongoose9 = require("mongoose");
+var import_mongoose10 = require("mongoose");
 
 // src/models/Product.ts
 var import_mongoose8 = require("mongoose");
@@ -2488,6 +2488,22 @@ var productSchema = new import_mongoose8.Schema(
 productSchema.index({ name: "text", description: "text", fragrance: "text", tags: "text" });
 productSchema.index({ isActive: 1, createdAt: -1 });
 var Product = (0, import_mongoose8.model)("Product", productSchema);
+
+// src/models/Category.ts
+var import_mongoose9 = require("mongoose");
+var categorySchema = new import_mongoose9.Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    slug: { type: String, required: true, unique: true, lowercase: true, index: true },
+    description: { type: String, trim: true },
+    // Self-reference supports categories + subcategories.
+    parent: { type: import_mongoose9.Schema.Types.ObjectId, ref: "Category", default: null, index: true },
+    image: { type: String },
+    isActive: { type: Boolean, default: true, index: true }
+  },
+  { timestamps: true }
+);
+var Category = (0, import_mongoose9.model)("Category", categorySchema);
 
 // src/redis/cache.ts
 var cache = {
@@ -2558,11 +2574,11 @@ var SORT_MAP = {
   name_asc: { name: 1 },
   popular: { ratingAverage: -1, ratingCount: -1 }
 };
-function buildFilter(q) {
+function buildFilter(q, resolvedCategoryId) {
   const filter = {};
   if (!q.includeInactive) filter.isActive = true;
   if (q.featured !== void 0) filter.isFeatured = q.featured;
-  if (q.category) filter.category = new import_mongoose9.Types.ObjectId(String(q.category));
+  if (resolvedCategoryId) filter.category = resolvedCategoryId;
   if (q.tag) filter.tags = String(q.tag);
   if (q.search) filter.$text = { $search: String(q.search) };
   if (q.minPrice !== void 0 || q.maxPrice !== void 0) {
@@ -2595,7 +2611,17 @@ var productService = {
   /** Public/admin listing with search, filter, sort, pagination. List responses are cached. */
   async list(q) {
     const { page, limit, skip } = getPageParams(q);
-    const filter = buildFilter(q);
+    let resolvedCategoryId = null;
+    if (q.category) {
+      const catStr = String(q.category);
+      if (import_mongoose10.Types.ObjectId.isValid(catStr)) {
+        resolvedCategoryId = new import_mongoose10.Types.ObjectId(catStr);
+      } else {
+        const cat = await Category.findOne({ slug: catStr });
+        if (cat) resolvedCategoryId = cat._id;
+      }
+    }
+    const filter = buildFilter(q, resolvedCategoryId);
     const sort = SORT_MAP[String(q.sort ?? "newest")] ?? SORT_MAP.newest;
     const cacheable = !q.includeInactive;
     const cacheKey = CACHE.KEY.productList(
@@ -2613,7 +2639,7 @@ var productService = {
   },
   async getByIdOrSlug(idOrSlug) {
     return cache.remember(CACHE.KEY.product(idOrSlug), CACHE.TTL.PRODUCT, async () => {
-      const query = import_mongoose9.Types.ObjectId.isValid(idOrSlug) ? { $or: [{ _id: idOrSlug }, { slug: idOrSlug }] } : { slug: idOrSlug };
+      const query = import_mongoose10.Types.ObjectId.isValid(idOrSlug) ? { $or: [{ _id: idOrSlug }, { slug: idOrSlug }] } : { slug: idOrSlug };
       let product = await Product.findOne(query).populate("category", "name slug").lean();
       if (!product && typeof idOrSlug === "string" && idOrSlug.trim()) {
         const cleanSlug = idOrSlug.trim().toLowerCase().replace(/-\d+$/, "");
@@ -2630,7 +2656,7 @@ var productService = {
   },
   async related(idOrSlug, limit = 4) {
     const product = await Product.findOne(
-      import_mongoose9.Types.ObjectId.isValid(idOrSlug) ? { _id: idOrSlug } : { slug: idOrSlug }
+      import_mongoose10.Types.ObjectId.isValid(idOrSlug) ? { _id: idOrSlug } : { slug: idOrSlug }
     ).lean();
     if (!product) return [];
     return Product.find({
@@ -2716,14 +2742,14 @@ var productController = {
 };
 
 // src/services/review.service.ts
-var import_mongoose11 = require("mongoose");
+var import_mongoose12 = require("mongoose");
 
 // src/models/Review.ts
-var import_mongoose10 = require("mongoose");
-var reviewSchema = new import_mongoose10.Schema(
+var import_mongoose11 = require("mongoose");
+var reviewSchema = new import_mongoose11.Schema(
   {
-    product: { type: import_mongoose10.Schema.Types.ObjectId, ref: "Product", required: true, index: true },
-    user: { type: import_mongoose10.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    product: { type: import_mongoose11.Schema.Types.ObjectId, ref: "Product", required: true, index: true },
+    user: { type: import_mongoose11.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     userName: { type: String, required: true, trim: true },
     userEmail: { type: String, trim: true },
     rating: { type: Number, required: true, min: 1, max: 5 },
@@ -2735,7 +2761,7 @@ var reviewSchema = new import_mongoose10.Schema(
   { timestamps: true }
 );
 reviewSchema.index({ product: 1, createdAt: -1 });
-var Review = (0, import_mongoose10.model)("Review", reviewSchema);
+var Review = (0, import_mongoose11.model)("Review", reviewSchema);
 
 // src/services/review.service.ts
 var reviewService = {
@@ -2743,7 +2769,7 @@ var reviewService = {
    * Resolves a Product by ObjectId or Slug.
    */
   async resolveProduct(idOrSlug) {
-    const isObjectId = import_mongoose11.Types.ObjectId.isValid(idOrSlug) && idOrSlug.length === 24;
+    const isObjectId = import_mongoose12.Types.ObjectId.isValid(idOrSlug) && idOrSlug.length === 24;
     const product = await Product.findOne(
       isObjectId ? { $or: [{ _id: idOrSlug }, { slug: idOrSlug }] } : { slug: idOrSlug }
     );
@@ -2917,22 +2943,6 @@ var product_routes_default = router3;
 
 // src/routes/category.routes.ts
 var import_express4 = require("express");
-
-// src/models/Category.ts
-var import_mongoose12 = require("mongoose");
-var categorySchema = new import_mongoose12.Schema(
-  {
-    name: { type: String, required: true, trim: true },
-    slug: { type: String, required: true, unique: true, lowercase: true, index: true },
-    description: { type: String, trim: true },
-    // Self-reference supports categories + subcategories.
-    parent: { type: import_mongoose12.Schema.Types.ObjectId, ref: "Category", default: null, index: true },
-    image: { type: String },
-    isActive: { type: Boolean, default: true, index: true }
-  },
-  { timestamps: true }
-);
-var Category = (0, import_mongoose12.model)("Category", categorySchema);
 
 // src/services/category.service.ts
 var categoryService = {
@@ -4237,9 +4247,177 @@ router9.post("/validate", giftCardController.validate);
 router9.get("/available", giftCardController.listAvailable);
 var giftCard_routes_default = router9;
 
-// src/routes/index.ts
+// src/routes/newsletter.routes.ts
+var import_express10 = require("express");
+
+// src/models/Subscriber.ts
+var import_mongoose19 = require("mongoose");
+var subscriberSchema = new import_mongoose19.Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true
+    },
+    discountCode: {
+      type: String,
+      default: "WELCOME10"
+    },
+    discountPercent: {
+      type: Number,
+      default: 10
+    },
+    source: {
+      type: String,
+      default: "footer_circle"
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+    welcomeEmailSent: {
+      type: Boolean,
+      default: false
+    }
+  },
+  { timestamps: true }
+);
+var Subscriber = (0, import_mongoose19.model)("Subscriber", subscriberSchema);
+
+// src/routes/newsletter.routes.ts
 var router10 = (0, import_express10.Router)();
-router10.get("/health", (_req, res) => {
+var EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+router10.post("/subscribe", async (req, res) => {
+  const { email } = req.body;
+  if (!email || typeof email !== "string" || !EMAIL_REGEX.test(email.trim())) {
+    return res.status(400).json({
+      success: false,
+      message: "Please provide a valid email address."
+    });
+  }
+  const normalizedEmail = email.trim().toLowerCase();
+  const discountCode = "WELCOME10";
+  const discountPercent = 10;
+  try {
+    let subscriber2 = await Subscriber.findOne({ email: normalizedEmail });
+    const isNewSubscriber = !subscriber2;
+    if (!subscriber2) {
+      subscriber2 = await Subscriber.create({
+        email: normalizedEmail,
+        discountCode,
+        discountPercent,
+        source: "footer_circle",
+        isActive: true,
+        welcomeEmailSent: false
+      });
+    } else if (!subscriber2.isActive) {
+      subscriber2.isActive = true;
+      await subscriber2.save();
+    }
+    if (!subscriber2.welcomeEmailSent) {
+      sendMailWithDetails({
+        to: normalizedEmail,
+        subject: "\u2728 Welcome to Dev Creation Circle \u2014 Your 10% Luxury Gift Inside",
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #FFFDF8; border: 1px solid rgba(184,148,63,0.3); border-radius: 16px; overflow: hidden; padding: 36px 32px; color: #2C1810;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <span style="font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: #8C6F2A; font-weight: 700;">Dev Creation Circle</span>
+              <h1 style="font-family: Georgia, serif; font-size: 26px; font-weight: 500; color: #2C1810; margin: 12px 0 6px 0;">Welcome to Our Fragrance Sanctuary</h1>
+              <p style="font-size: 14px; color: #5A4E46; margin: 0; line-height: 1.6;">You are now part of our private fragrance circle. Enjoy handcrafted luxury wax sachets and master perfumer creations.</p>
+            </div>
+
+            <div style="background: #FAF6EF; border: 1.5px dashed #B8943F; border-radius: 12px; padding: 24px; text-align: center; margin: 28px 0;">
+              <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.18em; color: #8C6F2A; margin: 0 0 8px 0; font-weight: 600;">Your Exclusive 10% Welcome Voucher</p>
+              <div style="font-family: monospace; font-size: 28px; font-weight: 700; color: #2C1810; letter-spacing: 4px; background: #FFFFFF; display: inline-block; padding: 8px 24px; border-radius: 8px; border: 1px solid rgba(44,24,16,0.1);">
+                ${discountCode}
+              </div>
+              <p style="font-size: 12px; color: #5A4E46; margin: 10px 0 0 0;">Valid on your first order across all artisanal wax sachets & gift sets.</p>
+            </div>
+
+            <div style="text-align: center; margin-top: 28px;">
+              <a href="https://devcreation24.in/products" style="display: inline-block; background: #2C1810; color: #FFFFFF; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.16em; padding: 14px 28px; border-radius: 10px; text-decoration: none;">
+                Explore The Collection \u2192
+              </a>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid rgba(44,24,16,0.08); margin: 32px 0 20px 0;" />
+            <p style="font-size: 11px; color: #8C6F2A; text-align: center; margin: 0; line-height: 1.5;">
+              Pure Soy Wax &bull; IFRA-Certified Oils &bull; Crafted in India<br />
+              Questions? Concierge support: <a href="mailto:support@devcreation24.in" style="color: #2C1810;">support@devcreation24.in</a>
+            </p>
+          </div>
+        `,
+        text: `Welcome to Dev Creation Circle! Your 10% discount code is ${discountCode}. Use it at devcreation24.in/products on your first order.`
+      }).then((result) => {
+        if (result.success) {
+          Subscriber.updateOne({ _id: subscriber2._id }, { welcomeEmailSent: true }).exec();
+        }
+      }).catch((err) => {
+        logger.warn("Failed to send newsletter welcome email", { err: err.message });
+      });
+    }
+    try {
+      publishEvent({
+        type: NOTIFICATION_TYPE.CUSTOMER_REGISTERED,
+        title: "New Circle Member",
+        message: `${normalizedEmail} joined Dev Creation Circle`,
+        toStaff: true,
+        dashboardDirty: true
+      });
+    } catch {
+    }
+    return res.json({
+      success: true,
+      message: isNewSubscriber ? "Welcome to the Dev Creation Circle! Your 10% discount code is WELCOME10" : "Welcome back! Your 10% discount code is WELCOME10",
+      data: {
+        email: normalizedEmail,
+        discountCode,
+        discountPercent
+      }
+    });
+  } catch (err) {
+    logger.error("Newsletter subscribe error", { err: err?.message || String(err) });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to complete subscription. Please try again.",
+      error: err?.message
+    });
+  }
+});
+router10.get("/subscribers", authenticate, authorizeStaff, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(String(req.query.page || "1"), 10));
+    const limit = Math.max(1, Math.min(100, parseInt(String(req.query.limit || "20"), 10)));
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      Subscriber.find({ isActive: true }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      Subscriber.countDocuments({ isActive: true })
+    ]);
+    return res.json({
+      success: true,
+      data: {
+        items,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch subscribers.",
+      error: err?.message
+    });
+  }
+});
+var newsletter_routes_default = router10;
+
+// src/routes/index.ts
+var router11 = (0, import_express11.Router)();
+router11.get("/health", (_req, res) => {
   res.json({
     success: true,
     message: "OK",
@@ -4252,7 +4430,7 @@ router10.get("/health", (_req, res) => {
     }
   });
 });
-router10.get("/test-email", async (req, res) => {
+router11.get("/test-email", async (req, res) => {
   const to = req.query.to || env.ADMIN_NOTIFY_EMAIL || "support@devcreation24.in";
   try {
     const result = await sendMailWithDetails({
@@ -4294,20 +4472,21 @@ router10.get("/test-email", async (req, res) => {
     });
   }
 });
-router10.use("/auth", auth_routes_default);
-router10.use("/users", user_routes_default);
-router10.use("/products", product_routes_default);
-router10.use("/categories", category_routes_default);
-router10.use("/cart", cart_routes_default);
-router10.use("/orders", order_routes_default);
-router10.use("/notifications", notification_routes_default);
-router10.use("/admin", admin_routes_default);
-router10.use("/gift-cards", giftCard_routes_default);
-var routes_default = router10;
+router11.use("/auth", auth_routes_default);
+router11.use("/users", user_routes_default);
+router11.use("/products", product_routes_default);
+router11.use("/categories", category_routes_default);
+router11.use("/cart", cart_routes_default);
+router11.use("/orders", order_routes_default);
+router11.use("/notifications", notification_routes_default);
+router11.use("/admin", admin_routes_default);
+router11.use("/gift-cards", giftCard_routes_default);
+router11.use("/newsletter", newsletter_routes_default);
+var routes_default = router11;
 
 // src/app.ts
 function createApp() {
-  const app = (0, import_express11.default)();
+  const app = (0, import_express12.default)();
   app.set("trust proxy", 1);
   app.use(
     (0, import_helmet.default)({
@@ -4325,8 +4504,8 @@ function createApp() {
   };
   app.use((0, import_cors2.default)(corsOptions));
   app.options("*", (0, import_cors2.default)(corsOptions));
-  app.use(import_express11.default.json({ limit: "1mb" }));
-  app.use(import_express11.default.urlencoded({ extended: true }));
+  app.use(import_express12.default.json({ limit: "1mb" }));
+  app.use(import_express12.default.urlencoded({ extended: true }));
   app.use((0, import_cookie_parser.default)());
   app.use((0, import_compression.default)());
   app.use((0, import_express_mongo_sanitize.default)());
@@ -4335,7 +4514,7 @@ function createApp() {
       stream: { write: (msg) => logger.http?.(msg.trim()) ?? logger.info(msg.trim()) }
     })
   );
-  app.use("/uploads", import_express11.default.static(import_node_path2.default.join(storageService.uploadRoot)));
+  app.use("/uploads", import_express12.default.static(import_node_path2.default.join(storageService.uploadRoot)));
   app.get("/uploads/*", async (req, res, next) => {
     try {
       const rawKey = req.params[0] || req.params[0] || "";

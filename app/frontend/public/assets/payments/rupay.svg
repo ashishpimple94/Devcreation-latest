@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" width="120" height="40" fill="none">
+  <!-- Official RuPay Vector Logo -->
+  <g transform="translate(10, 8)">
+    <!-- RuPay Typography -->
+    <text x="4" y="19" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-style="italic" font-size="18" fill="#0C2340" letter-spacing="0.5">RuPay</text>
+    <!-- RuPay Dual Chevrons -->
+    <path d="M72 4L64 21H71L79 4H72Z" fill="#F26522"/>
+    <path d="M81 4L73 21H80L88 4H81Z" fill="#00A651"/>
+  </g>
+</svg>

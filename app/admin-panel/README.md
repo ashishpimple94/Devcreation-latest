@@ -38,5 +38,5 @@ Enterprise operations and administration dashboard for **Dev Creation** (orders,
    ```
 
 ## Default Admin Credentials
-- **Email**: `admin@devcreation.example`
-- **Password**: `Admin@12345`
+- **Super Admin**: `support@devcreation24.in` / `Devcreation@890*`
+- **Fallback Admin**: `admin@devcreation.com` / `Admin@12345`

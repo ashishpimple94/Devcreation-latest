@@ -119,8 +119,8 @@ export function WhyDevCreationSection() {
       {/* 4 Cards Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {PILLARS.map((pillar, i) => (
-          <ScrollAnimate key={pillar.category} delay={(i + 1) * 100}>
-            <div className="group relative flex h-full flex-col justify-between rounded-3xl border border-line bg-surface p-7 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-gold/60 hover:shadow-lg">
+          <ScrollAnimate key={pillar.category} delay={(i + 1) * 60}>
+            <div className="group relative flex h-full flex-col justify-between rounded-3xl border border-line bg-surface p-7 shadow-xs transition-all duration-300 ease-spring hover:-translate-y-1.5 hover:border-gold/60 hover:shadow-card-hover will-change-transform">
               {/* Top Accent Strip */}
               <span className="absolute inset-x-0 top-0 h-[3.5px] rounded-t-3xl bg-gradient-to-r from-gold via-copper to-gold-lt opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 

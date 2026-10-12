@@ -56,20 +56,20 @@ export function ScrollAnimate({
 
   const hiddenClass =
     direction === 'left'
-      ? '-translate-x-6 opacity-0 blur-[3px]'
+      ? '-translate-x-5 opacity-0 blur-[2px]'
       : direction === 'right'
-        ? 'translate-x-6 opacity-0 blur-[3px]'
+        ? 'translate-x-5 opacity-0 blur-[2px]'
         : direction === 'scale'
-          ? 'scale-[0.96] opacity-0 blur-[3px]'
+          ? 'scale-[0.97] opacity-0 blur-[2px]'
           : direction === 'none'
-            ? 'opacity-0 blur-[3px]'
-            : 'translate-y-5 opacity-0 blur-[2px]';
+            ? 'opacity-0 blur-[2px]'
+            : 'translate-y-4 opacity-0 blur-[2px]';
 
   return (
     <Tag
       ref={ref as React.RefObject<HTMLDivElement>}
       className={cn(
-        'transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[transform,opacity,filter] motion-reduce:!transform-none motion-reduce:!opacity-100 motion-reduce:!filter-none',
+        'transition-all duration-450 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-[transform,opacity,filter] motion-reduce:!transform-none motion-reduce:!opacity-100 motion-reduce:!filter-none',
         visible ? 'translate-x-0 translate-y-0 scale-100 opacity-100 blur-0' : hiddenClass,
         className,
       )}

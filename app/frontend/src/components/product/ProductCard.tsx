@@ -141,10 +141,10 @@ export function ProductCard({
         setIsHovered(false);
         setActive(0);
       }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-line/60 bg-surface cursor-pointer transition-all duration-500 ease-spring hover:-translate-y-2 hover:border-gold/40 hover:shadow-[0_22px_45px_-14px_rgba(44,24,16,0.14)]"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-line/60 bg-surface cursor-pointer transition-all duration-350 ease-spring hover:-translate-y-2 hover:border-gold/50 hover:shadow-[0_22px_45px_-14px_rgba(44,24,16,0.16)] will-change-transform"
     >
       {/* Product Image Stage */}
-      <div className="relative block aspect-square w-full overflow-hidden bg-[#F7F6F3]">
+      <div className="relative block aspect-square w-full overflow-hidden bg-[#F7F6F3] shine-hover">
         <Link
           href={`/products/${product.slug}`}
           className="relative block h-full w-full focus:outline-none"
@@ -159,7 +159,7 @@ export function ProductCard({
                 alt={img.alt ?? product.name}
                 loading={priority && i === 0 ? 'eager' : 'lazy'}
                 className={cn(
-                  'absolute inset-0 h-full w-full object-contain p-4 sm:p-6 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105',
+                  'absolute inset-0 h-full w-full object-contain p-4 sm:p-6 transition-all duration-500 ease-spring group-hover:scale-105',
                   i === active ? 'opacity-100' : 'pointer-events-none opacity-0',
                 )}
                 onError={(e) => {
@@ -176,7 +176,7 @@ export function ProductCard({
               src={images[0].url}
               alt={images[0].alt ?? product.name}
               loading={priority ? 'eager' : 'lazy'}
-              className="h-full w-full object-contain p-4 sm:p-6 transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+              className="h-full w-full object-contain p-4 sm:p-6 transition-transform duration-500 ease-spring group-hover:scale-105"
               onError={(e) => {
                 const el = e.currentTarget;
                 if (!el.src.includes('/assets/Logos/logo.jpeg')) {

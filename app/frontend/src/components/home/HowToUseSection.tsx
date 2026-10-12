@@ -91,7 +91,7 @@ export function HowToUseSection() {
   };
 
   return (
-    <section id="care" className="relative border-t border-line bg-gradient-to-b from-paper to-[#FBF7F0] px-[var(--pad)] py-[clamp(64px,9vh,112px)]">
+    <section id="care" className="relative scroll-mt-24 border-t border-line bg-gradient-to-b from-paper to-[#FBF7F0] px-[var(--pad)] py-[clamp(64px,9vh,112px)]">
       {/* Section Header */}
       <ScrollAnimate className="mb-12 flex flex-wrap items-end justify-between gap-6">
         <div>
@@ -138,14 +138,14 @@ export function HowToUseSection() {
           const isSelected = activeStep === i;
 
           return (
-            <ScrollAnimate key={step.num} delay={(i + 1) * 100}>
+            <ScrollAnimate key={step.num} delay={(i + 1) * 60}>
               <div
                 onClick={() => setActiveStep(i)}
                 className={cn(
-                  'group relative flex h-full cursor-pointer flex-col justify-between rounded-3xl border bg-white p-7 transition-all duration-300',
+                  'group relative flex h-full cursor-pointer flex-col justify-between rounded-3xl border bg-white p-7 transition-all duration-300 ease-spring will-change-transform',
                   isSelected
-                    ? 'border-gold shadow-xl ring-2 ring-gold/20 -translate-y-1'
-                    : 'border-line shadow-xs hover:-translate-y-1 hover:border-gold/60 hover:shadow-md',
+                    ? 'border-gold shadow-xl ring-2 ring-gold/20 -translate-y-1.5'
+                    : 'border-line shadow-xs hover:-translate-y-1.5 hover:border-gold/60 hover:shadow-card-hover',
                 )}
               >
                 {/* Top Bar Glow on Selection */}
