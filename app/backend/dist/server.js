@@ -4320,21 +4320,19 @@ router10.post("/subscribe", async (req, res) => {
     if (!subscriber2.welcomeEmailSent) {
       sendMailWithDetails({
         to: normalizedEmail,
-        subject: "\u2728 Welcome to Dev Creation Circle \u2014 Your 10% Luxury Gift Inside",
+        subject: "\u2728 Welcome to Dev Creation Circle \u2014 Private Sale Invitations & Care Rituals",
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #FFFDF8; border: 1px solid rgba(184,148,63,0.3); border-radius: 16px; overflow: hidden; padding: 36px 32px; color: #2C1810;">
             <div style="text-align: center; margin-bottom: 24px;">
               <span style="font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: #8C6F2A; font-weight: 700;">Dev Creation Circle</span>
               <h1 style="font-family: Georgia, serif; font-size: 26px; font-weight: 500; color: #2C1810; margin: 12px 0 6px 0;">Welcome to Our Fragrance Sanctuary</h1>
-              <p style="font-size: 14px; color: #5A4E46; margin: 0; line-height: 1.6;">You are now part of our private fragrance circle. Enjoy handcrafted luxury wax sachets and master perfumer creations.</p>
+              <p style="font-size: 14px; color: #5A4E46; margin: 0; line-height: 1.6;">You are now on our private guestlist. Enjoy handcrafted luxury wax sachets and master perfumer creations.</p>
             </div>
 
-            <div style="background: #FAF6EF; border: 1.5px dashed #B8943F; border-radius: 12px; padding: 24px; text-align: center; margin: 28px 0;">
-              <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.18em; color: #8C6F2A; margin: 0 0 8px 0; font-weight: 600;">Your Exclusive 10% Welcome Voucher</p>
-              <div style="font-family: monospace; font-size: 28px; font-weight: 700; color: #2C1810; letter-spacing: 4px; background: #FFFFFF; display: inline-block; padding: 8px 24px; border-radius: 8px; border: 1px solid rgba(44,24,16,0.1);">
-                ${discountCode}
-              </div>
-              <p style="font-size: 12px; color: #5A4E46; margin: 10px 0 0 0;">Valid on your first order across all artisanal wax sachets & gift sets.</p>
+            <div style="background: #FAF6EF; border: 1px solid rgba(184,148,63,0.35); border-radius: 12px; padding: 24px; text-align: center; margin: 28px 0;">
+              <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: #8C6F2A; margin: 0 0 8px 0; font-weight: 700;">Private Invitations to Future Sales</p>
+              <p style="font-size: 14px; color: #2C1810; font-weight: 600; margin: 0 0 6px 0;">Delivered Exclusively to Your Email</p>
+              <p style="font-size: 12px; color: #5A4E46; margin: 6px 0 0 0; line-height: 1.5;">You will be the first to receive secret seasonal drops, private sale invitations, and artisanal candle care rituals directly here in your inbox.</p>
             </div>
 
             <div style="text-align: center; margin-top: 28px;">
@@ -4350,7 +4348,7 @@ router10.post("/subscribe", async (req, res) => {
             </p>
           </div>
         `,
-        text: `Welcome to Dev Creation Circle! Your 10% discount code is ${discountCode}. Use it at devcreation24.in/products on your first order.`
+        text: `Welcome to Dev Creation Circle! You are on our private guestlist. Watch your inbox for secret seasonal drops, private sale invitations, and candle care rituals.`
       }).then((result) => {
         if (result.success) {
           Subscriber.updateOne({ _id: subscriber2._id }, { welcomeEmailSent: true }).exec();
@@ -4371,11 +4369,9 @@ router10.post("/subscribe", async (req, res) => {
     }
     return res.json({
       success: true,
-      message: isNewSubscriber ? "Welcome to the Dev Creation Circle! Your 10% discount code is WELCOME10" : "Welcome back! Your 10% discount code is WELCOME10",
+      message: isNewSubscriber ? "Welcome to the Dev Creation Circle! You are on our private guestlist for future sales and secret drops." : "Welcome back! You are on our private guestlist for future sales and secret drops.",
       data: {
-        email: normalizedEmail,
-        discountCode,
-        discountPercent
+        email: normalizedEmail
       }
     });
   } catch (err) {

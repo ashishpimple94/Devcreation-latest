@@ -34,7 +34,7 @@ const CAROUSEL_SLIDES: CarouselSlide[] = [
     primaryCtaHref: '/products',
     secondaryCtaText: 'Our Craft & Story ✧',
     secondaryCtaHref: '/our-story',
-    badge: '🌿 100% Pure Soy Wax',
+    badge: '',
   },
   {
     id: 2,
@@ -49,7 +49,7 @@ const CAROUSEL_SLIDES: CarouselSlide[] = [
     primaryCtaHref: '/categories/gift-sets',
     secondaryCtaText: 'View All Products →',
     secondaryCtaHref: '/products',
-    badge: '🎁 Perfect For Gifting',
+    badge: '',
   },
   {
     id: 3,
@@ -64,7 +64,7 @@ const CAROUSEL_SLIDES: CarouselSlide[] = [
     primaryCtaHref: '/products?tag=wardrobe',
     secondaryCtaText: 'How to Use Sachet ✦',
     secondaryCtaHref: '/#care',
-    badge: '✨ 4–6 Weeks Aroma',
+    badge: '',
   },
 ];
 
@@ -114,16 +114,15 @@ export function HeroSection() {
         onTouchEnd={handleTouchEnd}
       >
         <div className="relative h-[560px] sm:h-[640px] lg:h-[720px] xl:h-[780px] w-full overflow-hidden">
-          
+
           {/* Slides Loop */}
           {CAROUSEL_SLIDES.map((slide, index) => {
             const isActive = index === currentSlide;
             return (
               <div
                 key={slide.id}
-                className={`absolute inset-0 transition-opacity duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                  isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
-                }`}
+                className={`absolute inset-0 transition-opacity duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
+                  }`}
                 aria-hidden={!isActive}
               >
                 {/* Background Image with Slow Ambient Scale */}
@@ -132,9 +131,8 @@ export function HeroSection() {
                   <img
                     src={slide.image}
                     alt={slide.titlePart1 + slide.titleHighlight + slide.titlePart2}
-                    className={`h-full w-full object-cover object-center transition-transform duration-[7000ms] ease-out will-change-transform ${
-                      isActive ? 'scale-108' : 'scale-100'
-                    }`}
+                    className={`h-full w-full object-cover object-center transition-transform duration-[7000ms] ease-out will-change-transform ${isActive ? 'scale-108' : 'scale-100'
+                      }`}
                   />
                   {/* Multi-layered Editorial Scrim for Crisp Text Readability */}
                   <div className="absolute inset-0 bg-gradient-to-t from-deep/95 via-deep/60 to-deep/30" />
@@ -163,26 +161,23 @@ export function HeroSection() {
                   <div className="max-w-4xl pt-8 pb-12">
                     {/* Eyebrow */}
                     <p
-                      className={`font-util text-[0.68rem] sm:text-xs font-semibold uppercase tracking-[0.24em] text-gold-lt transition-all duration-700 ease-spring ${
-                        isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
-                      }`}
+                      className={`font-util text-[0.68rem] sm:text-xs font-semibold uppercase tracking-[0.24em] text-gold-lt transition-all duration-700 ease-spring ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+                        }`}
                     >
                       {slide.eyebrow}
                     </p>
 
                     {/* Headline with Gold Cursive Accent */}
                     <h1
-                      className={`mt-3.5 sm:mt-5 font-display-alt text-[clamp(2.5rem,6.2vw,5.2rem)] font-medium leading-[1.06] tracking-[-0.015em] text-white drop-shadow-sm transition-all duration-700 delay-100 ease-spring ${
-                        isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-                      }`}
+                      className={`mt-3.5 sm:mt-5 font-display-alt text-[clamp(2.5rem,6.2vw,5.2rem)] font-medium leading-[1.06] tracking-[-0.015em] text-white drop-shadow-sm transition-all duration-700 delay-100 ease-spring ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                        }`}
                     >
                       {slide.titlePart1}
                       <span className="relative inline-block font-normal not-italic text-gold-lt italic">
                         {slide.titleHighlight}
                         <svg
-                          className={`absolute -bottom-2 left-0 w-full text-gold-lt/70 transition-transform duration-1000 delay-200 ease-spring origin-left ${
-                            isActive ? 'scale-x-100 opacity-100' : 'scale-x-0 opacity-0'
-                          }`}
+                          className={`absolute -bottom-2 left-0 w-full text-gold-lt/70 transition-transform duration-1000 delay-200 ease-spring origin-left ${isActive ? 'scale-x-100 opacity-100' : 'scale-x-0 opacity-0'
+                            }`}
                           viewBox="0 0 100 12"
                           preserveAspectRatio="none"
                           aria-hidden="true"
@@ -201,18 +196,16 @@ export function HeroSection() {
 
                     {/* Narrative Subtext */}
                     <p
-                      className={`mx-auto mt-4 sm:mt-5 max-w-2xl font-body text-xs sm:text-base font-light leading-relaxed text-white/90 transition-all duration-700 delay-200 ease-spring ${
-                        isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
-                      }`}
+                      className={`mx-auto mt-4 sm:mt-5 max-w-2xl font-body text-xs sm:text-base font-light leading-relaxed text-white/90 transition-all duration-700 delay-200 ease-spring ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+                        }`}
                     >
                       {slide.description}
                     </p>
 
                     {/* Action Buttons */}
                     <div
-                      className={`mt-7 sm:mt-9 flex flex-wrap items-center justify-center gap-3.5 sm:gap-4 transition-all duration-700 delay-300 ease-spring ${
-                        isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
-                      }`}
+                      className={`mt-7 sm:mt-9 flex flex-wrap items-center justify-center gap-3.5 sm:gap-4 transition-all duration-700 delay-300 ease-spring ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
+                        }`}
                     >
                       <Link
                         href={slide.primaryCtaHref}
@@ -311,7 +304,7 @@ export function HeroSection() {
       {/* ========================================================= */}
       <div className="relative z-[2] mx-auto max-w-shell px-[var(--pad)] pt-12 pb-16 sm:pb-24">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:gap-8">
-          
+
           {/* Showcase 1: Artisanal Wax Sachets */}
           <ScrollAnimate direction="up" delay={0}>
             <Link

@@ -7,10 +7,9 @@ import { api } from '@/lib/api';
 
 export function Footer() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error' | 'success'>('idle');
   const [serverMsg, setServerMsg] = useState('');
-  const [voucherCode, setVoucherCode] = useState('WELCOME10');
-  const [copied, setCopied] = useState(false);
+  const [joinedEmail, setJoinedEmail] = useState('');
 
   // Check on load if this browser already joined the Circle
   useEffect(() => {
@@ -18,10 +17,10 @@ export function Footer() {
       const stored = localStorage.getItem('dc_circle_member');
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed?.code) {
-          setVoucherCode(parsed.code);
+        if (parsed?.email) {
+          setJoinedEmail(parsed.email);
           setStatus('success');
-          setServerMsg('Welcome back to the Circle! Your 10% voucher code is active.');
+          setServerMsg('You are on our private guestlist. Future sale invitations will arrive in your email.');
         }
       }
     } catch {
@@ -46,16 +45,13 @@ export function Footer() {
     try {
       const res = await api.post<{
         email: string;
-        discountCode: string;
-        discountPercent: number;
-        alreadySubscribed: boolean;
+        alreadySubscribed?: boolean;
       }>('/newsletter/subscribe', { email: cleanEmail });
 
-      const code = res?.data?.discountCode || 'WELCOME10';
-      setVoucherCode(code);
+      setJoinedEmail(cleanEmail);
       setStatus('success');
       setServerMsg(
-        res?.message || 'Welcome to the Circle! A luxury welcome ritual has been sent to your inbox.'
+        res?.message || 'You are on our private guestlist. Future sale invitations will be sent directly to your email.'
       );
 
       try {
@@ -63,7 +59,6 @@ export function Footer() {
           'dc_circle_member',
           JSON.stringify({
             email: cleanEmail,
-            code,
             joinedAt: new Date().toISOString(),
           })
         );
@@ -71,17 +66,15 @@ export function Footer() {
         // Ignore storage errors
       }
     } catch {
-      // Resilient fallback: grant instant voucher code so customer experience is flawless
-      const fallbackCode = 'WELCOME10';
-      setVoucherCode(fallbackCode);
+      // Resilient fallback: grant instant confirmation so customer experience is flawless
+      setJoinedEmail(cleanEmail);
       setStatus('success');
-      setServerMsg('Welcome to the Circle! Your 10% discount code is active.');
+      setServerMsg('You are on our private guestlist. Future sale invitations will be sent directly to your email.');
       try {
         localStorage.setItem(
           'dc_circle_member',
           JSON.stringify({
             email: cleanEmail,
-            code: fallbackCode,
             joinedAt: new Date().toISOString(),
           })
         );
@@ -91,18 +84,16 @@ export function Footer() {
     }
   };
 
-  const handleCopyCode = () => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(voucherCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    }
-  };
-
   const handleReset = () => {
     setStatus('idle');
     setEmail('');
     setServerMsg('');
+    setJoinedEmail('');
+    try {
+      localStorage.removeItem('dc_circle_member');
+    } catch {
+      // Ignore
+    }
   };
 
   return (
@@ -237,7 +228,7 @@ export function Footer() {
                 </div>
 
                 <h4 className="mt-1 font-display-alt text-xl font-medium text-ink">
-                  Receive 10% off your first luxury order
+                  Private Invitations to Future Sales
                 </h4>
                 <p className="mt-2 text-xs font-light leading-relaxed text-body">
                   Join our fragrance circle for secret seasonal drops, private sale invitations, and candle care rituals.
@@ -247,40 +238,32 @@ export function Footer() {
                   <div className="mt-4 rounded-2xl border border-gold/40 bg-gold-bg/40 p-4 transition-all animate-in fade-in zoom-in-95">
                     <div className="flex items-center justify-between">
                       <span className="font-util text-[0.6rem] font-bold uppercase tracking-wider text-gold-dk">
-                        ✨ Your Exclusive 10% Voucher
+                        ✨ Private Circle Member
                       </span>
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-util text-[0.6rem] font-medium text-emerald-800">
-                        Active Now
+                        Active
                       </span>
                     </div>
 
-                    <div className="mt-2.5 flex items-center justify-between rounded-xl border border-gold/40 bg-white p-2 shadow-xs">
-                      <code className="px-2 font-mono text-sm font-bold tracking-widest text-ink">
-                        {voucherCode}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={handleCopyCode}
-                        className={`rounded-lg px-3 py-1.5 font-util text-xs font-semibold transition-all ${copied
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-gold text-white hover:bg-gold-dk'
-                          }`}
-                      >
-                        {copied ? 'Copied! ✓' : 'Copy Code'}
-                      </button>
+                    <div className="mt-2.5 rounded-xl border border-gold/30 bg-white p-3 shadow-xs">
+                      <p className="font-util text-[0.65rem] font-bold uppercase tracking-wider text-gold-dk">
+                        Future Sales Sent to Your Email
+                      </p>
+                      <p className="mt-1 font-mono text-xs text-ink truncate">
+                        {joinedEmail || email}
+                      </p>
+                      <p className="mt-2 text-[0.72rem] leading-relaxed text-body">
+                        {serverMsg || 'You are on our private guestlist. Watch your inbox for secret seasonal drops, private sale invitations, and candle care rituals.'}
+                      </p>
                     </div>
 
-                    <p className="mt-2.5 text-[0.7rem] leading-relaxed text-ink-2">
-                      {serverMsg || 'Apply code at checkout for 10% off your first luxury order.'}
-                    </p>
-
                     <div className="mt-3 flex items-center justify-between border-t border-gold/20 pt-2 text-[0.68rem]">
-                      <span className="text-ink-3">Check your inbox for care rituals</span>
+                      <span className="text-ink-3">Invitations delivered via email</span>
                       <Link
                         href="/products"
                         className="font-medium text-gold-dk underline hover:text-gold"
                       >
-                        Shop Now →
+                        Explore Collection →
                       </Link>
                     </div>
                   </div>
