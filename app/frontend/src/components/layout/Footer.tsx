@@ -109,6 +109,7 @@ export function Footer() {
                 alt="Dev Creation"
                 width={80}
                 height={80}
+                unoptimized
                 className="h-16 w-16 object-contain rounded-full shadow-xs"
               />
             </Link>

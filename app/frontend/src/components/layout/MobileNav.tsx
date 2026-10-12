@@ -40,6 +40,7 @@ export function MobileNav({
               alt="Dev Creation"
               width={48}
               height={48}
+              unoptimized
               className="h-11 w-11 object-contain rounded-full"
             />
             <span className="font-display-alt text-base font-medium text-ink">Dev Creation</span>

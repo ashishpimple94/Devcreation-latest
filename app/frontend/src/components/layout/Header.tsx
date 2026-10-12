@@ -67,10 +67,11 @@ export function Header() {
           <Image
             src="/assets/Logos/Logo2.png"
             alt="Dev Creation"
-            width={64}
-            height={64}
+            width={72}
+            height={72}
             priority
-            className="h-14 w-14 object-contain rounded-full max-[860px]:h-12 max-[860px]:w-12 transition-transform duration-200 hover:scale-105"
+            unoptimized
+            className="h-16 w-16 object-contain rounded-full max-[860px]:h-13 max-[860px]:w-13 transition-transform duration-200 hover:scale-105"
           />
         </Link>
 
