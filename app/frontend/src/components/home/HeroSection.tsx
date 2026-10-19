@@ -140,12 +140,14 @@ export function HeroSection() {
                 </div>
 
                 {/* Floating Top Badge */}
-                <div className="absolute top-6 sm:top-8 left-6 sm:left-12 lg:left-16 z-20">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-deep/85 px-4 py-1.5 font-util text-[0.62rem] sm:text-xs font-semibold uppercase tracking-[0.2em] text-gold-lt shadow-lg backdrop-blur-md">
-                    <span className="h-2 w-2 rounded-full bg-gold animate-pulse" />
-                    {slide.badge}
-                  </span>
-                </div>
+                {slide.badge && (
+                  <div className="absolute top-6 sm:top-8 left-6 sm:left-12 lg:left-16 z-20">
+                    <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-deep/85 px-4 py-1.5 font-util text-[0.62rem] sm:text-xs font-semibold uppercase tracking-[0.2em] text-gold-lt shadow-lg backdrop-blur-md">
+                      <span className="h-2 w-2 rounded-full bg-gold animate-pulse" />
+                      {slide.badge}
+                    </span>
+                  </div>
+                )}
 
                 {/* Slide Number Counter (e.g. 01 / 03) */}
                 <div className="absolute top-6 sm:top-8 right-6 sm:right-12 lg:right-16 z-20">
@@ -248,7 +250,7 @@ export function HeroSection() {
             type="button"
             onClick={prevSlide}
             aria-label="Previous slide"
-            className="group absolute left-4 sm:left-8 lg:left-12 top-1/2 z-30 -translate-y-1/2 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full border border-white/25 bg-deep/70 text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-115 hover:border-gold hover:bg-gold hover:text-white active:scale-90 shadow-glow"
+            className="group absolute left-4 sm:left-8 lg:left-12 top-1/2 z-30 -translate-y-1/2 hidden sm:flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full border border-white/25 bg-deep/70 text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-115 hover:border-gold hover:bg-gold hover:text-white active:scale-90 shadow-glow"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-300 group-hover:-translate-x-0.5">
               <polyline points="15 18 9 12 15 6" />
@@ -260,7 +262,7 @@ export function HeroSection() {
             type="button"
             onClick={nextSlide}
             aria-label="Next slide"
-            className="group absolute right-4 sm:right-8 lg:right-12 top-1/2 z-30 -translate-y-1/2 flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full border border-white/25 bg-deep/70 text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-115 hover:border-gold hover:bg-gold hover:text-white active:scale-90 shadow-glow"
+            className="group absolute right-4 sm:right-8 lg:right-12 top-1/2 z-30 -translate-y-1/2 hidden sm:flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full border border-white/25 bg-deep/70 text-white shadow-xl backdrop-blur-md transition-all duration-300 hover:scale-115 hover:border-gold hover:bg-gold hover:text-white active:scale-90 shadow-glow"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-300 group-hover:translate-x-0.5">
               <polyline points="9 18 15 12 9 6" />

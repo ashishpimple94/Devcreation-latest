@@ -30,7 +30,7 @@ export function ProductCard({
   const rawImages =
     product.images && product.images.length > 0
       ? product.images
-      : [{ url: '/assets/Logos/logo.jpeg', alt: product.name }];
+      : [{ url: '/assets/Logos/Logo2.png', alt: product.name }];
 
   const images = rawImages.map((img) => ({
     ...img,
@@ -164,8 +164,8 @@ export function ProductCard({
                 )}
                 onError={(e) => {
                   const el = e.currentTarget;
-                  if (!el.src.includes('/assets/Logos/logo.jpeg')) {
-                    el.src = '/assets/Logos/logo.jpeg';
+                  if (!el.src.includes('/assets/Logos/Logo2.png')) {
+                    el.src = '/assets/Logos/Logo2.png';
                   }
                 }}
               />
@@ -176,11 +176,11 @@ export function ProductCard({
               src={images[0].url}
               alt={images[0].alt ?? product.name}
               loading={priority ? 'eager' : 'lazy'}
-              className="h-full w-full object-contain p-4 sm:p-6 transition-transform duration-500 ease-spring group-hover:scale-105"
+              className="h-full w-full object-contain p-2 sm:p-6 transition-transform duration-500 ease-spring group-hover:scale-105"
               onError={(e) => {
                 const el = e.currentTarget;
-                if (!el.src.includes('/assets/Logos/logo.jpeg')) {
-                  el.src = '/assets/Logos/logo.jpeg';
+                if (!el.src.includes('/assets/Logos/Logo2.png')) {
+                  el.src = '/assets/Logos/Logo2.png';
                 }
               }}
             />
@@ -191,14 +191,14 @@ export function ProductCard({
         </Link>
 
         {/* Floating Badges (Top-Left) */}
-        <div className="absolute left-3.5 top-3.5 z-10 flex flex-col gap-1.5">
+        <div className="absolute left-2.5 sm:left-3.5 top-2.5 sm:top-3.5 z-10 flex flex-col gap-1">
           {discountPercent > 0 && (
-            <span className="rounded-full bg-deep px-2.5 py-1 font-util text-[0.62rem] font-bold uppercase tracking-wider text-white shadow-xs">
+            <span className="rounded-full bg-deep px-2 py-0.5 sm:px-2.5 sm:py-1 font-util text-[0.55rem] sm:text-[0.62rem] font-bold uppercase tracking-wider text-white shadow-xs">
               Save {discountPercent}%
             </span>
           )}
           {product.isFeatured && discountPercent === 0 && (
-            <span className="rounded-full bg-[#3D312A] px-2.5 py-1 font-util text-[0.62rem] font-medium uppercase tracking-wider text-white shadow-xs">
+            <span className="rounded-full bg-[#3D312A] px-2 py-0.5 sm:px-2.5 sm:py-1 font-util text-[0.55rem] sm:text-[0.62rem] font-medium uppercase tracking-wider text-white shadow-xs">
               Bestseller
             </span>
           )}
@@ -211,15 +211,15 @@ export function ProductCard({
           disabled={isWishloading}
           aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
           className={cn(
-            'absolute right-3.5 top-3.5 z-10 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all duration-300 shadow-xs hover:scale-110 active:scale-90',
+            'absolute right-2.5 sm:right-3.5 top-2.5 sm:top-3.5 z-10 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full backdrop-blur-md transition-all duration-300 shadow-xs hover:scale-110 active:scale-90',
             isWishlisted
               ? 'bg-rose-50 text-rose-600 shadow-rose-200/50'
               : 'bg-white/85 text-ink-3 hover:bg-white hover:text-ink',
           )}
         >
           <svg
-            width="17"
-            height="17"
+            width="15"
+            height="15"
             viewBox="0 0 24 24"
             fill={isWishlisted ? 'currentColor' : 'none'}
             stroke="currentColor"
@@ -234,7 +234,7 @@ export function ProductCard({
 
         {/* Mini Slider Dots */}
         {hasSlider && (
-          <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-deep/20 px-2.5 py-1 backdrop-blur-xs">
+          <div className="absolute bottom-2.5 sm:bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-deep/20 px-2 py-0.5 sm:px-2.5 sm:py-1 backdrop-blur-xs">
             {images.map((_, i) => (
               <button
                 key={i}
@@ -244,8 +244,8 @@ export function ProductCard({
                 }}
                 aria-label={`Image ${i + 1}`}
                 className={cn(
-                  'h-1.5 rounded-full transition-all duration-300 ease-spring',
-                  i === active ? 'w-4 bg-white shadow-xs' : 'w-1.5 bg-white/50 hover:bg-white/80',
+                  'h-1 sm:h-1.5 rounded-full transition-all duration-300 ease-spring',
+                  i === active ? 'w-3 sm:w-4 bg-white shadow-xs' : 'w-1 sm:w-1.5 bg-white/50 hover:bg-white/80',
                 )}
               />
             ))}
@@ -254,10 +254,10 @@ export function ProductCard({
       </div>
 
       {/* Card Info Section — Dual-Row Clean Pro Layout */}
-      <div className="flex flex-1 flex-col justify-between gap-3 p-4 sm:p-5">
+      <div className="flex flex-1 flex-col justify-between gap-2 p-3 sm:gap-3 sm:p-5">
         {/* Row 1: Product Title (Left) + Outlined Category Tag Capsules (Right) */}
-        <div className="flex items-start justify-between gap-2.5">
-          <h3 className="flex-1 font-display-alt text-[1.2rem] font-medium leading-snug text-ink transition-colors duration-200 group-hover:text-gold-dk sm:text-[1.28rem]">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1 sm:gap-2.5">
+          <h3 className="flex-1 font-display-alt text-[0.98rem] font-medium leading-snug text-ink transition-colors duration-200 group-hover:text-gold-dk sm:text-[1.28rem]">
             <Link href={`/products/${product.slug}`} className="line-clamp-1">
               {product.name}
             </Link>
@@ -265,11 +265,11 @@ export function ProductCard({
 
           {/* Capsule Pills */}
           {pillTags.length > 0 && (
-            <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-1.5 pt-0.5">
-              {pillTags.map((tag) => (
+            <div className="flex flex-shrink-0 flex-wrap items-center gap-1 sm:justify-end sm:gap-1.5 pt-0.5">
+              {pillTags.slice(0, 1).map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center rounded-full border border-neutral-300/80 bg-neutral-100/40 px-2.5 py-0.5 font-body text-[11px] font-normal leading-normal text-neutral-600 transition-colors hover:border-neutral-400 hover:text-ink"
+                  className="inline-flex items-center rounded-full border border-neutral-300/80 bg-neutral-100/40 px-2 py-0.5 font-body text-[10px] sm:text-[11px] font-normal leading-normal text-neutral-600 transition-colors hover:border-neutral-400 hover:text-ink"
                 >
                   {tag}
                 </span>
@@ -279,14 +279,14 @@ export function ProductCard({
         </div>
 
         {/* Row 2: Price (Left) + Underlined "Add To Cart" (Right) */}
-        <div className="flex items-center justify-between gap-3 pt-1">
+        <div className="flex items-center justify-between gap-1.5 pt-0.5 sm:gap-3 sm:pt-1">
           {/* Price */}
-          <div className="flex items-baseline gap-2">
-            <span className="font-body text-[1.05rem] font-semibold tabular-nums text-ink sm:text-[1.12rem]">
+          <div className="flex items-baseline gap-1 sm:gap-2">
+            <span className="font-body text-[0.92rem] font-semibold tabular-nums text-ink sm:text-[1.12rem]">
               {formatRupee(product.price)}
             </span>
             {product.compareAtPrice && product.compareAtPrice > product.price && (
-              <span className="font-body text-[0.82rem] tabular-nums text-neutral-400 line-through">
+              <span className="font-body text-[0.72rem] tabular-nums text-neutral-400 line-through sm:text-[0.82rem]">
                 {formatRupee(product.compareAtPrice)}
               </span>
             )}
@@ -297,19 +297,19 @@ export function ProductCard({
             onClick={handleAdd}
             disabled={product.stock <= 0}
             className={cn(
-              'group/btn relative text-[0.88rem] font-medium transition-all sm:text-[0.92rem]',
+              'group/btn relative text-[0.78rem] font-medium transition-all sm:text-[0.92rem] active:scale-95',
               product.stock <= 0
                 ? 'cursor-not-allowed opacity-50 text-neutral-400'
                 : 'text-ink hover:text-black cursor-pointer',
             )}
           >
             {product.stock <= 0 ? (
-              <span className="font-util text-[0.7rem] uppercase tracking-wider text-neutral-400">Sold out</span>
+              <span className="font-util text-[0.62rem] uppercase tracking-wider text-neutral-400 sm:text-[0.7rem]">Sold out</span>
             ) : added ? (
-              <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 animate-badge-pop">
+              <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 animate-badge-pop text-[0.75rem] sm:text-[0.88rem]">
                 <svg
-                  width="15"
-                  height="15"
+                  width="13"
+                  height="13"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -319,10 +319,10 @@ export function ProductCard({
                 >
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
-                <span>Added to Cart</span>
+                <span>Added</span>
               </span>
             ) : (
-              <span className="underline decoration-neutral-300 decoration-1 underline-offset-4 transition-all duration-300 group-hover/btn:decoration-ink group-hover/btn:underline-offset-6">
+              <span className="underline decoration-neutral-300 decoration-1 underline-offset-4 transition-all duration-300 group-hover/btn:decoration-ink group-hover/btn:underline-offset-6 whitespace-nowrap">
                 Add To Cart
               </span>
             )}

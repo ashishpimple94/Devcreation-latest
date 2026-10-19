@@ -3,7 +3,6 @@ import { ScrollAnimate } from '@/components/ScrollAnimate';
 import { ProductCard } from '@/components/product/ProductCard';
 import { HeroSection } from '@/components/home/HeroSection';
 import { HowToUseSection } from '@/components/home/HowToUseSection';
-import { WhyDevCreationSection } from '@/components/home/WhyDevCreationSection';
 import { ExclusiveOffersSection } from '@/components/home/ExclusiveOffersSection';
 import { productService } from '@/services/product.service';
 import type { Product } from '@/types';
@@ -51,7 +50,7 @@ export default async function HomePage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 sm:gap-8">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-8">
               {products.map((product, i) => (
                 <ScrollAnimate key={product._id} direction="up" delay={(i % 3) * 110}>
                   <ProductCard product={product} priority={i < 3} />
@@ -64,9 +63,6 @@ export default async function HomePage() {
 
       {/* How to use your sachet (Interactive Guide) */}
       <HowToUseSection />
-
-      {/* Why Dev Creation? (Interactive Brand Pillars) */}
-      <WhyDevCreationSection />
 
       {/* Exclusive Offers & Perks */}
       <ExclusiveOffersSection />

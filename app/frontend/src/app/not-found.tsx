@@ -6,7 +6,7 @@ export default function NotFound() {
       <span className="util-label text-gold-dk">404 · Page Not Found</span>
       <h1 className="mt-3 font-display-alt text-4xl sm:text-5xl font-medium text-ink">Fragrance Not Found</h1>
       <p className="mt-3 max-w-md text-sm text-body leading-relaxed">
-        The page or product you are looking for doesn&apos;t exist, was renamed, or has moved to another section of our boutique.
+        The page or product you are looking for doesn&apos;t exist, was renamed, or has moved to another section of our shop.
       </p>
 
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">

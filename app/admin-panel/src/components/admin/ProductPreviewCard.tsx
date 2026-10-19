@@ -270,7 +270,7 @@ export function ProductPreviewCard({
         </article>
       ) : (
         /* ══════════════════════════════════════════════════════
-           LUXURY STOREFRONT BOUTIQUE CARD
+           LUXURY STOREFRONT PRODUCT CARD
         ══════════════════════════════════════════════════════ */
         <article className="group flex flex-col overflow-hidden rounded-[14px] border border-line bg-surface transition-all duration-500 ease-spring hover:-translate-y-1.5 hover:border-gold/50 hover:shadow-card-hover">
           <div className="relative block h-[330px] flex-shrink-0 overflow-hidden bg-surface-2">

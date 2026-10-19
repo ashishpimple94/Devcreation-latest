@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ScrollAnimate } from '@/components/ScrollAnimate';
+import { WhyDevCreationSection } from '@/components/home/WhyDevCreationSection';
 
 export const metadata = {
   title: 'Our Story — Dev Creation',
@@ -113,6 +114,11 @@ export default function OurStoryPage() {
           ))}
         </div>
       </section>
+
+      {/* Why Dev Creation & Craft Comparison */}
+      <WhyDevCreationSection />
+
+      <div className="mx-auto h-[1.5px] w-[60px] bg-gold-lt" />
 
       <section className="px-[var(--pad)] py-[clamp(56px,8vh,100px)] text-center">
         <ScrollAnimate>

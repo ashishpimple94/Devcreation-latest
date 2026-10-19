@@ -113,7 +113,7 @@ function layout(bodyHtml: string, previewText = ''): string {
               </div>
               <div style="font-size:12px;color:${C.ink3};line-height:1.7;">
                 Concierge: <a href="mailto:support@devcreation24.in" style="color:${C.ink};font-weight:600;text-decoration:none;">support@devcreation24.in</a> &bull; Phone: <strong style="color:${C.ink};">+91 788 758 2008</strong><br>
-                Online Boutique: <a href="${env.STORE_URL}" style="color:${C.ink};font-weight:600;text-decoration:none;">devcreation24.in</a>
+                Online Store: <a href="${env.STORE_URL}" style="color:${C.ink};font-weight:600;text-decoration:none;">devcreation24.in</a>
               </div>
               <div style="font-size:11px;color:#9b8f84;margin-top:14px;border-top:1px solid ${C.line};padding-top:10px;">
                 &copy; ${new Date().getFullYear()} Dev Creation. All rights reserved.

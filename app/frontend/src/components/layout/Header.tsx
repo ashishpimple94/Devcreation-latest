@@ -15,6 +15,7 @@ export const NAV_LINKS = [
   { label: 'Collection', href: '/products' },
   { label: 'Care', href: '/#care' },
   { label: 'Our Story', href: '/our-story' },
+  { label: 'Contact', href: '/contact' },
   { label: 'Gifting', href: '/categories/gift-sets' },
   { label: 'Refills', href: '/categories/wax-melts' },
 ];
@@ -120,7 +121,7 @@ export function Header() {
           <Link
             href={user ? '/account/profile' : '/login'}
             aria-label="Account"
-            className="p-1.5 text-ink-2 transition-all duration-200 hover:text-ink hover:scale-110 active:scale-95"
+            className="hidden sm:flex p-1.5 text-ink-2 transition-all duration-200 hover:text-ink hover:scale-110 active:scale-95"
           >
             <UserIcon />
           </Link>

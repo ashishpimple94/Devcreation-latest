@@ -23,7 +23,7 @@ export function ProductDetail({ product, related }: { product: Product; related:
   const images = (
     product.images && product.images.length
       ? product.images
-      : [{ url: '/assets/Logos/logo.jpeg', alt: product.name }]
+      : [{ url: '/assets/Logos/Logo2.png', alt: product.name }]
   ).map((im) => ({ ...im, url: resolveImageUrl(im.url) }));
   const [activeImg, setActiveImg] = useState(0);
   const [variantSku, setVariantSku] = useState<string | undefined>(product.variants[0]?.sku);
@@ -140,7 +140,7 @@ export function ProductDetail({ product, related }: { product: Product; related:
         </div>
       </div>
 
-      <main className="mx-auto max-w-shell px-[var(--pad)] py-8 sm:py-12">
+      <main className="mx-auto max-w-shell px-[var(--pad)] py-8 sm:py-12 pb-32 sm:pb-12">
         {/* Amazon 3-Column Layout in Dev Creation Luxury Styling */}
         <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr_320px] xl:grid-cols-[480px_1fr_340px] gap-8 xl:gap-10 items-start">
 
@@ -168,8 +168,8 @@ export function ProductDetail({ product, related }: { product: Product; related:
                     className="h-full w-full object-cover rounded-lg"
                     onError={(e) => {
                       const el = e.currentTarget;
-                      if (!el.src.includes('/assets/Logos/logo.jpeg')) {
-                        el.src = '/assets/Logos/logo.jpeg';
+                      if (!el.src.includes('/assets/Logos/Logo2.png')) {
+                        el.src = '/assets/Logos/Logo2.png';
                       }
                     }}
                   />
@@ -191,8 +191,8 @@ export function ProductDetail({ product, related }: { product: Product; related:
                   className="h-full w-full object-cover rounded-xl pointer-events-none transition-transform duration-300"
                   onError={(e) => {
                     const el = e.currentTarget;
-                    if (!el.src.includes('/assets/Logos/logo.jpeg')) {
-                      el.src = '/assets/Logos/logo.jpeg';
+                    if (!el.src.includes('/assets/Logos/Logo2.png')) {
+                      el.src = '/assets/Logos/Logo2.png';
                     }
                   }}
                   style={
@@ -562,7 +562,7 @@ export function ProductDetail({ product, related }: { product: Product; related:
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-6">
               {related.map((p) => (
                 <ProductCard key={p._id} product={p} />
               ))}
@@ -570,6 +570,42 @@ export function ProductDetail({ product, related }: { product: Product; related:
           </div>
         )}
       </main>
+
+      {/* Mobile App Sticky Purchase Bar (Docked right above MobileBottomBar) */}
+      <aside
+        aria-label="Quick Actions"
+        className="fixed bottom-15 left-0 right-0 z-40 border-t border-line/80 bg-paper/95 px-4 py-2.5 backdrop-blur-xl shadow-[0_-4px_24px_rgba(44,24,16,0.1)] sm:hidden"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col">
+            <span className="font-util text-[0.58rem] font-medium uppercase tracking-wider text-ink-3">Total</span>
+            <div className="flex items-baseline gap-1">
+              <span className="font-body text-[1.05rem] font-bold tabular-nums text-ink">{formatRupee(price)}</span>
+              {discountPercent > 0 && (
+                <span className="font-util text-[0.6rem] font-bold text-flame">-{discountPercent}%</span>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-1 items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={stock <= 0 || adding}
+              className="flex-1 rounded-xl border border-deep bg-surface-2 py-2.5 font-util text-[0.66rem] font-bold uppercase tracking-wider text-deep transition-all active:scale-95 disabled:opacity-50"
+            >
+              {adding ? 'Adding...' : 'Add to Bag'}
+            </button>
+            <button
+              type="button"
+              onClick={handleBuyNow}
+              disabled={stock <= 0 || buying}
+              className="flex-1 rounded-xl bg-deep py-2.5 font-util text-[0.66rem] font-bold uppercase tracking-wider text-white shadow-xs transition-all active:scale-95 disabled:opacity-50"
+            >
+              {buying ? '...' : 'Buy Now'}
+            </button>
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }

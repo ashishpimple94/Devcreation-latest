@@ -592,14 +592,14 @@ export default function LoginPage() {
         {/* Background Visual */}
         <div className="absolute inset-0 z-0">
           <Image
-            src="/assets/image2.jpg"
+            src="/assets/login-page.jpg"
             alt="Dev Creation Artisanal Wax Sanctuary"
             fill
             priority
             className="object-cover object-center scale-105 transition-transform duration-10000"
           />
           {/* Multi-layered Editorial Scrim for Crisp Contrast */}
-          <div className="absolute inset-0 bg-gradient-to-t from-deep/95 via-deep/65 to-deep/40" />
+          <div className="absolute inset-0 bg-gradient-to-t from-deep/90 via-deep/50 to-deep/30" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(184,148,63,0.25),transparent_50%)]" />
         </div>
 
@@ -610,7 +610,7 @@ export default function LoginPage() {
             className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 font-util text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/90 backdrop-blur-md transition-all hover:border-gold hover:bg-gold/20 hover:text-white"
           >
             <span className="transition-transform group-hover:-translate-x-1">&larr;</span>
-            <span>Return to Boutique</span>
+            <span>Return to Shop</span>
           </Link>
 
           <span className="font-util text-[0.62rem] font-bold uppercase tracking-[0.22em] text-gold-lt/90">
@@ -696,7 +696,7 @@ export default function LoginPage() {
               className="inline-flex items-center gap-1.5 font-util text-xs tracking-wider uppercase text-ink-3 hover:text-gold-dk transition-colors"
             >
               <span>&larr;</span>
-              <span>Back to Boutique</span>
+              <span>Return to Shop</span>
             </Link>
             <span className="font-util text-[0.62rem] font-bold uppercase tracking-widest text-gold-dk">
               Dev Creation
@@ -704,7 +704,23 @@ export default function LoginPage() {
           </div>
 
           {/* Luxury Card Container */}
-          <div className="rounded-3xl border border-gold/30 bg-white/95 p-7 sm:p-9 shadow-[0_20px_50px_-15px_rgba(44,24,16,0.08)] backdrop-blur-md transition-all">
+          <div className="rounded-3xl border border-gold/30 bg-white/95 p-6 sm:p-9 shadow-[0_20px_50px_-15px_rgba(44,24,16,0.08)] backdrop-blur-md transition-all">
+            {/* Mobile Visual Header Accent */}
+            <div className="lg:hidden mb-6 overflow-hidden rounded-2xl border border-gold/25 relative h-28 sm:h-36 w-full shadow-xs">
+              <Image
+                src="/assets/login-page.jpg"
+                alt="Dev Creation Artisanal Wax Sanctuary"
+                fill
+                priority
+                className="object-cover object-center"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-deep/85 via-deep/30 to-transparent flex items-end p-3.5">
+                <span className="font-display-alt text-xs sm:text-sm italic text-gold-lt drop-shadow-sm">
+                  Handcrafted with love, Scented with care.
+                </span>
+              </div>
+            </div>
+
             {/* Brand Header */}
             <div className="text-center mb-7">
               <Link href="/" className="inline-block transition-transform hover:scale-105 duration-200">

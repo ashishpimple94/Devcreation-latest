@@ -11,8 +11,8 @@ import { formatDate, formatRupee, cn } from '@/lib/utils';
 import type { User, Order, Address, Product, PageMeta } from '@/types';
 
 const ROLE_LABEL: Record<string, string> = {
-  super_admin: 'Boutique Master',
-  admin: 'Concierge Lead',
+  super_admin: 'Super Administrator',
+  admin: 'Store Admin',
   manager: 'Artisan Curator',
   customer: 'Fragrance Member',
 };

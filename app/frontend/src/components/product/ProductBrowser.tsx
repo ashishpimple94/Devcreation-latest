@@ -278,12 +278,12 @@ export function ProductBrowser({
 
       {/* Category Pills Row — Exact Match to Reference Design */}
       <ScrollAnimate direction="up" delay={80} className="mb-8 flex justify-center sm:mb-10">
-        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
+        <div className="flex w-full flex-nowrap overflow-x-auto pb-2 scrollbar-none sm:w-auto sm:flex-wrap sm:items-center sm:justify-center gap-2 sm:gap-2.5 px-1">
           {/* ALL Pill */}
           <button
             onClick={() => setSelectedCategory('')}
             className={cn(
-              'rounded-full px-5 py-2 font-body text-[0.78rem] font-medium tracking-wide uppercase transition-all duration-300 active:scale-95 sm:px-6 sm:py-2.5 sm:text-[0.82rem]',
+              'flex-shrink-0 rounded-full px-4 py-2 font-body text-[0.75rem] font-medium tracking-wide uppercase transition-all duration-300 active:scale-95 sm:px-6 sm:py-2.5 sm:text-[0.82rem]',
               selectedCategory === ''
                 ? 'bg-[#6B6547] text-white shadow-md'
                 : 'bg-[#F4EFE6] text-ink-2 hover:bg-[#EAE3D4] hover:text-ink',
@@ -303,7 +303,7 @@ export function ProductBrowser({
                 key={c._id}
                 onClick={() => setSelectedCategory(isActive ? '' : c.slug || c._id)}
                 className={cn(
-                  'rounded-full px-5 py-2 font-body text-[0.78rem] font-medium tracking-wide uppercase transition-all duration-300 active:scale-95 sm:px-6 sm:py-2.5 sm:text-[0.82rem]',
+                  'flex-shrink-0 rounded-full px-4 py-2 font-body text-[0.75rem] font-medium tracking-wide uppercase transition-all duration-300 active:scale-95 sm:px-6 sm:py-2.5 sm:text-[0.82rem]',
                   isActive
                     ? 'bg-[#6B6547] text-white shadow-md'
                     : 'bg-[#F4EFE6] text-ink-2 hover:bg-[#EAE3D4] hover:text-ink',
@@ -407,7 +407,7 @@ export function ProductBrowser({
       ) : (
         <div className="mx-auto max-w-7xl">
           {/* Pro 3-Column Layout with Staggered Animations */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 sm:gap-8">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-8">
             {products.map((product, index) => (
               <ScrollAnimate
                 key={product._id}

@@ -24,7 +24,7 @@ export function AuthShell({
           className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/80 px-4 py-2 font-util text-[0.68rem] font-semibold uppercase tracking-wider text-ink-2 shadow-xs backdrop-blur-md transition-all hover:border-gold hover:text-gold-dk"
         >
           <span>&larr;</span>
-          <span>Boutique</span>
+          <span>Return to Shop</span>
         </Link>
       </div>
 
