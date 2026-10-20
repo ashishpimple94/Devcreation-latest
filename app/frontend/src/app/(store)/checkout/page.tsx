@@ -24,10 +24,26 @@ const EMPTY_ADDRESS: ShippingAddress = {
   country: 'India',
 };
 
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && (window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { cart, refresh, clear, appliedGiftCard, getDiscount, getFinalTotal } = useCartStore();
   const status = useAuthStore((s) => s.status);
+  const user = useAuthStore((s) => s.user);
   const { success, error } = useToast();
   const discount = getDiscount();
   const finalTotal = getFinalTotal();
@@ -59,12 +75,78 @@ export default function CheckoutPage() {
     setPlacing(true);
     try {
       const order = await orderService.checkout(address, payment, appliedGiftCard?.code);
-      await clear();
-      success(`Order ${order.orderNumber} placed`);
-      router.push(`/account/orders/${order._id}`);
+
+      // If Cash on Delivery, finish order immediately
+      if (payment === 'cod' || !order.razorpayOrder) {
+        await clear();
+        success(`Order ${order.orderNumber} placed successfully`);
+        router.push(`/account/orders/${order._id}`);
+        return;
+      }
+
+      // Online payment via Razorpay Modal
+      const loaded = await loadRazorpayScript();
+      if (!loaded) {
+        error('Could not load Razorpay payment gateway. Please check your internet connection.');
+        setPlacing(false);
+        router.push(`/account/orders/${order._id}`);
+        return;
+      }
+
+      const rzpKey = order.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TpP4B9vNcQoDGs';
+
+      const options = {
+        key: rzpKey,
+        amount: order.razorpayOrder.amount,
+        currency: order.razorpayOrder.currency || 'INR',
+        name: 'Dev Creation',
+        description: `Order #${order.orderNumber} — Handcrafted Luxury Fragrances`,
+        image: 'https://devcreation24.in/assets/Logos/Logo2.png',
+        order_id: order.razorpayOrder.id,
+        handler: async function (response: any) {
+          try {
+            setPlacing(true);
+            await orderService.verifyPayment({
+              orderId: order._id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            await clear();
+            success(`Payment verified! Order #${order.orderNumber} confirmed.`);
+            router.push(`/account/orders/${order._id}`);
+          } catch (err) {
+            error(err instanceof Error ? err.message : 'Payment verification failed');
+            router.push(`/account/orders/${order._id}`);
+          } finally {
+            setPlacing(false);
+          }
+        },
+        prefill: {
+          name: address.fullName,
+          contact: address.phone,
+          email: user?.email || '',
+        },
+        theme: {
+          color: '#2C1810',
+        },
+        modal: {
+          ondismiss: function () {
+            setPlacing(false);
+            error('Payment was not completed. Your order has been created and saved under Pending.');
+            router.push(`/account/orders/${order._id}`);
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (resp: any) {
+        setPlacing(false);
+        error(`Payment failed: ${resp.error?.description || 'Transaction declined'}`);
+      });
+      rzp.open();
     } catch (err) {
       error(err instanceof Error ? err.message : 'Could not place order');
-    } finally {
       setPlacing(false);
     }
   };
@@ -258,10 +340,18 @@ export default function CheckoutPage() {
             </div>
 
             <Button type="submit" loading={placing} className="mt-5 w-full">
-              Place order
+              {placing
+                ? 'Processing...'
+                : payment === 'cod'
+                ? 'Place Order (Cash on Delivery)'
+                : 'Pay Now via Razorpay Secure Gateway'}
             </Button>
-            <p className="mt-3 text-center text-[0.72rem] text-ink-3">
-              By placing your order you agree to pay {formatRupee(finalTotal)} via {payment === 'cod' ? 'Cash on Delivery' : payment.toUpperCase()}.
+            <div className="mt-3.5 flex items-center justify-center gap-1.5 font-util text-[0.62rem] text-ink-3">
+              <span>🔒</span>
+              <span>100% Encrypted &amp; Processed via RBI-Authorized <strong>Razorpay</strong></span>
+            </div>
+            <p className="mt-2 text-center text-[0.72rem] text-ink-3">
+              By placing your order you agree to pay {formatRupee(finalTotal)} via {payment === 'cod' ? 'Cash on Delivery' : payment === 'upi' ? 'Razorpay UPI' : 'Razorpay Cards / Net Banking'}.
             </p>
           </aside>
         </form>

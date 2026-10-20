@@ -22,6 +22,21 @@ export const orderService = {
     return res.data;
   },
 
+  async verifyPayment(input: {
+    orderId: string;
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+  }): Promise<Order> {
+    const res = await api.post<Order>('/orders/verify-payment', input);
+    return res.data;
+  },
+
+  async getRazorpayOrder(orderId: string): Promise<{ razorpayOrder: any; razorpayKeyId: string; order: Order }> {
+    const res = await api.get<{ razorpayOrder: any; razorpayKeyId: string; order: Order }>(`/orders/${orderId}/razorpay-order`);
+    return res.data;
+  },
+
   async addresses(): Promise<Address[]> {
     const res = await api.get<Address[]>('/users/me/addresses');
     return res.data;

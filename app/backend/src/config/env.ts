@@ -68,6 +68,10 @@ const schema = z.object({
     .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
     .default('true')
     .transform((v) => v === true || v === 'true' || v === '1'),
+
+  // ── Razorpay Payment Gateway ────────────────────────
+  RAZORPAY_KEY_ID: z.string().default('rzp_test_TpP4B9vNcQoDGs'),
+  RAZORPAY_KEY_SECRET: z.string().default('mmxCQsLOJxa0eH17Q7tm3dJH'),
 });
 
 const parsed = schema.safeParse(process.env);

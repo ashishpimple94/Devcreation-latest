@@ -9,6 +9,8 @@ const router = Router();
 router.use(authenticate);
 
 router.post('/checkout', validate(checkoutSchema), orderController.checkout);
+router.post('/verify-payment', orderController.verifyPayment);
+router.get('/:id/razorpay-order', orderController.getRazorpayOrder);
 router.get('/', orderController.listMine);
 router.get('/:id', orderController.getMine);
 router.post('/:id/cancel', orderController.cancelMine);

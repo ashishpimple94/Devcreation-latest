@@ -38,6 +38,22 @@ export function OrderDetailClient() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [paying, setPaying] = useState(false);
+
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (typeof window !== 'undefined' && (window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   const load = useCallback(() => {
     if (!id || id === 'sample' || id === 'detail') {
@@ -79,6 +95,69 @@ export function OrderDetailClient() {
     }
   };
 
+  const handleRazorpayRetry = async () => {
+    if (!order) return;
+    setPaying(true);
+    try {
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        throw new Error('Razorpay SDK failed to load. Please check your internet connection.');
+      }
+
+      const res = await orderService.getRazorpayOrder(order._id);
+      const { razorpayOrder, razorpayKeyId } = res;
+
+      const options = {
+        key: razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TpP4B9vNcQoDGs',
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency || 'INR',
+        name: 'Dev Creation',
+        description: `Order ${order.orderNumber} Payment`,
+        image: 'https://devcreation24.in/assets/Logos/Logo2.png',
+        order_id: razorpayOrder.id,
+        handler: async function (response: any) {
+          try {
+            setPaying(true);
+            const verifyRes = await orderService.verifyPayment({
+              orderId: order._id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            success('Payment successful! Your order is now confirmed.');
+            setOrder(verifyRes);
+          } catch (err: any) {
+            error(err.message || 'Payment verification failed');
+          } finally {
+            setPaying(false);
+          }
+        },
+        prefill: {
+          name: order.shippingAddress.fullName || '',
+          contact: order.shippingAddress.phone || '',
+        },
+        theme: {
+          color: '#2C1810',
+        },
+        modal: {
+          ondismiss: function () {
+            setPaying(false);
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (resp: any) {
+        error(resp?.error?.description || 'Payment was declined or failed.');
+        setPaying(false);
+      });
+      rzp.open();
+    } catch (err: any) {
+      error(err.message || 'Could not initiate Razorpay payment');
+      setPaying(false);
+    }
+  };
+
   if (loading) return <Skeleton className="h-96 w-full" />;
 
   if (!id || id === 'sample' || id === 'detail') {
@@ -115,6 +194,7 @@ export function OrderDetailClient() {
   }
 
   const canCancel = ['pending', 'confirmed', 'processing'].includes(order.status);
+  const isOnlinePaymentPending = order.paymentStatus !== 'paid' && order.paymentMethod !== 'cod' && order.status !== 'cancelled';
   const currentStep = TIMELINE.indexOf(order.status as (typeof TIMELINE)[number]);
 
   return (
@@ -129,6 +209,28 @@ export function OrderDetailClient() {
           <PaymentStatusBadge status={order.paymentStatus} />
         </div>
       </div>
+
+      {/* Online Payment Pending Banner */}
+      {isOnlinePaymentPending && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Payment Pending</h3>
+            </div>
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+              Payment was not completed for this order. Complete payment securely via Razorpay to confirm your order.
+            </p>
+          </div>
+          <Button
+            onClick={handleRazorpayRetry}
+            loading={paying}
+            className="bg-[#2C1810] text-white hover:bg-black font-medium text-xs px-4 py-2"
+          >
+            Pay Now {formatRupee(order.total)} with Razorpay
+          </Button>
+        </div>
+      )}
 
       {/* Timeline */}
       {order.status !== 'cancelled' && order.status !== 'refunded' && (
@@ -197,11 +299,22 @@ export function OrderDetailClient() {
             </div>
           </div>
 
-          {canCancel && (
-            <Button variant="ghost" onClick={cancel} loading={cancelling} className="mt-5">
-              Cancel order
-            </Button>
-          )}
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            {isOnlinePaymentPending && (
+              <Button
+                onClick={handleRazorpayRetry}
+                loading={paying}
+                className="bg-[#2C1810] text-white hover:bg-black font-medium text-xs"
+              >
+                Pay Now with Razorpay
+              </Button>
+            )}
+            {canCancel && (
+              <Button variant="ghost" onClick={cancel} loading={cancelling} className="text-xs">
+                Cancel order
+              </Button>
+            )}
+          </div>
         </div>
 
         <aside className="space-y-6">

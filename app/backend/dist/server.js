@@ -77,7 +77,10 @@ var schema = import_zod.z.object({
   TWILIO_ACCOUNT_SID: import_zod.z.string().optional(),
   TWILIO_AUTH_TOKEN: import_zod.z.string().optional(),
   TWILIO_PHONE_NUMBER: import_zod.z.string().optional(),
-  ENABLE_SMS_FALLBACK_DEMO: import_zod.z.union([import_zod.z.boolean(), import_zod.z.enum(["true", "false", "1", "0"])]).default("true").transform((v) => v === true || v === "true" || v === "1")
+  ENABLE_SMS_FALLBACK_DEMO: import_zod.z.union([import_zod.z.boolean(), import_zod.z.enum(["true", "false", "1", "0"])]).default("true").transform((v) => v === true || v === "true" || v === "1"),
+  // ── Razorpay Payment Gateway ────────────────────────
+  RAZORPAY_KEY_ID: import_zod.z.string().default("rzp_test_TpP4B9vNcQoDGs"),
+  RAZORPAY_KEY_SECRET: import_zod.z.string().default("mmxCQsLOJxa0eH17Q7tm3dJH")
 });
 var parsed = schema.safeParse(process.env);
 if (!parsed.success) {
@@ -3249,6 +3252,9 @@ var orderSchema = new import_mongoose14.Schema(
       default: PAYMENT_STATUS.PENDING,
       index: true
     },
+    razorpayOrderId: { type: String, index: true },
+    razorpayPaymentId: { type: String },
+    razorpaySignature: { type: String },
     // Audit trail of every status change.
     statusHistory: { type: [statusHistorySchema], default: [] },
     placedAt: { type: Date, default: Date.now }
@@ -3502,6 +3508,125 @@ var giftCardService = {
   }
 };
 
+// src/services/razorpay.service.ts
+var import_crypto = __toESM(require("crypto"));
+var import_https = __toESM(require("https"));
+var razorpayService = {
+  /**
+   * Creates a Razorpay Order through official Razorpay REST API.
+   * Converts amount in INR to Paise (e.g. ₹599 -> 59900 paise).
+   */
+  async createOrder(input) {
+    const amountInPaise = Math.round(input.amount * 100);
+    const postData = JSON.stringify({
+      amount: amountInPaise,
+      currency: input.currency || "INR",
+      receipt: input.receipt,
+      notes: input.notes || {}
+    });
+    const authHeader = "Basic " + Buffer.from(`${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`).toString("base64");
+    return new Promise((resolve, reject) => {
+      const req = import_https.default.request(
+        {
+          hostname: "api.razorpay.com",
+          path: "/v1/orders",
+          method: "POST",
+          headers: {
+            Authorization: authHeader,
+            "Content-Type": "application/json",
+            "Content-Length": Buffer.byteLength(postData)
+          }
+        },
+        (res) => {
+          let body = "";
+          res.on("data", (chunk) => {
+            body += chunk;
+          });
+          res.on("end", () => {
+            try {
+              const parsed2 = JSON.parse(body);
+              if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                logger.info(`[RAZORPAY] Order created successfully: ${parsed2.id} for receipt: ${input.receipt}`);
+                resolve(parsed2);
+              } else {
+                logger.error("[RAZORPAY] Order creation failed", { status: res.statusCode, body });
+                reject(ApiError.badRequest(parsed2.error?.description || "Razorpay order creation failed"));
+              }
+            } catch (err) {
+              reject(ApiError.internal("Failed to parse Razorpay API response"));
+            }
+          });
+        }
+      );
+      req.on("error", (err) => {
+        logger.error("[RAZORPAY] Request error", { err: err.message });
+        reject(ApiError.internal(`Razorpay gateway connection error: ${err.message}`));
+      });
+      req.write(postData);
+      req.end();
+    });
+  },
+  /**
+   * Verifies Razorpay payment signature using SHA-256 HMAC algorithm.
+   */
+  verifySignature(input) {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = input;
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+      return false;
+    }
+    const payload = `${razorpayOrderId}|${razorpayPaymentId}`;
+    const expectedSignature = import_crypto.default.createHmac("sha256", env.RAZORPAY_KEY_SECRET).update(payload).digest("hex");
+    const isValid = expectedSignature === razorpaySignature;
+    if (!isValid) {
+      logger.warn("[RAZORPAY] Signature verification mismatch", {
+        razorpayOrderId,
+        razorpayPaymentId
+      });
+    }
+    return isValid;
+  },
+  /**
+   * Fetches payment details from Razorpay to verify status.
+   */
+  async fetchPayment(paymentId) {
+    const authHeader = "Basic " + Buffer.from(`${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`).toString("base64");
+    return new Promise((resolve, reject) => {
+      const req = import_https.default.request(
+        {
+          hostname: "api.razorpay.com",
+          path: `/v1/payments/${encodeURIComponent(paymentId)}`,
+          method: "GET",
+          headers: {
+            Authorization: authHeader
+          }
+        },
+        (res) => {
+          let body = "";
+          res.on("data", (chunk) => {
+            body += chunk;
+          });
+          res.on("end", () => {
+            try {
+              const parsed2 = JSON.parse(body);
+              if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                resolve(parsed2);
+              } else {
+                reject(ApiError.badRequest(parsed2.error?.description || "Failed to fetch payment"));
+              }
+            } catch (err) {
+              reject(ApiError.internal("Failed to parse Razorpay payment response"));
+            }
+          });
+        }
+      );
+      req.on("error", (err) => {
+        reject(ApiError.internal(`Razorpay payment fetch error: ${err.message}`));
+      });
+      req.end();
+    });
+  }
+};
+
 // src/services/order.service.ts
 var STATUS_MESSAGE = {
   [ORDER_STATUS.PENDING]: (n) => `Order ${n} has been placed`,
@@ -3616,12 +3741,12 @@ var orderService = {
     if (await supportsTransactions()) {
       const session = await import_mongoose17.default.startSession();
       try {
-        let result;
+        let result2;
         await session.withTransaction(async () => {
-          result = await placeOrder(session);
+          result2 = await placeOrder(session);
         });
-        if (!result) throw ApiError.internal("Failed to create order");
-        created = result;
+        if (!result2) throw ApiError.internal("Failed to create order");
+        created = result2;
       } finally {
         await session.endSession();
       }
@@ -3655,10 +3780,113 @@ var orderService = {
         dashboardDirty: true
       });
     }
-    void emailService.sendOrderPlaced(created).catch(
-      (err) => logger.warn("Order-placed email failed", { orderId: created._id.toString(), err: err.message })
+    let razorpayOrder = void 0;
+    if (input.paymentMethod === "upi" || input.paymentMethod === "card") {
+      try {
+        const rzp = await razorpayService.createOrder({
+          amount: created.total,
+          receipt: created.orderNumber,
+          notes: {
+            orderId: created._id.toString(),
+            orderNumber: created.orderNumber
+          }
+        });
+        created.razorpayOrderId = rzp.id;
+        await Order.findByIdAndUpdate(created._id, { razorpayOrderId: rzp.id });
+        razorpayOrder = rzp;
+      } catch (err) {
+        logger.error("Failed to create Razorpay order", { err: err.message });
+      }
+    } else {
+      void emailService.sendOrderPlaced(created).catch(
+        (err) => logger.warn("Order-placed email failed", { orderId: created._id.toString(), err: err.message })
+      );
+    }
+    const result = created.toObject();
+    if (razorpayOrder) {
+      result.razorpayOrder = razorpayOrder;
+      result.razorpayKeyId = env.RAZORPAY_KEY_ID;
+    }
+    return result;
+  },
+  /**
+   * Verifies payment signature and marks order as CONFIRMED & PAID.
+   */
+  async verifyPayment(userId, input) {
+    const order = await Order.findOne({
+      _id: new import_mongoose17.Types.ObjectId(input.orderId),
+      user: new import_mongoose17.Types.ObjectId(userId)
+    });
+    if (!order) {
+      throw ApiError.notFound("Order not found");
+    }
+    const isValid = razorpayService.verifySignature({
+      razorpayOrderId: input.razorpayOrderId,
+      razorpayPaymentId: input.razorpayPaymentId,
+      razorpaySignature: input.razorpaySignature
+    });
+    if (!isValid) {
+      throw ApiError.badRequest("Invalid payment signature verification");
+    }
+    order.paymentStatus = PAYMENT_STATUS.PAID;
+    order.status = ORDER_STATUS.CONFIRMED;
+    order.razorpayPaymentId = input.razorpayPaymentId;
+    order.razorpayOrderId = input.razorpayOrderId;
+    order.razorpaySignature = input.razorpaySignature;
+    order.statusHistory.push({
+      status: ORDER_STATUS.CONFIRMED,
+      note: `Online payment verified via Razorpay (Payment ID: ${input.razorpayPaymentId})`,
+      changedAt: /* @__PURE__ */ new Date()
+    });
+    await order.save();
+    await cache.del(CACHE.KEY.dashboard());
+    void emailService.sendOrderPlaced(order).catch(
+      (err) => logger.warn("Order-placed email failed after payment", { orderId: order._id.toString(), err: err.message })
     );
-    return created.toObject();
+    await notificationService.create({
+      type: "order_status",
+      title: "Payment successful",
+      message: `Your payment of \u20B9${order.total.toLocaleString("en-IN")} for order #${order.orderNumber} is confirmed!`,
+      userId,
+      relatedEntity: { kind: "order", id: order._id.toString(), ref: order.orderNumber }
+    });
+    await notificationService.create({
+      type: "new_order",
+      title: "Payment received",
+      message: `Order ${order.orderNumber} paid online via Razorpay (\u20B9${order.total.toLocaleString("en-IN")})`,
+      forStaff: true,
+      relatedEntity: { kind: "order", id: order._id.toString(), ref: order.orderNumber },
+      dashboardDirty: true
+    });
+    return order.toObject();
+  },
+  /**
+   * Generates or retrieves a Razorpay order for an existing pending order.
+   */
+  async createRazorpayOrderForExisting(userId, orderId) {
+    const order = await Order.findOne({
+      _id: new import_mongoose17.Types.ObjectId(orderId),
+      user: new import_mongoose17.Types.ObjectId(userId)
+    });
+    if (!order) throw ApiError.notFound("Order not found");
+    if (order.paymentStatus === PAYMENT_STATUS.PAID) {
+      throw ApiError.badRequest("Order is already paid");
+    }
+    const rzp = await razorpayService.createOrder({
+      amount: order.total,
+      receipt: order.orderNumber,
+      notes: {
+        orderId: order._id.toString(),
+        orderNumber: order.orderNumber
+      }
+    });
+    order.razorpayOrderId = rzp.id;
+    await order.save();
+    return {
+      razorpayOrder: rzp,
+      razorpayKeyId: env.RAZORPAY_KEY_ID,
+      order: order.toObject()
+    };
   },
   async listForUser(userId, query) {
     const { page, limit, skip } = getPageParams(query);
@@ -3800,6 +4028,14 @@ var orderController = {
     const order = await orderService.checkout(req.user.id, req.body);
     return sendSuccess(res, order, "Order placed successfully", 201);
   }),
+  verifyPayment: asyncHandler(async (req, res) => {
+    const order = await orderService.verifyPayment(req.user.id, req.body);
+    return sendSuccess(res, order, "Payment verified successfully");
+  }),
+  getRazorpayOrder: asyncHandler(async (req, res) => {
+    const result = await orderService.createRazorpayOrderForExisting(req.user.id, req.params.id);
+    return sendSuccess(res, result, "Razorpay order generated");
+  }),
   listMine: asyncHandler(async (req, res) => {
     const { items, meta } = await orderService.listForUser(req.user.id, req.query);
     return sendSuccess(res, items, "Orders fetched", 200, meta);
@@ -3874,6 +4110,8 @@ var updateOrderStatusSchema = {
 var router6 = (0, import_express6.Router)();
 router6.use(authenticate);
 router6.post("/checkout", validate(checkoutSchema), orderController.checkout);
+router6.post("/verify-payment", orderController.verifyPayment);
+router6.get("/:id/razorpay-order", orderController.getRazorpayOrder);
 router6.get("/", orderController.listMine);
 router6.get("/:id", orderController.getMine);
 router6.post("/:id/cancel", orderController.cancelMine);

@@ -51,6 +51,9 @@ export interface IOrder extends Document {
   status: OrderStatus;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
   statusHistory: IStatusHistoryEntry[];
   placedAt: Date;
   createdAt: Date;
@@ -122,6 +125,9 @@ const orderSchema = new Schema<IOrder>(
       default: PAYMENT_STATUS.PENDING,
       index: true,
     },
+    razorpayOrderId: { type: String, index: true },
+    razorpayPaymentId: { type: String },
+    razorpaySignature: { type: String },
     // Audit trail of every status change.
     statusHistory: { type: [statusHistorySchema], default: [] },
     placedAt: { type: Date, default: Date.now },

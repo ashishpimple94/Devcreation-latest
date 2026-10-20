@@ -66,7 +66,10 @@ var schema = import_zod.z.object({
   TWILIO_ACCOUNT_SID: import_zod.z.string().optional(),
   TWILIO_AUTH_TOKEN: import_zod.z.string().optional(),
   TWILIO_PHONE_NUMBER: import_zod.z.string().optional(),
-  ENABLE_SMS_FALLBACK_DEMO: import_zod.z.union([import_zod.z.boolean(), import_zod.z.enum(["true", "false", "1", "0"])]).default("true").transform((v) => v === true || v === "true" || v === "1")
+  ENABLE_SMS_FALLBACK_DEMO: import_zod.z.union([import_zod.z.boolean(), import_zod.z.enum(["true", "false", "1", "0"])]).default("true").transform((v) => v === true || v === "true" || v === "1"),
+  // ── Razorpay Payment Gateway ────────────────────────
+  RAZORPAY_KEY_ID: import_zod.z.string().default("rzp_test_TpP4B9vNcQoDGs"),
+  RAZORPAY_KEY_SECRET: import_zod.z.string().default("mmxCQsLOJxa0eH17Q7tm3dJH")
 });
 var parsed = schema.safeParse(process.env);
 if (!parsed.success) {

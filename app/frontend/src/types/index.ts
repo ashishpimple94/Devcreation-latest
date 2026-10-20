@@ -150,6 +150,17 @@ export interface Order {
   status: OrderStatus;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  razorpayOrder?: {
+    id: string;
+    amount: number;
+    currency: string;
+    receipt: string;
+    status: string;
+  };
+  razorpayKeyId?: string;
   statusHistory: StatusHistoryEntry[];
   placedAt: string;
   createdAt: string;

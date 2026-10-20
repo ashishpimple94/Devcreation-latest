@@ -10,6 +10,16 @@ export const orderController = {
     return sendSuccess(res, order, 'Order placed successfully', 201);
   }),
 
+  verifyPayment: asyncHandler(async (req: Request, res: Response) => {
+    const order = await orderService.verifyPayment(req.user!.id, req.body);
+    return sendSuccess(res, order, 'Payment verified successfully');
+  }),
+
+  getRazorpayOrder: asyncHandler(async (req: Request, res: Response) => {
+    const result = await orderService.createRazorpayOrderForExisting(req.user!.id, req.params.id);
+    return sendSuccess(res, result, 'Razorpay order generated');
+  }),
+
   listMine: asyncHandler(async (req: Request, res: Response) => {
     const { items, meta } = await orderService.listForUser(req.user!.id, req.query);
     return sendSuccess(res, items, 'Orders fetched', 200, meta);

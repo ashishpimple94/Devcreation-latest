@@ -20,6 +20,8 @@ import { cache } from '@/redis/cache';
 import { CACHE } from '@/constants';
 import { logger } from '@/utils/logger';
 import { giftCardService } from '@/services/giftCard.service';
+import { razorpayService } from '@/services/razorpay.service';
+import { env } from '@/config/env';
 
 interface CheckoutInput {
   shippingAddress: IOrder['shippingAddress'];
@@ -216,12 +218,145 @@ export const orderService = {
       });
     }
 
-    // Fire-and-forget emails: customer confirmation (+ invoice) and admin alert.
-    void emailService.sendOrderPlaced(created).catch((err) =>
-      logger.warn('Order-placed email failed', { orderId: created!._id.toString(), err: (err as Error).message }),
+    // For online payments (UPI or Card), initialize Razorpay order.
+    // For COD, dispatch confirmation emails immediately.
+    let razorpayOrder: any = undefined;
+    if (input.paymentMethod === 'upi' || input.paymentMethod === 'card') {
+      try {
+        const rzp = await razorpayService.createOrder({
+          amount: created.total,
+          receipt: created.orderNumber,
+          notes: {
+            orderId: created._id.toString(),
+            orderNumber: created.orderNumber,
+          },
+        });
+        created.razorpayOrderId = rzp.id;
+        await Order.findByIdAndUpdate(created._id, { razorpayOrderId: rzp.id });
+        razorpayOrder = rzp;
+      } catch (err) {
+        logger.error('Failed to create Razorpay order', { err: (err as Error).message });
+      }
+    } else {
+      // Fire-and-forget emails immediately for COD orders
+      void emailService.sendOrderPlaced(created).catch((err) =>
+        logger.warn('Order-placed email failed', { orderId: created!._id.toString(), err: (err as Error).message }),
+      );
+    }
+
+    const result: any = created.toObject();
+    if (razorpayOrder) {
+      result.razorpayOrder = razorpayOrder;
+      result.razorpayKeyId = env.RAZORPAY_KEY_ID;
+    }
+    return result;
+  },
+
+  /**
+   * Verifies payment signature and marks order as CONFIRMED & PAID.
+   */
+  async verifyPayment(
+    userId: string,
+    input: {
+      orderId: string;
+      razorpayOrderId: string;
+      razorpayPaymentId: string;
+      razorpaySignature: string;
+    },
+  ) {
+    const order = await Order.findOne({
+      _id: new Types.ObjectId(input.orderId),
+      user: new Types.ObjectId(userId),
+    });
+
+    if (!order) {
+      throw ApiError.notFound('Order not found');
+    }
+
+    // Verify HMAC signature
+    const isValid = razorpayService.verifySignature({
+      razorpayOrderId: input.razorpayOrderId,
+      razorpayPaymentId: input.razorpayPaymentId,
+      razorpaySignature: input.razorpaySignature,
+    });
+
+    if (!isValid) {
+      throw ApiError.badRequest('Invalid payment signature verification');
+    }
+
+    // Update order status to PAID and CONFIRMED
+    order.paymentStatus = PAYMENT_STATUS.PAID;
+    order.status = ORDER_STATUS.CONFIRMED;
+    order.razorpayPaymentId = input.razorpayPaymentId;
+    order.razorpayOrderId = input.razorpayOrderId;
+    order.razorpaySignature = input.razorpaySignature;
+    order.statusHistory.push({
+      status: ORDER_STATUS.CONFIRMED,
+      note: `Online payment verified via Razorpay (Payment ID: ${input.razorpayPaymentId})`,
+      changedAt: new Date(),
+    });
+
+    await order.save();
+
+    // Invalidate dashboard caches
+    await cache.del(CACHE.KEY.dashboard());
+
+    // Send confirmation email with PDF invoice attached
+    void emailService.sendOrderPlaced(order).catch((err) =>
+      logger.warn('Order-placed email failed after payment', { orderId: order._id.toString(), err: (err as Error).message }),
     );
 
-    return created.toObject();
+    // Notify customer and staff
+    await notificationService.create({
+      type: 'order_status',
+      title: 'Payment successful',
+      message: `Your payment of ₹${order.total.toLocaleString('en-IN')} for order #${order.orderNumber} is confirmed!`,
+      userId,
+      relatedEntity: { kind: 'order', id: order._id.toString(), ref: order.orderNumber },
+    });
+
+    await notificationService.create({
+      type: 'new_order',
+      title: 'Payment received',
+      message: `Order ${order.orderNumber} paid online via Razorpay (₹${order.total.toLocaleString('en-IN')})`,
+      forStaff: true,
+      relatedEntity: { kind: 'order', id: order._id.toString(), ref: order.orderNumber },
+      dashboardDirty: true,
+    });
+
+    return order.toObject();
+  },
+
+  /**
+   * Generates or retrieves a Razorpay order for an existing pending order.
+   */
+  async createRazorpayOrderForExisting(userId: string, orderId: string) {
+    const order = await Order.findOne({
+      _id: new Types.ObjectId(orderId),
+      user: new Types.ObjectId(userId),
+    });
+    if (!order) throw ApiError.notFound('Order not found');
+    if (order.paymentStatus === PAYMENT_STATUS.PAID) {
+      throw ApiError.badRequest('Order is already paid');
+    }
+
+    const rzp = await razorpayService.createOrder({
+      amount: order.total,
+      receipt: order.orderNumber,
+      notes: {
+        orderId: order._id.toString(),
+        orderNumber: order.orderNumber,
+      },
+    });
+
+    order.razorpayOrderId = rzp.id;
+    await order.save();
+
+    return {
+      razorpayOrder: rzp,
+      razorpayKeyId: env.RAZORPAY_KEY_ID,
+      order: order.toObject(),
+    };
   },
 
   async listForUser(userId: string, query: Record<string, unknown>) {
