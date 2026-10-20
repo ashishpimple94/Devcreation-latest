@@ -2,7 +2,11 @@ import Link from 'next/link';
 import { productService } from '@/services/product.service';
 import type { Category } from '@/types';
 
-export const metadata = { title: 'Categories — Dev Creation' };
+export const metadata = {
+  title: 'Fragrance Categories — Wax Sachets, Melts & Aroma Stones',
+  description:
+    'Browse Dev Creation collections by category: botanical wax sachets, soy wax melts, handmade aroma stones, and curated luxury gift sets.',
+};
 export const revalidate = 300;
 
 export default async function CategoriesPage() {

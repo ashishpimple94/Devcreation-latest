@@ -1,9 +1,9 @@
 import { ProductBrowser } from '@/components/product/ProductBrowser';
 
 export const metadata = {
-  title: 'Shop — Dev Creation Handcrafted Candles & Fragrances',
+  title: 'Shop All Products — Luxury Soy Wax Sachets & Fragrances',
   description:
-    'Explore our artisanal range of scented jar candles, pillar candles, tea lights, wax melts and gift sets.',
+    'Explore our artisanal collection of handcrafted soy wax sachets, botanical wax melts, aroma stones, and luxury fragrance gift sets.',
 };
 
 export default function ProductsPage() {

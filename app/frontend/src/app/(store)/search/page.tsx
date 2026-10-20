@@ -1,6 +1,14 @@
+import type { Metadata } from 'next';
 import { ProductBrowser } from '@/components/product/ProductBrowser';
 
-export const metadata = { title: 'Search — Dev Creation' };
+export const metadata: Metadata = {
+  title: 'Search Collection — Dev Creation',
+  description: 'Search our handcrafted collection of luxury soy wax sachets, wax melts, and aroma stones.',
+  robots: {
+    index: false,
+    follow: true,
+  },
+};
 
 export default function SearchPage() {
   return (

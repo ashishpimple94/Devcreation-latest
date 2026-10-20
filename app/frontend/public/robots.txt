@@ -1,0 +1,12 @@
+# https://devcreation24.in/robots.txt
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /account/
+Disallow: /checkout
+Disallow: /complete-profile
+Disallow: /dashboard
+Disallow: /search
+Disallow: /api/
+
+Sitemap: https://devcreation24.in/sitemap.xml

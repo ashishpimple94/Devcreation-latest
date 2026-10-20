@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import { LOGO_BASE64 } from '@/assets/logoBase64';
 import type { IOrder } from '@/models/Order';
 
 const GOLD = '#B8943F';
@@ -11,7 +12,7 @@ const rupee = (n: number) => 'Rs. ' + Math.round(n).toLocaleString('en-IN');
 
 /**
  * Generates a branded PDF invoice for an order and resolves to a Buffer that can
- * be attached to an email. Uses pdfkit's built-in fonts (no external assets).
+ * be attached to an email. Features official Dev Creation logo and typography.
  */
 export function generateInvoicePdf(order: IOrder, customerName: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -27,13 +28,30 @@ export function generateInvoicePdf(order: IOrder, customerName: string): Promise
       const right = pageWidth - 50;
 
       // Header band
-      doc.rect(0, 0, pageWidth, 90).fill(DEEP);
-      doc.fillColor('#FFFFFF').fontSize(22).font('Helvetica-Bold').text('DEV CREATION', left, 30);
-      doc.fillColor(GOLD).fontSize(8).font('Helvetica').text('HANDCRAFTED WITH LOVE, SCENTED WITH CARE', left, 58, { characterSpacing: 2 });
-      doc.fillColor('#FFFFFF').fontSize(18).font('Helvetica-Bold').text('INVOICE', left, 30, { align: 'right', width: right - left });
+      doc.rect(0, 0, pageWidth, 96).fill(DEEP);
+
+      // Render Brand Logo
+      let logoDrawn = false;
+      const logoSize = 64;
+      try {
+        if (LOGO_BASE64 && LOGO_BASE64.length > 100) {
+          const logoBuffer = Buffer.from(LOGO_BASE64, 'base64');
+          doc.image(logoBuffer, left, 16, { width: logoSize, height: logoSize });
+          logoDrawn = true;
+        }
+      } catch {
+        logoDrawn = false;
+      }
+
+      const brandTextX = logoDrawn ? left + logoSize + 14 : left;
+
+      doc.fillColor('#FFFFFF').fontSize(22).font('Helvetica-Bold').text('DEV CREATION', brandTextX, 32);
+      doc.fillColor(GOLD).fontSize(8).font('Helvetica').text('HANDCRAFTED WITH LOVE, SCENTED WITH CARE', brandTextX, 58, { characterSpacing: 1.5 });
+      doc.fillColor('#FFFFFF').fontSize(20).font('Helvetica-Bold').text('INVOICE', left, 34, { align: 'right', width: right - left });
+      doc.fillColor(GOLD).fontSize(8).font('Helvetica').text('OFFICIAL TAX INVOICE', left, 58, { align: 'right', width: right - left, characterSpacing: 1.2 });
 
       // Meta
-      let y = 115;
+      let y = 120;
       doc.fillColor(INK).fontSize(11).font('Helvetica-Bold').text(`Invoice: ${order.orderNumber}`, left, y);
       doc.fillColor(INK3).font('Helvetica').fontSize(10);
       doc.text(`Date: ${new Date(order.placedAt ?? order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`, left, (y += 16));

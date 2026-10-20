@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { ProductBrowser } from '@/components/product/ProductBrowser';
 import { productService } from '@/services/product.service';
 import type { Category } from '@/types';
@@ -40,6 +41,54 @@ export async function generateStaticParams() {
   ];
 }
 
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  let category: Category | undefined;
+  try {
+    const categories = await productService.categories();
+    category = categories?.find((c) => c.slug === params.slug);
+  } catch {
+    category = undefined;
+  }
+
+  const known = KNOWN_CATEGORIES[params.slug];
+  const name = category?.name || known?.name || 'Collection';
+  const description =
+    category?.description ||
+    known?.description ||
+    `Shop ${name} handcrafted with pure botanical soy wax and fine fragrance oils by Dev Creation.`;
+  const url = `https://devcreation24.in/categories/${params.slug}/`;
+
+  return {
+    title: `${name} — Handcrafted Soy Fragrance`,
+    description,
+    alternates: {
+      canonical: url,
+    },
+    openGraph: {
+      type: 'website',
+      locale: 'en_IN',
+      url,
+      siteName: 'Dev Creation',
+      title: `${name} | Dev Creation`,
+      description,
+      images: [
+        {
+          url: '/assets/Logos/Logo2.png',
+          width: 800,
+          height: 800,
+          alt: `Dev Creation ${name}`,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${name} | Dev Creation`,
+      description,
+      images: ['/assets/Logos/Logo2.png'],
+    },
+  };
+}
+
 export default async function CategoryPage({ params }: { params: { slug: string } }) {
   let category: Category | undefined;
   try {
@@ -53,8 +102,37 @@ export default async function CategoryPage({ params }: { params: { slug: string 
   const title = category?.name || known?.name || 'Collection';
   const description = category?.description || known?.description;
 
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://devcreation24.in',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Categories',
+        item: 'https://devcreation24.in/categories/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: title,
+        item: `https://devcreation24.in/categories/${params.slug}/`,
+      },
+    ],
+  };
+
   return (
     <section className="px-[var(--pad)] py-[clamp(48px,7vh,88px)]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
       <div className="mb-10">
         <span className="util-label">Category</span>
         <h1 className="mt-3 font-display text-[clamp(1.9rem,3.6vw,3rem)] font-medium text-ink">

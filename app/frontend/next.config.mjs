@@ -5,7 +5,6 @@ const nextConfig = {
   reactStrictMode: true,
   // Only apply static export for production builds, never during development
   ...(isDev ? {} : { output: 'export', trailingSlash: true }),
-  distDir: isDev ? '.next' : '.next_prod',
   images: {
     unoptimized: true,
     remotePatterns: [

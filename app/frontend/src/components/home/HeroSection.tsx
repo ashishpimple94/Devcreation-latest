@@ -176,41 +176,79 @@ export function HeroSection() {
                     </div>
 
                     {/* Headline with Gold Cursive Accent and Liquid Shimmer */}
-                    <h1
-                      className={`mt-4 sm:mt-5 font-display-alt text-[clamp(2.5rem,6.2vw,5.2rem)] font-medium leading-[1.06] tracking-[-0.015em] text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-1000 delay-150 ease-spring ${
-                        isActive
-                          ? 'opacity-100 translate-y-0 filter-none'
-                          : 'opacity-0 translate-y-7 blur-sm'
-                      }`}
-                    >
-                      <span className="inline-block transition-transform duration-700">
-                        {slide.titlePart1}
-                      </span>
-                      <span className="relative inline-block font-normal not-italic italic mx-1 sm:mx-1.5">
-                        <span className="gold-shimmer-text relative z-10 drop-shadow-[0_0_24px_rgba(224,194,128,0.5)]">
-                          {slide.titleHighlight}
+                    {index === 0 ? (
+                      <h1
+                        className={`mt-4 sm:mt-5 font-display-alt text-[clamp(2.5rem,6.2vw,5.2rem)] font-medium leading-[1.06] tracking-[-0.015em] text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-1000 delay-150 ease-spring ${
+                          isActive
+                            ? 'opacity-100 translate-y-0 filter-none'
+                            : 'opacity-0 translate-y-7 blur-sm'
+                        }`}
+                      >
+                        <span className="inline-block transition-transform duration-700">
+                          {slide.titlePart1}
                         </span>
-                        <svg
-                          className={`absolute -bottom-2.5 left-0 w-full text-gold-lt transition-transform duration-1000 delay-300 ease-spring origin-left ${
-                            isActive ? 'scale-x-100 opacity-100 drop-shadow-[0_2px_10px_rgba(184,148,63,0.7)]' : 'scale-x-0 opacity-0'
-                          }`}
-                          viewBox="0 0 100 12"
-                          preserveAspectRatio="none"
-                          aria-hidden="true"
-                        >
-                          <path
-                            d="M0,9 Q50,1 100,9"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      </span>
-                      <span className="inline-block transition-transform duration-700">
-                        {slide.titlePart2}
-                      </span>
-                    </h1>
+                        <span className="relative inline-block font-normal not-italic italic mx-1 sm:mx-1.5">
+                          <span className="gold-shimmer-text relative z-10 drop-shadow-[0_0_24px_rgba(224,194,128,0.5)]">
+                            {slide.titleHighlight}
+                          </span>
+                          <svg
+                            className={`absolute -bottom-2.5 left-0 w-full text-gold-lt transition-transform duration-1000 delay-300 ease-spring origin-left ${
+                              isActive ? 'scale-x-100 opacity-100 drop-shadow-[0_2px_10px_rgba(184,148,63,0.7)]' : 'scale-x-0 opacity-0'
+                            }`}
+                            viewBox="0 0 100 12"
+                            preserveAspectRatio="none"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M0,9 Q50,1 100,9"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
+                        <span className="inline-block transition-transform duration-700">
+                          {slide.titlePart2}
+                        </span>
+                      </h1>
+                    ) : (
+                      <h2
+                        className={`mt-4 sm:mt-5 font-display-alt text-[clamp(2.5rem,6.2vw,5.2rem)] font-medium leading-[1.06] tracking-[-0.015em] text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)] transition-all duration-1000 delay-150 ease-spring ${
+                          isActive
+                            ? 'opacity-100 translate-y-0 filter-none'
+                            : 'opacity-0 translate-y-7 blur-sm'
+                        }`}
+                      >
+                        <span className="inline-block transition-transform duration-700">
+                          {slide.titlePart1}
+                        </span>
+                        <span className="relative inline-block font-normal not-italic italic mx-1 sm:mx-1.5">
+                          <span className="gold-shimmer-text relative z-10 drop-shadow-[0_0_24px_rgba(224,194,128,0.5)]">
+                            {slide.titleHighlight}
+                          </span>
+                          <svg
+                            className={`absolute -bottom-2.5 left-0 w-full text-gold-lt transition-transform duration-1000 delay-300 ease-spring origin-left ${
+                              isActive ? 'scale-x-100 opacity-100 drop-shadow-[0_2px_10px_rgba(184,148,63,0.7)]' : 'scale-x-0 opacity-0'
+                            }`}
+                            viewBox="0 0 100 12"
+                            preserveAspectRatio="none"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M0,9 Q50,1 100,9"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </span>
+                        <span className="inline-block transition-transform duration-700">
+                          {slide.titlePart2}
+                        </span>
+                      </h2>
+                    )}
 
                     {/* Narrative Subtext */}
                     <p

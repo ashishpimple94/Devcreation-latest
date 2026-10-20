@@ -3,7 +3,9 @@ import { ScrollAnimate } from '@/components/ScrollAnimate';
 import { WhyDevCreationSection } from '@/components/home/WhyDevCreationSection';
 
 export const metadata = {
-  title: 'Our Story — Dev Creation',
+  title: 'Our Story — Artisanal Craft & Pure Soy Heritage',
+  description:
+    'Discover the story behind Dev Creation. Pure unbleached soy wax, IFRA-certified fine fragrances, and mindful artisanal craftsmanship handcrafted in India.',
 };
 
 const STORY_BLOCKS = [

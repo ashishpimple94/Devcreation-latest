@@ -74,7 +74,7 @@ function layout(bodyHtml: string, previewText = ''): string {
           <tr>
             <td style="background-color:${C.deep};padding:28px 20px 22px;text-align:center;border-bottom:3px solid ${C.gold};">
               <a href="${env.STORE_URL}" target="_blank" style="text-decoration:none;display:block;">
-                <img src="${env.STORE_URL}/assets/Logos/logo.jpeg" alt="Dev Creation" width="68" height="68" style="width:68px;height:68px;border-radius:50%;border:2px solid ${C.gold};display:block;margin:0 auto 10px;box-shadow:0 4px 14px rgba(0,0,0,0.35);object-fit:cover;" />
+                <img src="${env.STORE_URL}/assets/Logos/Logo2.png" alt="Dev Creation" width="70" height="70" style="width:70px;height:70px;border-radius:50%;border:2px solid ${C.gold};display:block;margin:0 auto 10px;box-shadow:0 4px 14px rgba(0,0,0,0.35);object-fit:cover;" />
                 <div style="font-family:'Playfair Display',Georgia,serif;font-size:24px;font-weight:700;color:#FFFFFF;letter-spacing:4px;text-transform:uppercase;">
                   DEV CREATION
                 </div>
@@ -321,12 +321,24 @@ export function orderConfirmationEmail(order: IOrder, customerName: string) {
     </div>
 
     <!-- Official PDF Tax Invoice Attachment Box -->
-    <div style="background-color:${C.paper};border:1px dashed ${C.gold};border-radius:10px;padding:14px 18px;margin-bottom:22px;text-align:center;">
-      <div style="font-size:13px;font-weight:700;color:${C.ink};">
-        📎 Official Tax Invoice Attached (PDF)
-      </div>
-      <div style="font-size:12px;color:${C.ink3};margin-top:3px;">
-        A copy of your branded tax invoice (<span style="font-family:'JetBrains Mono',monospace;font-weight:600;">invoice-${esc(order.orderNumber)}.pdf</span>) has been generated and attached for your records.
+    <div style="background-color:${C.paper};border:1px dashed ${C.gold};border-radius:10px;padding:16px 20px;margin-bottom:22px;text-align:center;">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 8px;">
+        <tr>
+          <td style="vertical-align:middle;padding-right:10px;">
+            <img src="${env.STORE_URL}/assets/Logos/Logo2.png" alt="Dev Creation" width="34" height="34" style="width:34px;height:34px;border-radius:50%;border:1px solid ${C.gold};display:block;object-fit:cover;" />
+          </td>
+          <td style="vertical-align:middle;text-align:left;">
+            <div style="font-size:13.5px;font-weight:700;color:${C.ink};">
+              Official Tax Invoice Attached (PDF)
+            </div>
+            <div style="font-size:11.5px;color:${C.ink3};">
+              Includes full item breakdown, tax details &amp; order provenance
+            </div>
+          </td>
+        </tr>
+      </table>
+      <div style="font-size:12px;color:${C.ink3};border-top:1px solid ${C.line};padding-top:10px;margin-top:6px;">
+        A copy of your branded tax invoice (<span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:${C.goldDk};">invoice-${esc(order.orderNumber)}.pdf</span>) has been generated with our official seal and attached for your records.
       </div>
     </div>
 
