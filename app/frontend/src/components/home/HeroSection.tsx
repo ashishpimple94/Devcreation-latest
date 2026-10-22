@@ -148,6 +148,7 @@ export function HeroSection() {
                 className={`absolute inset-0 transition-opacity duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isActive ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
                   }`}
                 aria-hidden={!isActive}
+                inert={!isActive ? true : undefined}
               >
                 {/* Background Image with Slow Ambient Scale + Parallax on Scroll */}
                 <div
@@ -158,6 +159,12 @@ export function HeroSection() {
                   <img
                     src={slide.image}
                     alt={slide.titlePart1 + slide.titleHighlight + slide.titlePart2}
+                    loading={index === 0 ? 'eager' : 'lazy'}
+                    // @ts-ignore
+                    fetchPriority={index === 0 ? 'high' : 'auto'}
+                    decoding="async"
+                    width={1920}
+                    height={1080}
                     className={`h-full w-full object-cover object-center transition-transform duration-[7000ms] ease-out will-change-transform ${isActive ? 'scale-108' : 'scale-100'
                       }`}
                   />
@@ -265,6 +272,7 @@ export function HeroSection() {
                     >
                       <Link
                         href={slide.primaryCtaHref}
+                        tabIndex={isActive ? 0 : -1}
                         className="btn-primary group gap-2.5 px-8 py-3.5 sm:px-9 sm:py-4 text-xs font-semibold uppercase tracking-[0.14em] shadow-[0_12px_32px_rgba(0,0,0,.45)] transition-all hover:scale-[1.04] active:scale-[0.96]"
                       >
                         <span>{slide.primaryCtaText}</span>
@@ -272,6 +280,7 @@ export function HeroSection() {
                       </Link>
                       <Link
                         href={slide.secondaryCtaHref}
+                        tabIndex={isActive ? 0 : -1}
                         className="rounded-xl border border-white/40 bg-white/10 px-7 py-3.5 sm:px-8 sm:py-4 font-body text-xs font-medium uppercase tracking-[0.14em] text-white backdrop-blur-md transition-all hover:border-gold hover:bg-white/20 hover:text-gold-lt hover:scale-[1.04] active:scale-[0.96]"
                       >
                         {slide.secondaryCtaText}

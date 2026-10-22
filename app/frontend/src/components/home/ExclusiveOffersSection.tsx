@@ -92,7 +92,7 @@ export function ExclusiveOffersSection() {
                     <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-gold/30 bg-gold/10 text-gold-lt transition-transform duration-300 group-hover:scale-110 group-hover:bg-gold group-hover:text-deep">
                       {perk.icon}
                     </span>
-                    <span className="font-util text-[0.55rem] uppercase tracking-wider text-gold-lt/70">
+                    <span className="font-util text-[0.58rem] font-semibold uppercase tracking-wider text-amber-200">
                       {perk.highlight}
                     </span>
                   </div>

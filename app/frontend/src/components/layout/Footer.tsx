@@ -102,10 +102,11 @@ export function Footer() {
         <div className="grid grid-cols-1 gap-10 md:grid-cols-12 lg:gap-12">
           {/* Column 1: Brand & Contact Info (12 cols on mobile, 6 on md, 3 on lg) */}
           <div className="md:col-span-6 lg:col-span-3">
-            <Link href="/" className="inline-block transition-transform duration-200 hover:scale-105">
+            <Link href="/" aria-label="Dev Creation Home" className="inline-block transition-transform duration-200 hover:scale-105">
               <Image
                 src="/assets/Logos/Logo2.png"
-                alt="Dev Creation"
+                alt=""
+                aria-hidden="true"
                 width={80}
                 height={80}
                 unoptimized
@@ -113,7 +114,7 @@ export function Footer() {
               />
             </Link>
 
-            <p className="mt-4 font-display-alt text-lg italic text-gold-dk">
+            <p className="mt-4 font-display-alt text-lg italic text-[#7A5A18]">
               Handcrafted with love, Scented with care.
             </p>
 
@@ -124,7 +125,7 @@ export function Footer() {
 
             <div className="mt-5 space-y-2 text-xs">
               <div className="flex items-center gap-2 text-ink-3">
-                <span className="font-util text-[0.62rem] uppercase tracking-wider text-copper">Email:</span>
+                <span className="font-util text-[0.62rem] uppercase tracking-wider text-[#844312] font-semibold">Email:</span>
                 <a
                   href="mailto:support@devcreation24.in"
                   className="font-util text-xs text-ink transition-colors hover:text-gold"
@@ -133,7 +134,7 @@ export function Footer() {
                 </a>
               </div>
               <div className="flex items-center gap-2 text-ink-3">
-                <span className="font-util text-[0.62rem] uppercase tracking-wider text-copper">Phone:</span>
+                <span className="font-util text-[0.62rem] uppercase tracking-wider text-[#844312] font-semibold">Phone:</span>
                 <a
                   href="tel:+917887582008"
                   className="font-util text-xs text-ink transition-colors hover:text-gold"
@@ -168,7 +169,7 @@ export function Footer() {
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:col-span-6 lg:col-span-5 lg:grid-cols-3">
             {/* Collections */}
             <div>
-              <h4 className="font-util text-xs font-semibold uppercase tracking-[0.2em] text-copper">
+              <h4 className="font-util text-xs font-bold uppercase tracking-[0.2em] text-[#844312]">
                 Collections
               </h4>
               <ul className="mt-4 space-y-2.5 text-xs">
@@ -193,7 +194,7 @@ export function Footer() {
 
             {/* The Experience */}
             <div>
-              <h4 className="font-util text-xs font-semibold uppercase tracking-[0.2em] text-copper">
+              <h4 className="font-util text-xs font-bold uppercase tracking-[0.2em] text-[#844312]">
                 Experience
               </h4>
               <ul className="mt-4 space-y-2.5 text-xs">
@@ -218,7 +219,7 @@ export function Footer() {
 
             {/* Care & Policies */}
             <div className="col-span-2 sm:col-span-1">
-              <h4 className="font-util text-xs font-semibold uppercase tracking-[0.2em] text-copper">
+              <h4 className="font-util text-xs font-bold uppercase tracking-[0.2em] text-[#844312]">
                 Care & Legal
               </h4>
               <ul className="mt-4 space-y-2.5 text-xs">
@@ -405,7 +406,7 @@ export function Footer() {
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
             <span>© {new Date().getFullYear()} Dev Creation. All rights reserved.</span>
             <span className="hidden sm:inline">·</span>
-            <span className="font-util text-[0.68rem] text-copper">
+            <span className="font-util text-[0.68rem] font-semibold text-[#844312]">
               Pure Soy Wax · Crafted in India
             </span>
           </div>

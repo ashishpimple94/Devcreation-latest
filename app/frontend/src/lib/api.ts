@@ -44,6 +44,7 @@ export const tokenStore = {
   set(accessToken: string, refreshToken?: string) {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+      window.localStorage.setItem('dc_has_session', '1');
       if (refreshToken) {
         window.localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
       }
@@ -54,6 +55,7 @@ export const tokenStore = {
       window.localStorage.removeItem(ACCESS_TOKEN_KEY);
       window.localStorage.removeItem(REFRESH_TOKEN_KEY);
       window.localStorage.removeItem(LEGACY_TOKEN_KEY);
+      window.localStorage.removeItem('dc_has_session');
     }
   },
 };

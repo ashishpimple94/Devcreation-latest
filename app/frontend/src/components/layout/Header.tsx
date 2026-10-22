@@ -134,10 +134,10 @@ export function Header() {
         )}
       >
         {/* Logo */}
-        <Link href="/" prefetch className="flex flex-shrink-0 items-center leading-none">
+        <Link href="/" prefetch aria-label="Dev Creation Home" className="flex flex-shrink-0 items-center leading-none">
           <Image
             src="/assets/Logos/Logo2.png"
-            alt="Dev Creation"
+            alt="Dev Creation Luxury Fragrance Logo"
             width={72}
             height={72}
             priority

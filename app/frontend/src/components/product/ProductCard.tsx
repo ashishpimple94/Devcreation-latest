@@ -157,6 +157,9 @@ export function ProductCard({
                 key={img.url + i}
                 src={img.url}
                 alt={img.alt ?? product.name}
+                width={400}
+                height={400}
+                decoding="async"
                 loading={priority && i === 0 ? 'eager' : 'lazy'}
                 className={cn(
                   'absolute inset-0 h-full w-full object-contain p-4 sm:p-6 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06]',
@@ -175,6 +178,9 @@ export function ProductCard({
             <img
               src={images[0].url}
               alt={images[0].alt ?? product.name}
+              width={400}
+              height={400}
+              decoding="async"
               loading={priority ? 'eager' : 'lazy'}
               className="h-full w-full object-contain p-2 sm:p-6 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06]"
               onError={(e) => {

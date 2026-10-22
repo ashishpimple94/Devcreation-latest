@@ -1,0 +1,30 @@
+{
+  "$schema": "https://agenticresourcediscovery.org/spec/v1/schema.json",
+  "name": "Dev Creation",
+  "description": "Luxury Handcrafted Soy Wax Sachets, Wax Melts & Home Fragrances",
+  "url": "https://devcreation24.in",
+  "provider": {
+    "name": "Dev Creation",
+    "url": "https://devcreation24.in"
+  },
+  "resources": [
+    {
+      "name": "Catalog & Store",
+      "type": "catalog",
+      "description": "Browse handcrafted wax sachets, melts, aroma stones and luxury gift sets",
+      "url": "https://devcreation24.in/products/"
+    },
+    {
+      "name": "Our Craft & Story",
+      "type": "documentation",
+      "description": "Information regarding botanical soy wax, fragrance notes, and candle care rituals",
+      "url": "https://devcreation24.in/our-story/"
+    },
+    {
+      "name": "Customer Support & Contact",
+      "type": "contact",
+      "description": "Customer concierge, inquiries and corporate gifting support",
+      "url": "https://devcreation24.in/contact/"
+    }
+  ]
+}

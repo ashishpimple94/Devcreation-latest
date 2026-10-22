@@ -26,6 +26,16 @@ type TokenApiResponse = { accessToken: string; refreshToken?: string };
 async function silentRefresh(): Promise<boolean> {
   try {
     const storedRefreshToken = tokenStore.getRefreshToken();
+    const hasExistingSession =
+      typeof window !== 'undefined' &&
+      (Boolean(storedRefreshToken) ||
+        Boolean(tokenStore.get()) ||
+        Boolean(window.localStorage.getItem('dc_has_session')) ||
+        document.cookie.includes('dc_refresh'));
+
+    // Skip refresh on cold/anonymous page visits to avoid console 401 errors
+    if (!hasExistingSession) return false;
+
     const res = await fetch(`${getApiUrl()}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
@@ -36,6 +46,9 @@ async function silentRefresh(): Promise<boolean> {
     const json = (await res.json()) as { success: boolean; data: TokenApiResponse };
     if (!json.success || !json.data?.accessToken) return false;
     tokenStore.set(json.data.accessToken, json.data.refreshToken);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('dc_has_session', '1');
+    }
     return true;
   } catch {
     return false;

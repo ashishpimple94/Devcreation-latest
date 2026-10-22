@@ -52,6 +52,7 @@ export function CartDrawer() {
       <aside
         aria-label="Shopping cart"
         aria-hidden={!isOpen}
+        inert={!isOpen ? true : undefined}
         className={cn(
           'fixed right-0 top-0 z-[90] flex h-[100dvh] w-[min(420px,100%)] flex-col border-l border-line bg-surface shadow-drawer transition-transform duration-350 ease-[cubic-bezier(0.16,1,0.3,1)] will-change-transform',
           isOpen ? 'translate-x-0' : 'translate-x-full',

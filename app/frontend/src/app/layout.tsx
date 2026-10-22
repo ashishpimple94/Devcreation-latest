@@ -1,6 +1,35 @@
 import type { Metadata, Viewport } from 'next';
+import { Playfair_Display, Cormorant_Garamond, DM_Sans, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/providers/Providers';
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-playfair',
+});
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  style: ['normal', 'italic'],
+  display: 'swap',
+  variable: '--font-cormorant',
+});
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+  variable: '--font-dmsans',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+  variable: '--font-jetbrains',
+});
 
 export const viewport: Viewport = {
   themeColor: '#FAF7F2',
@@ -140,7 +169,13 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${playfair.variable} ${cormorant.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
+    >
+      <head>
+        <link rel="preload" as="image" href="/assets/image1.jpg" fetchPriority="high" />
+      </head>
       <body className="font-body text-body antialiased">
         <script
           type="application/ld+json"
