@@ -256,17 +256,25 @@ function CompleteProfileForm() {
 
           <div>
             <label className={labelCls}>State</label>
-            <select
-              required
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-              className={`${inputCls} cursor-pointer`}
-            >
-              <option value="">Select state…</option>
-              {INDIAN_STATES.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                required
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                className={`luxury-select ${inputCls} cursor-pointer pr-10`}
+              >
+                <option value="">Select state…</option>
+                {INDIAN_STATES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <svg
+                className="pointer-events-none absolute right-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
           </div>
 
           <div className="flex gap-3">

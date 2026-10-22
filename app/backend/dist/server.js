@@ -67,7 +67,7 @@ var schema = import_zod.z.object({
   SMTP_PORT: import_zod.z.coerce.number().default(465),
   SMTP_SECURE: import_zod.z.union([import_zod.z.boolean(), import_zod.z.enum(["true", "false", "1", "0"])]).default("true").transform((v) => v === true || v === "true" || v === "1"),
   SMTP_USER: import_zod.z.string().default("support@devcreation24.in"),
-  SMTP_PASS: import_zod.z.string().default("Devcreation@890*"),
+  SMTP_PASS: import_zod.z.string().default("Devcreation@7007"),
   EMAIL_FROM: import_zod.z.string().default("Dev Creation <support@devcreation24.in>"),
   ADMIN_NOTIFY_EMAIL: import_zod.z.string().default("support@devcreation24.in"),
   STORE_URL: import_zod.z.string().default("https://devcreation24.in"),
@@ -355,8 +355,7 @@ var PAYMENT_STATUS = {
 var PAYMENT_METHOD = {
   COD: "cod",
   CARD: "card",
-  UPI: "upi",
-  NETBANKING: "netbanking"
+  UPI: "upi"
 };
 var NOTIFICATION_TYPE = {
   NEW_ORDER: "new_order",
@@ -721,7 +720,7 @@ var notificationService = {
 var import_nodemailer = __toESM(require("nodemailer"));
 var host = env.SMTP_HOST || "smtp.hostinger.com";
 var user = env.SMTP_USER || "support@devcreation24.in";
-var pass = env.SMTP_PASS || "Devcreation@890*";
+var pass = env.SMTP_PASS || "Devcreation@7007";
 function createTransportForPort(targetPort, isSecure) {
   return import_nodemailer.default.createTransport({
     host,
@@ -738,25 +737,25 @@ function createTransportForPort(targetPort, isSecure) {
   });
 }
 var primaryTransporter = createTransportForPort(
-  Number(env.SMTP_PORT) || 465,
-  (Number(env.SMTP_PORT) || 465) === 465 ? true : Boolean(env.SMTP_SECURE)
+  Number(env.SMTP_PORT) || 587,
+  (Number(env.SMTP_PORT) || 587) === 465
 );
-var fallbackTransporter = createTransportForPort(587, false);
+var fallbackTransporter = createTransportForPort(465, true);
 async function verifyMailer() {
   try {
     await primaryTransporter.verify();
-    logger.info("SMTP primary transport (port 465) verified and ready");
+    logger.info("SMTP primary transport (port 587) verified and ready");
   } catch (err1) {
-    logger.warn("SMTP port 465 verification failed, testing port 587 fallback...", {
+    logger.warn("SMTP port 587 verification failed, testing port 465 fallback...", {
       err: err1.message
     });
     try {
       await fallbackTransporter.verify();
-      logger.info("SMTP fallback transport (port 587) verified and ready");
+      logger.info("SMTP fallback transport (port 465) verified and ready");
     } catch (err2) {
-      logger.error("SMTP verification failed on both ports 465 and 587", {
-        err465: err1.message,
-        err587: err2.message
+      logger.error("SMTP verification failed on both ports 587 and 465", {
+        err587: err1.message,
+        err465: err2.message
       });
     }
   }
@@ -3755,21 +3754,6 @@ var orderService = {
     }
     await cache.del(CACHE.KEY.dashboard());
     await this.invalidateProductCaches();
-    await notificationService.create({
-      type: "new_order",
-      title: "New order received",
-      message: `Order ${created.orderNumber} \xB7 \u20B9${created.total.toLocaleString("en-IN")}`,
-      forStaff: true,
-      relatedEntity: { kind: "order", id: created._id.toString(), ref: created.orderNumber },
-      dashboardDirty: true
-    });
-    await notificationService.create({
-      type: "order_status",
-      title: "Order placed",
-      message: STATUS_MESSAGE[ORDER_STATUS.PENDING](created.orderNumber),
-      userId,
-      relatedEntity: { kind: "order", id: created._id.toString(), ref: created.orderNumber }
-    });
     for (const lp of lowStockProducts) {
       await notificationService.create({
         type: "low_stock",
@@ -3781,7 +3765,26 @@ var orderService = {
       });
     }
     let razorpayOrder = void 0;
-    if (input.paymentMethod === "upi" || input.paymentMethod === "card") {
+    if (input.paymentMethod === "cod") {
+      await notificationService.create({
+        type: "new_order",
+        title: "New COD order received",
+        message: `Order ${created.orderNumber} \xB7 \u20B9${created.total.toLocaleString("en-IN")} (COD)`,
+        forStaff: true,
+        relatedEntity: { kind: "order", id: created._id.toString(), ref: created.orderNumber },
+        dashboardDirty: true
+      });
+      await notificationService.create({
+        type: "order_status",
+        title: "Order placed (COD)",
+        message: STATUS_MESSAGE[ORDER_STATUS.PENDING](created.orderNumber),
+        userId,
+        relatedEntity: { kind: "order", id: created._id.toString(), ref: created.orderNumber }
+      });
+      void emailService.sendOrderPlaced(created).catch(
+        (err) => logger.warn("Order-placed email failed for COD", { orderId: created._id.toString(), err: err.message })
+      );
+    } else {
       try {
         const rzp = await razorpayService.createOrder({
           amount: created.total,
@@ -3796,15 +3799,26 @@ var orderService = {
         razorpayOrder = rzp;
       } catch (err) {
         logger.error("Failed to create Razorpay order", { err: err.message });
+        await Order.findByIdAndUpdate(created._id, {
+          status: ORDER_STATUS.CANCELLED,
+          "statusHistory": [
+            ...created.statusHistory,
+            { status: ORDER_STATUS.CANCELLED, note: "Failed to initialize payment gateway", changedAt: /* @__PURE__ */ new Date() }
+          ]
+        });
+        await Promise.all(
+          created.items.map(
+            (item) => Product.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } })
+          )
+        );
+        throw ApiError.badRequest("Failed to initialize Razorpay payment gateway. Please try again.");
       }
-    } else {
-      void emailService.sendOrderPlaced(created).catch(
-        (err) => logger.warn("Order-placed email failed", { orderId: created._id.toString(), err: err.message })
-      );
     }
     const result = created.toObject();
     if (razorpayOrder) {
       result.razorpayOrder = razorpayOrder;
+    }
+    if (input.paymentMethod === "upi" || input.paymentMethod === "card") {
       result.razorpayKeyId = env.RAZORPAY_KEY_ID;
     }
     return result;
@@ -4087,7 +4101,7 @@ var shippingAddressSchema2 = import_zod7.z.object({
 var checkoutSchema = {
   body: import_zod7.z.object({
     shippingAddress: shippingAddressSchema2,
-    paymentMethod: import_zod7.z.enum([PAYMENT_METHOD.COD, PAYMENT_METHOD.CARD, PAYMENT_METHOD.UPI, PAYMENT_METHOD.NETBANKING]).default(PAYMENT_METHOD.COD),
+    paymentMethod: import_zod7.z.enum([PAYMENT_METHOD.COD, PAYMENT_METHOD.CARD, PAYMENT_METHOD.UPI]).default(PAYMENT_METHOD.COD),
     promoCode: import_zod7.z.string().trim().optional()
   })
 };

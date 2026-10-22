@@ -10,7 +10,7 @@ import { logger } from '@/utils/logger';
  */
 const host = env.SMTP_HOST || 'smtp.hostinger.com';
 const user = env.SMTP_USER || 'support@devcreation24.in';
-const pass = env.SMTP_PASS || 'Devcreation@890*';
+const pass = env.SMTP_PASS || 'Devcreation@7007';
 
 function createTransportForPort(targetPort: number, isSecure: boolean): Transporter {
   return nodemailer.createTransport({
@@ -28,31 +28,31 @@ function createTransportForPort(targetPort: number, isSecure: boolean): Transpor
   });
 }
 
-// Primary transport: Port 465 SSL
+// Primary transport: Port 587 STARTTLS (confirmed working)
 let primaryTransporter: Transporter = createTransportForPort(
-  Number(env.SMTP_PORT) || 465,
-  (Number(env.SMTP_PORT) || 465) === 465 ? true : Boolean(env.SMTP_SECURE),
+  Number(env.SMTP_PORT) || 587,
+  (Number(env.SMTP_PORT) || 587) === 465,
 );
 
-// Fallback transport: Port 587 STARTTLS
-let fallbackTransporter: Transporter = createTransportForPort(587, false);
+// Fallback transport: Port 465 SSL
+let fallbackTransporter: Transporter = createTransportForPort(465, true);
 
 /** Verifies the SMTP connection at startup. */
 export async function verifyMailer(): Promise<void> {
   try {
     await primaryTransporter.verify();
-    logger.info('SMTP primary transport (port 465) verified and ready');
+    logger.info('SMTP primary transport (port 587) verified and ready');
   } catch (err1) {
-    logger.warn('SMTP port 465 verification failed, testing port 587 fallback...', {
+    logger.warn('SMTP port 587 verification failed, testing port 465 fallback...', {
       err: (err1 as Error).message,
     });
     try {
       await fallbackTransporter.verify();
-      logger.info('SMTP fallback transport (port 587) verified and ready');
+      logger.info('SMTP fallback transport (port 465) verified and ready');
     } catch (err2) {
-      logger.error('SMTP verification failed on both ports 465 and 587', {
-        err465: (err1 as Error).message,
-        err587: (err2 as Error).message,
+      logger.error('SMTP verification failed on both ports 587 and 465', {
+        err587: (err1 as Error).message,
+        err465: (err2 as Error).message,
       });
     }
   }

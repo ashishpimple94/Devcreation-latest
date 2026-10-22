@@ -15,9 +15,7 @@ const shippingAddressSchema = z.object({
 export const checkoutSchema = {
   body: z.object({
     shippingAddress: shippingAddressSchema,
-    paymentMethod: z
-      .enum([PAYMENT_METHOD.COD, PAYMENT_METHOD.CARD, PAYMENT_METHOD.UPI, PAYMENT_METHOD.NETBANKING])
-      .default(PAYMENT_METHOD.COD),
+    paymentMethod: z.enum([PAYMENT_METHOD.COD, PAYMENT_METHOD.CARD, PAYMENT_METHOD.UPI]).default(PAYMENT_METHOD.COD),
     promoCode: z.string().trim().optional(),
   }),
 };

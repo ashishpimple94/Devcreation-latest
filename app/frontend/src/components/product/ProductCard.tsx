@@ -141,7 +141,7 @@ export function ProductCard({
         setIsHovered(false);
         setActive(0);
       }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border border-line/60 bg-surface cursor-pointer transition-all duration-350 ease-spring hover:-translate-y-2 hover:border-gold/50 hover:shadow-[0_22px_45px_-14px_rgba(44,24,16,0.16)] will-change-transform"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-line/60 bg-surface cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-2 hover:border-gold/60 hover:shadow-[0_22px_50px_-20px_rgba(184,148,63,0.28)] will-change-transform"
     >
       {/* Product Image Stage */}
       <div className="relative block aspect-square w-full overflow-hidden bg-[#F7F6F3] shine-hover">
@@ -159,7 +159,7 @@ export function ProductCard({
                 alt={img.alt ?? product.name}
                 loading={priority && i === 0 ? 'eager' : 'lazy'}
                 className={cn(
-                  'absolute inset-0 h-full w-full object-contain p-4 sm:p-6 transition-all duration-500 ease-spring group-hover:scale-105',
+                  'absolute inset-0 h-full w-full object-contain p-4 sm:p-6 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06]',
                   i === active ? 'opacity-100' : 'pointer-events-none opacity-0',
                 )}
                 onError={(e) => {
@@ -176,7 +176,7 @@ export function ProductCard({
               src={images[0].url}
               alt={images[0].alt ?? product.name}
               loading={priority ? 'eager' : 'lazy'}
-              className="h-full w-full object-contain p-2 sm:p-6 transition-transform duration-500 ease-spring group-hover:scale-105"
+              className="h-full w-full object-contain p-2 sm:p-6 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06]"
               onError={(e) => {
                 const el = e.currentTarget;
                 if (!el.src.includes('/assets/Logos/Logo2.png')) {
@@ -187,7 +187,7 @@ export function ProductCard({
           )}
 
           {/* Soft ambient gradient overlay on hover */}
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-deep/15 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-deep/25 via-deep/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
         </Link>
 
         {/* Floating Badges (Top-Left) */}
@@ -292,38 +292,36 @@ export function ProductCard({
             )}
           </div>
 
-          {/* Interactive Underlined Add To Cart Action */}
+          {/* Interactive Add To Cart Button */}
           <button
             onClick={handleAdd}
             disabled={product.stock <= 0}
             className={cn(
-              'group/btn relative text-[0.78rem] font-medium transition-all sm:text-[0.92rem] active:scale-95',
+              'group/btn relative overflow-hidden rounded-full px-3.5 py-1.5 sm:px-4 sm:py-2 font-body text-[0.72rem] font-medium transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-90 sm:text-[0.82rem]',
               product.stock <= 0
-                ? 'cursor-not-allowed opacity-50 text-neutral-400'
-                : 'text-ink hover:text-black cursor-pointer',
+                ? 'cursor-not-allowed bg-neutral-100 text-neutral-400'
+                : added
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-neutral-100/60 text-ink hover:bg-deep hover:text-white hover:shadow-[0_8px_20px_-6px_rgba(44,24,16,0.35)] cursor-pointer',
             )}
           >
             {product.stock <= 0 ? (
               <span className="font-util text-[0.62rem] uppercase tracking-wider text-neutral-400 sm:text-[0.7rem]">Sold out</span>
             ) : added ? (
-              <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 animate-badge-pop text-[0.75rem] sm:text-[0.88rem]">
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
+              <span className="inline-flex items-center gap-1 font-semibold text-white">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
                 <span>Added</span>
               </span>
             ) : (
-              <span className="underline decoration-neutral-300 decoration-1 underline-offset-4 transition-all duration-300 group-hover/btn:decoration-ink group-hover/btn:underline-offset-6 whitespace-nowrap">
-                Add To Cart
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-300 group-hover/btn:translate-x-0.5">
+                  <circle cx="9" cy="21" r="1" />
+                  <circle cx="20" cy="21" r="1" />
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                </svg>
+                <span>Add To Cart</span>
               </span>
             )}
           </button>

@@ -7,6 +7,7 @@ import { formatRupee, cn, resolveImageUrl } from '@/lib/utils';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/components/ui/Toast';
+import { Select } from '@/components/ui';
 import { ProductCard } from '@/components/product/ProductCard';
 import { ProductReviews } from '@/components/product/ProductReviews';
 import { api } from '@/lib/api';
@@ -454,21 +455,21 @@ export function ProductDetail({ product, related }: { product: Product; related:
             {/* Quantity Selector */}
             {stock > 0 && (
               <div className="flex items-center justify-between border-t border-line-soft pt-2">
-                <label htmlFor="buybox-quantity" className="font-util text-[0.65rem] uppercase tracking-wider text-ink font-semibold">
+                <label className="font-util text-[0.65rem] uppercase tracking-wider text-ink font-semibold">
                   Quantity:
                 </label>
-                <select
+                <Select
                   id="buybox-quantity"
-                  value={qty}
-                  onChange={(e) => setQty(Number(e.target.value))}
-                  className="rounded-lg border border-line bg-surface-2 px-3 py-1 font-body text-xs font-semibold text-ink outline-none focus:border-gold"
-                >
-                  {[1, 2, 3, 4, 5, 6, 8, 10].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
+                  value={String(qty)}
+                  onChange={(v) => setQty(Number(v))}
+                  options={[1, 2, 3, 4, 5, 6, 8, 10].map((n) => ({
+                    value: String(n),
+                    label: String(n),
+                  }))}
+                  size="sm"
+                  align="right"
+                  triggerClassName="min-w-[5rem] rounded-xl"
+                />
               </div>
             )}
 

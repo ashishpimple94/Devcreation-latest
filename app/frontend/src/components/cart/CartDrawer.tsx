@@ -59,7 +59,11 @@ export function CartDrawer() {
       >
         <div className="flex items-center justify-between border-b border-line px-[26px] py-6">
           <h3 className="font-display text-[1.38rem] text-ink">Your cart</h3>
-          <button onClick={close} aria-label="Close cart" className="px-2 py-1 text-2xl leading-none text-ink-2 hover:text-gold">
+          <button
+            onClick={close}
+            aria-label="Close cart"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-2xl leading-none text-ink-2 transition-all duration-200 ease-spring hover:bg-gold/10 hover:text-gold hover:rotate-90 active:scale-90"
+          >
             &times;
           </button>
         </div>
@@ -78,10 +82,12 @@ export function CartDrawer() {
             items.map((item) => (
               <div
                 key={`${item.product.id}-${item.variantSku ?? ''}`}
-                className="grid grid-cols-[1fr_auto] gap-x-[14px] gap-y-2 border-b border-line-soft py-5"
+                className="group/item grid grid-cols-[1fr_auto] gap-x-[14px] gap-y-2 border-b border-line-soft py-5 -mx-[26px] px-[26px] transition-colors duration-200 hover:bg-gold/[0.04]"
               >
                 <div>
-                  <h4 className="font-display-alt text-[1.08rem] font-medium text-ink">{item.product.name}</h4>
+                  <h4 className="font-display-alt text-[1.08rem] font-medium text-ink transition-colors duration-200 group-hover/item:text-gold-dk">
+                    {item.product.name}
+                  </h4>
                   <div className="mt-1 font-body text-[0.72rem] font-medium tabular-nums text-copper">
                     {item.product.weight ? `${item.product.weight} · ` : ''}
                     {formatRupee(item.unitPrice)}
@@ -90,7 +96,7 @@ export function CartDrawer() {
                     <button
                       onClick={() => update(item.product.id, item.quantity - 1, item.variantSku)}
                       aria-label="Reduce quantity"
-                      className="h-7 w-7 border border-line text-sm leading-none text-ink hover:border-gold hover:text-gold"
+                      className="flex h-7 w-7 items-center justify-center border border-line text-sm leading-none text-ink transition-all duration-200 ease-spring hover:border-gold hover:bg-gold hover:text-white hover:scale-105 active:scale-90"
                     >
                       −
                     </button>
@@ -98,13 +104,13 @@ export function CartDrawer() {
                     <button
                       onClick={() => update(item.product.id, item.quantity + 1, item.variantSku)}
                       aria-label="Increase quantity"
-                      className="h-7 w-7 border border-line text-sm leading-none text-ink hover:border-gold hover:text-gold"
+                      className="flex h-7 w-7 items-center justify-center border border-line text-sm leading-none text-ink transition-all duration-200 ease-spring hover:border-gold hover:bg-gold hover:text-white hover:scale-105 active:scale-90"
                     >
                       +
                     </button>
                     <button
                       onClick={() => remove(item.product.id, item.variantSku)}
-                      className="ml-3 font-util text-[0.55rem] uppercase tracking-[0.14em] text-ink-3 hover:text-gold"
+                      className="ml-3 rounded-md px-1.5 py-0.5 font-util text-[0.55rem] uppercase tracking-[0.14em] text-ink-3 transition-all duration-200 hover:bg-gold/10 hover:text-gold"
                     >
                       Remove
                     </button>
@@ -144,8 +150,13 @@ export function CartDrawer() {
           <button onClick={goToCheckout} disabled={items.length === 0} className="btn-primary mt-[18px] w-full disabled:opacity-60">
             {user ? 'Checkout' : 'Login to checkout'}
           </button>
-          <Link href="/cart" onClick={close} className="mt-3 block text-center font-util text-[0.6rem] uppercase tracking-[0.16em] text-ink-3 hover:text-ink">
-            View full cart
+          <Link
+            href="/cart"
+            onClick={close}
+            className="group/link mt-3 flex items-center justify-center gap-1.5 text-center font-util text-[0.6rem] uppercase tracking-[0.16em] text-ink-3 transition-colors duration-200 hover:text-ink"
+          >
+            <span>View full cart</span>
+            <span className="transition-transform duration-200 ease-spring group-hover/link:translate-x-1">→</span>
           </Link>
           <p className="mt-3 text-center text-[0.74rem] text-forest-lt">{shipNote}</p>
         </div>

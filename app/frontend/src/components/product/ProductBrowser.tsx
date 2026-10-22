@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ProductCard } from '@/components/product/ProductCard';
 import { ProductGridSkeleton } from '@/components/product/ProductGridSkeleton';
 import { ScrollAnimate } from '@/components/ScrollAnimate';
-import { EmptyState, ErrorState } from '@/components/ui';
+import { EmptyState, ErrorState, Select } from '@/components/ui';
 import { useDebounce } from '@/hooks/useDebounce';
 import { productService, type ProductQuery } from '@/services/product.service';
 import type { Category, Product, PageMeta } from '@/types';
@@ -356,28 +356,14 @@ export function ProductBrowser({
               {meta.total} {meta.total === 1 ? 'item' : 'items'}
             </span>
           )}
-          <div className="relative">
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as NonNullable<ProductQuery['sort']>)}
-              className="appearance-none rounded-full border border-line bg-surface/80 py-2 pl-4 pr-9 font-body text-[0.82rem] font-medium text-ink shadow-xs outline-none transition-colors hover:border-gold focus:border-gold cursor-pointer"
-            >
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <svg
-              className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-neutral-500"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </div>
+          <Select
+            value={sort}
+            onChange={(v) => setSort(v as NonNullable<ProductQuery['sort']>)}
+            options={SORT_OPTIONS}
+            ariaLabel="Sort products"
+            size="sm"
+            align="right"
+          />
         </div>
       </div>
 

@@ -24,7 +24,7 @@ const EMPTY_ADDRESS: ShippingAddress = {
   country: 'India',
 };
 
-const loadRazorpayScript = (): Promise<boolean> => {
+function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
     if (typeof window !== 'undefined' && (window as any).Razorpay) {
       resolve(true);
@@ -37,7 +37,7 @@ const loadRazorpayScript = (): Promise<boolean> => {
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
-};
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -52,6 +52,10 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState<ShippingAddress>(EMPTY_ADDRESS);
   const [payment, setPayment] = useState<PaymentMethod>('cod');
   const [placing, setPlacing] = useState(false);
+
+  useEffect(() => {
+    void loadRazorpayScript();
+  }, []);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -76,73 +80,82 @@ export default function CheckoutPage() {
     try {
       const order = await orderService.checkout(address, payment, appliedGiftCard?.code);
 
-      // If Cash on Delivery, finish order immediately
-      if (payment === 'cod' || !order.razorpayOrder) {
+      // COD: order confirmed immediately — no payment gateway needed.
+      if (payment === 'cod') {
         await clear();
         success(`Order ${order.orderNumber} placed successfully`);
         router.push(`/account/orders/${order._id}`);
         return;
       }
 
-      // Online payment via Razorpay Modal
+      // UPI / Card: open Razorpay payment modal.
+      // Order stays PENDING until payment is verified — it is NOT confirmed yet.
       const loaded = await loadRazorpayScript();
-      if (!loaded) {
-        error('Could not load Razorpay payment gateway. Please check your internet connection.');
-        setPlacing(false);
+      if (!loaded || typeof (window as any).Razorpay === 'undefined') {
+        error('Could not load payment gateway. Your order is saved as pending.');
         router.push(`/account/orders/${order._id}`);
         return;
       }
 
-      const rzpKey = order.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TpP4B9vNcQoDGs';
+      const rzpKey = order.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      if (!rzpKey) {
+        error('Payment gateway key not found. Your order is pending — our team will contact you.');
+        router.push(`/account/orders/${order._id}`);
+        return;
+      }
 
-      const options = {
+      const options: any = {
         key: rzpKey,
-        amount: order.razorpayOrder.amount,
-        currency: order.razorpayOrder.currency || 'INR',
+        amount: order.razorpayOrder?.amount || Math.round(Number(order.total || finalTotal) * 100),
+        currency: order.razorpayOrder?.currency || 'INR',
         name: 'Dev Creation',
-        description: `Order #${order.orderNumber} — Handcrafted Luxury Fragrances`,
-        image: 'https://devcreation24.in/assets/Logos/Logo2.png',
-        order_id: order.razorpayOrder.id,
-        handler: async function (response: any) {
+        description: `Order #${order.orderNumber}`,
+        image: '/assets/Logos/Logo2.png',
+        order_id: order.razorpayOrder?.id,
+        prefill: { name: address.fullName, contact: address.phone, email: user?.email || '' },
+        theme: { color: '#2C1810' },
+
+        // Payment succeeded in the modal — NOW verify with backend.
+        // Only confirm the order if verification passes.
+        handler: async (response: any) => {
           try {
-            setPlacing(true);
             await orderService.verifyPayment({
               orderId: order._id,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
+              razorpayOrderId: response.razorpay_order_id || order.razorpayOrderId || '',
+              razorpayPaymentId: response.razorpay_payment_id || '',
+              razorpaySignature: response.razorpay_signature || '',
             });
+            // Verification SUCCEEDED — order is now CONFIRMED + PAID.
             await clear();
-            success(`Payment verified! Order #${order.orderNumber} confirmed.`);
+            success(`Payment successful! Order #${order.orderNumber} confirmed.`);
             router.push(`/account/orders/${order._id}`);
-          } catch (err) {
-            error(err instanceof Error ? err.message : 'Payment verification failed');
-            router.push(`/account/orders/${order._id}`);
-          } finally {
+          } catch (verifyErr) {
+            // Verification FAILED — order stays PENDING, NOT confirmed.
             setPlacing(false);
+            error(
+              verifyErr instanceof Error
+                ? `Payment verification failed: ${verifyErr.message}`
+                : 'Payment verification failed. Your order is pending.'
+            );
+            router.push(`/account/orders/${order._id}`);
           }
         },
-        prefill: {
-          name: address.fullName,
-          contact: address.phone,
-          email: user?.email || '',
-        },
-        theme: {
-          color: '#2C1810',
-        },
+
         modal: {
-          ondismiss: function () {
+          ondismiss: () => {
+            // User closed the modal without paying — order stays PENDING.
             setPlacing(false);
-            error('Payment was not completed. Your order has been created and saved under Pending.');
+            error('Payment was not completed. Your order is saved as pending.');
             router.push(`/account/orders/${order._id}`);
           },
         },
       };
 
       const rzp = new (window as any).Razorpay(options);
-      rzp.on('payment.failed', function (resp: any) {
+      rzp.on('payment.failed', (resp: any) => {
+        // Payment was declined — order stays PENDING.
         setPlacing(false);
-        error(`Payment failed: ${resp.error?.description || 'Transaction declined'}`);
+        error(`Payment failed: ${resp.error?.description || 'Transaction declined'}. Order is pending.`);
       });
       rzp.open();
     } catch (err) {
@@ -344,14 +357,19 @@ export default function CheckoutPage() {
                 ? 'Processing...'
                 : payment === 'cod'
                 ? 'Place Order (Cash on Delivery)'
-                : 'Pay Now via Razorpay Secure Gateway'}
+                : 'Pay Now'}
             </Button>
             <div className="mt-3.5 flex items-center justify-center gap-1.5 font-util text-[0.62rem] text-ink-3">
               <span>🔒</span>
-              <span>100% Encrypted &amp; Processed via RBI-Authorized <strong>Razorpay</strong></span>
+              <span>
+                {payment === 'cod'
+                  ? 'Pay when your order arrives'
+                  : 'Secured by Razorpay · Order confirmed only after payment success'}
+              </span>
             </div>
             <p className="mt-2 text-center text-[0.72rem] text-ink-3">
-              By placing your order you agree to pay {formatRupee(finalTotal)} via {payment === 'cod' ? 'Cash on Delivery' : payment === 'upi' ? 'Razorpay UPI' : 'Razorpay Cards / Net Banking'}.
+              By placing your order you agree to pay {formatRupee(finalTotal)} via{' '}
+              {payment === 'cod' ? 'Cash on Delivery' : payment === 'upi' ? 'UPI' : 'Card / Net Banking'}.
             </p>
           </aside>
         </form>

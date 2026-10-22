@@ -105,6 +105,10 @@ const config: Config = {
           '0%': { width: '0%' },
           '100%': { width: '100%' },
         },
+        'dropdown-in': {
+          '0%': { opacity: '0', transform: 'translateY(-6px) scale(0.97)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
       },
       animation: {
         breathe: 'breathe 7s ease-in-out infinite',
@@ -118,6 +122,7 @@ const config: Config = {
         'scale-in': 'scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
         'cart-bump': 'cart-bump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
         'slide-progress': 'slide-progress 5.5s linear forwards',
+        'dropdown-in': 'dropdown-in 0.18s cubic-bezier(0.16,1,0.3,1) forwards',
       },
     },
   },

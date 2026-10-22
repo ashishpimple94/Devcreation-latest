@@ -174,18 +174,33 @@ export function MobileBottomBar() {
           )}
         >
           <div className="relative">
-            <svg
-              className={cn('h-5 w-5 transition-transform', isAccount && 'scale-110')}
-              viewBox="0 0 24 24"
-              fill={isAccount ? 'currentColor' : 'none'}
-              stroke="currentColor"
-              strokeWidth={isAccount ? '1.5' : '1.8'}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
+            {user ? (
+              /* ── Logged-in: mini avatar circle ── */
+              <div className={cn(
+                'flex h-6 w-6 items-center justify-center rounded-full font-util text-[0.58rem] font-bold leading-none transition-all duration-200',
+                isAccount
+                  ? 'bg-gold text-white ring-2 ring-gold/40 shadow-sm'
+                  : 'bg-gradient-to-br from-deep to-[#3D2A1E] text-white ring-2 ring-deep/20',
+              )}>
+                {user.name
+                  ? user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()
+                  : 'DC'}
+              </div>
+            ) : (
+              /* ── Guest: user icon ── */
+              <svg
+                className={cn('h-5 w-5 transition-transform', isAccount && 'scale-110')}
+                viewBox="0 0 24 24"
+                fill={isAccount ? 'currentColor' : 'none'}
+                stroke="currentColor"
+                strokeWidth={isAccount ? '1.5' : '1.8'}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            )}
             {isAccount && (
               <span className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-gold" />
             )}

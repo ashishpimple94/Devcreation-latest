@@ -2,6 +2,9 @@
 
 import { cn } from '@/lib/utils';
 
+export { Select } from './Select';
+export type { SelectOption } from './Select';
+
 /** Inline spinner used inside buttons and small loading areas. */
 export function Spinner({ className }: { className?: string }) {
   return (

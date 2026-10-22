@@ -24,7 +24,7 @@ const CAROUSEL_SLIDES: CarouselSlide[] = [
   {
     id: 1,
     image: '/assets/image1.jpg',
-    eyebrow: 'Artisanal Home Fragrances · Hand-Poured in India',
+    eyebrow: '',
     titlePart1: 'Fragrance that ',
     titleHighlight: 'lingers',
     titlePart2: ' in every space.',
@@ -39,7 +39,7 @@ const CAROUSEL_SLIDES: CarouselSlide[] = [
   {
     id: 2,
     image: '/assets/image2.jpg',
-    eyebrow: 'Curated Celebration Boxes · Signature Gifting',
+    eyebrow: '',
     titlePart1: 'The Art of ',
     titleHighlight: 'thoughtful',
     titlePart2: ' gifting.',
@@ -54,7 +54,7 @@ const CAROUSEL_SLIDES: CarouselSlide[] = [
   {
     id: 3,
     image: '/assets/image3.jpg',
-    eyebrow: 'Serene Sanctuary & Linen Rituals',
+    eyebrow: '',
     titlePart1: 'Moments of ',
     titleHighlight: 'pure everyday',
     titlePart2: ' calm.',
@@ -71,7 +71,10 @@ const CAROUSEL_SLIDES: CarouselSlide[] = [
 export function HeroSection() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
 
   const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % CAROUSEL_SLIDES.length);
@@ -87,6 +90,26 @@ export function HeroSection() {
     const interval = setInterval(nextSlide, 5500);
     return () => clearInterval(interval);
   }, [isPaused, nextSlide]);
+
+  // Parallax scroll effect: track how far the hero has been scrolled past.
+  useEffect(() => {
+    const handleScroll = () => {
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        const el = heroRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const scrolled = Math.max(0, Math.min(1, -rect.top / rect.height));
+        setScrollProgress(scrolled);
+      });
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
 
   // Touch swipe support for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -107,6 +130,7 @@ export function HeroSection() {
       {/* 1. FULL-WIDTH HERO CAROUSEL                               */}
       {/* ========================================================= */}
       <div
+        ref={heroRef}
         className="relative w-full overflow-hidden bg-deep border-b border-gold/25"
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
@@ -125,8 +149,11 @@ export function HeroSection() {
                   }`}
                 aria-hidden={!isActive}
               >
-                {/* Background Image with Slow Ambient Scale */}
-                <div className="absolute inset-0">
+                {/* Background Image with Slow Ambient Scale + Parallax on Scroll */}
+                <div
+                  className="absolute inset-0"
+                  style={{ transform: `translateY(${scrollProgress * 140}px) scale(1.12)`, willChange: 'transform' }}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={slide.image}
@@ -159,9 +186,13 @@ export function HeroSection() {
                 </div>
 
                 {/* Centered Editorial Content with Staggered Cascading Reveal */}
-                <div className="relative z-20 flex h-full flex-col items-center justify-center px-6 sm:px-12 text-center text-white">
+                <div
+                  className="relative z-20 flex h-full flex-col items-center justify-center px-6 sm:px-12 text-center text-white"
+                  style={{ opacity: 1 - scrollProgress * 1.6, transform: `translateY(${scrollProgress * 70}px)`, willChange: 'transform, opacity' }}
+                >
                   <div className="max-w-4xl pt-8 pb-12">
                     {/* Eyebrow with Animated Glass Pill & Glowing Accent */}
+                    {slide.eyebrow && (
                     <div className="overflow-hidden pb-1">
                       <p
                         className={`inline-flex items-center gap-2 rounded-full border border-gold-lt/35 bg-black/40 px-4 py-1.5 font-util text-[0.68rem] sm:text-xs font-semibold uppercase tracking-[0.26em] text-gold-lt shadow-[0_4px_24px_rgba(0,0,0,0.4)] backdrop-blur-md transition-all duration-700 ease-spring ${
@@ -174,6 +205,7 @@ export function HeroSection() {
                         <span>{slide.eyebrow}</span>
                       </p>
                     </div>
+                    )}
 
                     {/* Headline with Gold Cursive Accent and Liquid Shimmer */}
                     {index === 0 ? (
@@ -191,22 +223,6 @@ export function HeroSection() {
                           <span className="gold-shimmer-text relative z-10 drop-shadow-[0_0_24px_rgba(224,194,128,0.5)]">
                             {slide.titleHighlight}
                           </span>
-                          <svg
-                            className={`absolute -bottom-2.5 left-0 w-full text-gold-lt transition-transform duration-1000 delay-300 ease-spring origin-left ${
-                              isActive ? 'scale-x-100 opacity-100 drop-shadow-[0_2px_10px_rgba(184,148,63,0.7)]' : 'scale-x-0 opacity-0'
-                            }`}
-                            viewBox="0 0 100 12"
-                            preserveAspectRatio="none"
-                            aria-hidden="true"
-                          >
-                            <path
-                              d="M0,9 Q50,1 100,9"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                            />
-                          </svg>
                         </span>
                         <span className="inline-block transition-transform duration-700">
                           {slide.titlePart2}
@@ -227,22 +243,6 @@ export function HeroSection() {
                           <span className="gold-shimmer-text relative z-10 drop-shadow-[0_0_24px_rgba(224,194,128,0.5)]">
                             {slide.titleHighlight}
                           </span>
-                          <svg
-                            className={`absolute -bottom-2.5 left-0 w-full text-gold-lt transition-transform duration-1000 delay-300 ease-spring origin-left ${
-                              isActive ? 'scale-x-100 opacity-100 drop-shadow-[0_2px_10px_rgba(184,148,63,0.7)]' : 'scale-x-0 opacity-0'
-                            }`}
-                            viewBox="0 0 100 12"
-                            preserveAspectRatio="none"
-                            aria-hidden="true"
-                          >
-                            <path
-                              d="M0,9 Q50,1 100,9"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                            />
-                          </svg>
                         </span>
                         <span className="inline-block transition-transform duration-700">
                           {slide.titlePart2}

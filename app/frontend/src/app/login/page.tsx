@@ -12,7 +12,7 @@ import { Button } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { getApiUrl } from '@/lib/api';
 
-type LoginMode = 'otp' | 'email';
+type LoginMode = 'otp' | 'email' | 'register';
 
 function EyeIcon({ className }: { className?: string }) {
   return (
@@ -40,6 +40,7 @@ function LoginForm() {
   const login = useAuthStore((s) => s.login);
   const sendOtp = useAuthStore((s) => s.sendOtp);
   const loginWithOtp = useAuthStore((s) => s.loginWithOtp);
+  const register = useAuthStore((s) => s.register);
   const refreshCart = useCartStore((s) => s.refresh);
   const refreshNotifications = useNotificationStore((s) => s.refresh);
   const { error, success, info } = useToast();
@@ -63,6 +64,25 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [takingLong, setTakingLong] = useState(false);
+
+  // Register States
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [loadingReg, setLoadingReg] = useState(false);
+  const [regDone, setRegDone] = useState(false);
+
+  const regScore = (() => {
+    const pw = regPassword;
+    if (!pw) return 0;
+    let s = 0;
+    if (pw.length >= 8) s++;
+    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+    if (/\d/.test(pw)) s++;
+    if (/[^A-Za-z0-9]/.test(pw)) s++;
+    return s;
+  })();
 
   // If already authenticated, redirect to collection or requested page
   useEffect(() => {
@@ -262,59 +282,144 @@ function LoginForm() {
     }
   };
 
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (regPassword.length < 8) { error('Password must be at least 8 characters'); return; }
+    setLoadingReg(true);
+    try {
+      await register({ name: regName, email: regEmail, password: regPassword });
+      refreshCart().catch(() => {});
+      refreshNotifications().catch(() => {});
+      const currentUser = useAuthStore.getState().user;
+      success(`Welcome to Dev Creation, ${currentUser?.name || regName}!`);
+      setRegDone(true);
+      setTimeout(() => {
+        const redirect = params.get('redirect');
+        router.push(redirect && redirect !== '/login' ? redirect : '/products');
+      }, 1600);
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Registration failed');
+    } finally {
+      setLoadingReg(false);
+    }
+  };
+
   return (
     <div className="w-full">
       {/* High-End Segmented Mode Switcher */}
-      <div className="mb-7 grid grid-cols-2 rounded-2xl border border-line/80 bg-surface-2/90 p-1.5 shadow-inner">
+      <div className="relative mb-3.5 grid grid-cols-3 rounded-2xl border border-line/80 bg-surface-2/90 p-1 shadow-inner">
+        {/* Animated Sliding Background Indicator */}
+        <div
+          aria-hidden="true"
+          className="absolute top-1 bottom-1 rounded-xl bg-white shadow-[0_4px_16px_rgba(44,24,16,0.08)] border border-gold/40 transition-transform duration-300 ease-spring pointer-events-none"
+          style={{
+            width: 'calc((100% - 8px) / 3)',
+            left: '4px',
+            transform: `translateX(calc(${mode === 'otp' ? 0 : mode === 'email' ? 1 : 2} * 100%))`,
+          }}
+        />
+
+        {/* Tab 1 — Mobile OTP */}
         <button
           type="button"
           onClick={() => setMode('otp')}
           className={cn(
-            'flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 font-util text-xs font-semibold uppercase tracking-wider transition-all duration-200',
+            'relative z-10 flex items-center justify-center gap-1.5 rounded-xl py-2 px-1.5 font-util text-[0.72rem] tracking-wider transition-all duration-200 active:scale-[0.98]',
             mode === 'otp'
-              ? 'bg-white text-ink shadow-[0_4px_16px_rgba(44,24,16,0.08)] border border-gold/30 font-bold'
-              : 'text-ink-3 hover:text-ink hover:bg-white/40',
+              ? 'text-ink font-bold'
+              : 'text-ink-3 hover:text-ink font-semibold',
           )}
         >
-          <svg className="h-4 w-4 text-gold-dk" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            className={cn(
+              'h-3.5 w-3.5 shrink-0 transition-all duration-200',
+              mode === 'otp' ? 'text-gold-dk scale-110' : 'text-ink-3/70'
+            )}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
             <path d="M12 18h.01" />
           </svg>
-          <span>Mobile OTP</span>
-          <span className="hidden sm:inline-block rounded-full bg-gold/15 px-1.5 py-0.5 text-[0.58rem] font-bold text-gold-dk uppercase tracking-tight">
-            Fast
-          </span>
+          <span className="hidden sm:inline">Mobile OTP</span>
+          <span className="sm:hidden">OTP</span>
         </button>
+
+        {/* Tab 2 — Email & Key */}
         <button
           type="button"
           onClick={() => setMode('email')}
           className={cn(
-            'flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 font-util text-xs font-semibold uppercase tracking-wider transition-all duration-200',
+            'relative z-10 flex items-center justify-center gap-1.5 rounded-xl py-2 px-1.5 font-util text-[0.72rem] tracking-wider transition-all duration-200 active:scale-[0.98]',
             mode === 'email'
-              ? 'bg-white text-ink shadow-[0_4px_16px_rgba(44,24,16,0.08)] border border-gold/30 font-bold'
-              : 'text-ink-3 hover:text-ink hover:bg-white/40',
+              ? 'text-ink font-bold'
+              : 'text-ink-3 hover:text-ink font-semibold',
           )}
         >
-          <svg className="h-4 w-4 text-gold-dk" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            className={cn(
+              'h-3.5 w-3.5 shrink-0 transition-all duration-200',
+              mode === 'email' ? 'text-gold-dk scale-110' : 'text-ink-3/70'
+            )}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <rect width="20" height="16" x="2" y="4" rx="2" />
             <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
           </svg>
-          <span>Email &amp; Key</span>
+          <span className="hidden sm:inline">Email &amp; Key</span>
+          <span className="sm:hidden">Email</span>
+        </button>
+
+        {/* Tab 3 — Create Account (inline, same page) */}
+        <button
+          type="button"
+          onClick={() => setMode('register')}
+          className={cn(
+            'relative z-10 flex items-center justify-center gap-1.5 rounded-xl py-2 px-1.5 font-util text-[0.72rem] tracking-wider transition-all duration-200 active:scale-[0.98]',
+            mode === 'register'
+              ? 'text-ink font-bold'
+              : 'text-ink-3 hover:text-ink font-semibold',
+          )}
+        >
+          <svg
+            className={cn(
+              'h-3.5 w-3.5 shrink-0 transition-all duration-200',
+              mode === 'register' ? 'text-gold-dk scale-110' : 'text-ink-3/70'
+            )}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+            <line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" />
+          </svg>
+          <span className="hidden sm:inline">Create Account</span>
+          <span className="sm:hidden">Register</span>
         </button>
       </div>
 
-      {mode === 'otp' ? (
+      {/* Animated Tab Panel Container */}
+      <div key={mode} className="animate-slide-up will-change-transform">
+        {mode === 'otp' ? (
         /* Mobile OTP Form */
         <div>
           {!otpSent ? (
-            <form onSubmit={handleSendOtp} className="space-y-5">
+            <form onSubmit={handleSendOtp} className="space-y-3.5">
               <div>
-                <label className="util-label mb-2 block text-copper">
+                <label className="util-label mb-1.5 block text-copper text-[0.68rem]">
                   Mobile Number <span className="text-gold-dk">*</span>
                 </label>
-                <div className="relative flex items-center rounded-2xl border border-line bg-surface transition-all duration-200 focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/15 shadow-xs">
-                  <span className="flex items-center gap-1.5 border-r border-line/80 px-3.5 py-3.5 font-util text-xs font-bold text-ink-2 bg-surface-2/40 rounded-l-2xl">
-                    <span className="text-base leading-none">🇮🇳</span>
+                <div className="relative flex items-center rounded-xl border border-line bg-surface transition-all duration-200 focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/15 shadow-xs">
+                  <span className="flex items-center gap-1 border-r border-line/80 px-3 py-2.5 font-util text-xs font-bold text-ink-2 bg-surface-2/40 rounded-l-xl">
+                    <span className="text-sm leading-none">🇮🇳</span>
                     <span>+91</span>
                   </span>
                   <input
@@ -326,10 +431,10 @@ function LoginForm() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="Enter 10-digit mobile number"
-                    className="w-full bg-transparent px-4 py-3.5 text-base font-medium tracking-wide text-ink outline-none placeholder:text-ink-3/50"
+                    className="w-full bg-transparent px-3 py-2.5 text-sm font-medium tracking-wide text-ink outline-none placeholder:text-ink-3/50"
                   />
                 </div>
-                <p className="mt-2 text-[0.72rem] text-ink-3 flex items-center gap-1.5">
+                <p className="mt-1.5 text-[0.7rem] text-ink-3 flex items-center gap-1">
                   <span className="text-gold-dk">⚡</span>
                   <span>We will send a 6-digit one-time passcode via SMS.</span>
                 </p>
@@ -338,17 +443,17 @@ function LoginForm() {
               <Button
                 type="submit"
                 loading={sendingOtp}
-                className="btn-primary w-full shadow-md hover:shadow-lg"
+                className="btn-primary w-full py-2.5 text-xs shadow-md hover:shadow-lg"
               >
                 {sendingOtp ? 'Dispatching SMS Code…' : 'Send Verification Code →'}
               </Button>
             </form>
           ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-5 animate-in fade-in zoom-in-95 duration-200">
-              <div className="rounded-2xl border border-gold/40 bg-gold-bg/40 p-4 text-xs text-ink shadow-xs">
+            <form onSubmit={handleVerifyOtp} className="space-y-3 animate-in fade-in zoom-in-95 duration-200">
+              <div className="rounded-xl border border-gold/40 bg-gold-bg/40 p-2 text-xs text-ink shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-util text-[0.62rem] font-bold uppercase tracking-wider text-gold-dk flex items-center gap-1">
-                    <span>✨</span> Verification Code Sent
+                    <span>✨</span> Code Sent
                   </span>
                   <button
                     type="button"
@@ -357,24 +462,24 @@ function LoginForm() {
                       setUnverifiedTrialNotice(null);
                       setOtpDigits(['', '', '', '', '', '']);
                     }}
-                    className="font-util text-[0.68rem] font-bold uppercase tracking-wider text-gold-dk hover:text-ink underline transition-colors"
+                    className="font-util text-[0.65rem] font-bold uppercase tracking-wider text-gold-dk hover:text-ink underline transition-colors"
                   >
                     Change Number
                   </button>
                 </div>
-                <div className="mt-1.5 font-mono text-base font-bold text-ink">
+                <div className="mt-0.5 font-mono text-sm font-bold text-ink">
                   +91 {phone.length === 10 ? `${phone.slice(0, 5)} ${phone.slice(5)}` : phone}
                 </div>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2.5">
-                  <label className="util-label block text-copper">Enter 6-Digit Passcode</label>
-                  <span className="font-util text-[0.62rem] text-gold-dk font-semibold tracking-wider uppercase">Auto-Submits</span>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="util-label block text-copper text-[0.68rem]">Enter 6-Digit Passcode</label>
+                  <span className="font-util text-[0.6rem] text-gold-dk font-semibold tracking-wider uppercase">Auto-Submits</span>
                 </div>
 
                 {/* 6-Cell Digit Input Grid */}
-                <div className="grid grid-cols-6 gap-2 sm:gap-2.5">
+                <div className="grid grid-cols-6 gap-2">
                   {[0, 1, 2, 3, 4, 5].map((index) => (
                     <input
                       key={index}
@@ -392,7 +497,7 @@ function LoginForm() {
                       onPaste={handlePasteOtp}
                       autoFocus={index === 0}
                       className={cn(
-                        'h-13 w-full rounded-2xl border bg-surface text-center font-mono text-xl font-bold text-ink outline-none transition-all duration-200',
+                        'h-11 w-full rounded-xl border bg-surface text-center font-mono text-lg font-bold text-ink outline-none transition-all duration-200',
                         otpDigits[index]
                           ? 'border-gold bg-gold/10 text-gold-dk shadow-sm ring-1 ring-gold/40'
                           : 'border-line focus:border-gold focus:ring-2 focus:ring-gold/20',
@@ -401,14 +506,14 @@ function LoginForm() {
                   ))}
                 </div>
 
-                <div className="mt-3 flex items-center justify-between text-xs">
-                  <span className="text-[0.7rem] text-ink-3 flex items-center gap-1">
+                <div className="mt-2 flex items-center justify-between text-xs">
+                  <span className="text-[0.65rem] text-ink-3 flex items-center gap-1">
                     <span>🔒</span>
-                    <span>Valid for 5 minutes</span>
+                    <span>Valid for 5 mins</span>
                   </span>
 
                   {countdown > 0 ? (
-                    <span className="font-util text-[0.68rem] text-ink-3">
+                    <span className="font-util text-[0.65rem] text-ink-3">
                       Resend in <strong className="text-gold-dk">{countdown}s</strong>
                     </span>
                   ) : (
@@ -416,7 +521,7 @@ function LoginForm() {
                       type="button"
                       onClick={() => handleSendOtp()}
                       disabled={sendingOtp}
-                      className="font-util text-[0.68rem] font-bold uppercase tracking-wider text-gold-dk hover:text-ink underline transition-colors"
+                      className="font-util text-[0.65rem] font-bold uppercase tracking-wider text-gold-dk hover:text-ink underline transition-colors"
                     >
                       Resend SMS Code
                     </button>
@@ -425,14 +530,9 @@ function LoginForm() {
 
                 {/* Notice when using random unverified numbers with a Twilio trial account */}
                 {unverifiedTrialNotice && (
-                  <div className="mt-3.5 rounded-2xl border border-amber-300/80 bg-amber-50/95 p-3.5 text-xs text-amber-900 shadow-xs">
-                    <div className="font-semibold flex items-center gap-1.5 text-amber-950">
-                      <span>ℹ️</span>
-                      <span>Twilio Sandbox Notice</span>
-                    </div>
-                    <p className="mt-1 text-[0.72rem] leading-relaxed text-amber-800">
-                      Live SMS delivers to verified testing mobile (<strong>+91 9090385555</strong>).
-                      For other numbers, test passcode is: <strong className="font-mono text-xs text-ink bg-white px-1.5 py-0.5 rounded border border-amber-300">{unverifiedTrialNotice}</strong> (or master code <strong className="font-mono">123456</strong>).
+                  <div className="mt-2 rounded-xl border border-amber-300/80 bg-amber-50/95 p-2 text-xs text-amber-900 shadow-xs">
+                    <p className="text-[0.68rem] leading-tight text-amber-800">
+                      Sandbox passcode: <strong className="font-mono text-ink bg-white px-1 py-0.5 rounded border border-amber-300">{unverifiedTrialNotice}</strong> (or <strong className="font-mono">123456</strong>).
                     </p>
                     <button
                       type="button"
@@ -441,10 +541,9 @@ function LoginForm() {
                         setOtpDigits(d);
                         submitOtpVerification(unverifiedTrialNotice);
                       }}
-                      className="mt-2 text-[0.68rem] font-bold uppercase tracking-wider text-amber-950 underline hover:text-black flex items-center gap-1"
+                      className="mt-1 text-[0.65rem] font-bold uppercase tracking-wider text-amber-950 underline hover:text-black flex items-center gap-1"
                     >
-                      <span>Auto-fill {unverifiedTrialNotice} &amp; Sign In</span>
-                      <span>&rarr;</span>
+                      <span>Auto-fill {unverifiedTrialNotice} &amp; Sign In &rarr;</span>
                     </button>
                   </div>
                 )}
@@ -454,22 +553,22 @@ function LoginForm() {
                 type="submit"
                 loading={verifyingOtp}
                 disabled={otpDigits.join('').length !== 6 || verifyingOtp}
-                className="btn-primary w-full shadow-md hover:shadow-lg"
+                className="btn-primary w-full py-2.5 text-xs shadow-md hover:shadow-lg"
               >
                 {verifyingOtp ? 'Verifying Passcode…' : 'Verify & Enter Collection →'}
               </Button>
             </form>
           )}
         </div>
-      ) : (
+      ) : mode === 'email' ? (
         /* Email & Password Form */
-        <form onSubmit={handleEmailLogin} className="space-y-4">
+        <form onSubmit={handleEmailLogin} className="space-y-3">
           <div>
-            <label className="util-label mb-2 block text-copper">
+            <label className="util-label mb-1.5 block text-copper text-[0.68rem]">
               Email Address <span className="text-gold-dk">*</span>
             </label>
-            <div className="relative flex items-center rounded-2xl border border-line bg-surface transition-all focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/15 shadow-xs">
-              <span className="pl-4 text-ink-3">
+            <div className="relative flex items-center rounded-xl border border-line bg-surface transition-all focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/15 shadow-xs">
+              <span className="pl-3.5 text-ink-3">
                 <svg className="h-4 w-4 text-gold-dk" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect width="20" height="16" x="2" y="4" rx="2" />
                   <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
@@ -483,25 +582,25 @@ function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
-                className="w-full bg-transparent px-3 py-3.5 text-sm text-ink outline-none placeholder:text-ink-3/50"
+                className="w-full bg-transparent px-3 py-2.5 text-xs sm:text-sm text-ink outline-none placeholder:text-ink-3/50"
               />
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="util-label block text-copper">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="util-label block text-copper text-[0.68rem]">
                 Password <span className="text-gold-dk">*</span>
               </label>
               <Link
                 href="/forgot-password"
-                className="font-util text-[0.65rem] font-semibold uppercase tracking-wider text-gold-dk hover:text-ink underline transition-colors"
+                className="font-util text-[0.62rem] font-semibold uppercase tracking-wider text-gold-dk hover:text-ink underline transition-colors"
               >
                 Forgot?
               </Link>
             </div>
-            <div className="relative flex items-center rounded-2xl border border-line bg-surface transition-all focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/15 shadow-xs">
-              <span className="pl-4 text-ink-3">
+            <div className="relative flex items-center rounded-xl border border-line bg-surface transition-all focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/15 shadow-xs">
+              <span className="pl-3.5 text-ink-3">
                 <svg className="h-4 w-4 text-gold-dk" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -514,18 +613,18 @@ function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full bg-transparent px-3 py-3.5 text-sm text-ink outline-none placeholder:text-ink-3/50 pr-11"
+                className="w-full bg-transparent px-3 py-2.5 text-xs sm:text-sm text-ink outline-none placeholder:text-ink-3/50 pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 p-1 text-ink-3 transition-colors hover:text-gold-dk"
+                className="absolute right-3 p-1 text-ink-3 transition-colors hover:text-gold-dk"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
-                  <EyeOffIcon className="h-4 w-4" />
+                  <EyeOffIcon className="h-3.5 w-3.5" />
                 ) : (
-                  <EyeIcon className="h-4 w-4" />
+                  <EyeIcon className="h-3.5 w-3.5" />
                 )}
               </button>
             </div>
@@ -534,38 +633,130 @@ function LoginForm() {
           <Button
             type="submit"
             loading={loadingEmail}
-            className="btn-primary mt-2 w-full shadow-md hover:shadow-lg"
+            className="btn-primary mt-1 w-full py-2.5 text-xs shadow-md hover:shadow-lg"
           >
             {loadingEmail ? (takingLong ? 'Connecting Securely…' : 'Signing In…') : 'Sign In & Enter Sanctuary →'}
           </Button>
 
           {loadingEmail && takingLong && (
-            <p className="mt-2 text-center text-xs text-ink-3 animate-pulse font-util tracking-wide">
+            <p className="mt-1 text-center text-[0.7rem] text-ink-3 animate-pulse font-util tracking-wide">
               Connecting securely to Dev Creation…
             </p>
           )}
         </form>
-      )}
+      ) : mode === 'register' ? (
+        /* ── Inline Register Form ── */
+        regDone ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-4 ring-emerald-100">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-display-alt text-lg font-semibold text-ink">Welcome, {regName.split(' ')[0]}!</p>
+              <p className="mt-0.5 text-xs text-body">Account created. Taking you to the collection…</p>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
+              <div className="h-full animate-[slide-progress_1.6s_linear_forwards] rounded-full bg-gold" />
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleRegister} className="space-y-2.5">
+            {/* Name */}
+            <div>
+              <label className="util-label mb-1 block text-copper text-[0.68rem]">Full Name <span className="text-gold-dk">*</span></label>
+              <div className="relative flex items-center rounded-xl border border-line bg-surface transition-all focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/15 shadow-xs hover:border-gold/50">
+                <span className="pl-3.5 text-ink-3">
+                  <svg className="h-3.5 w-3.5 text-gold-dk" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                </span>
+                <input type="text" required autoComplete="name" value={regName} onChange={(e) => setRegName(e.target.value)} placeholder="e.g. Priya Sharma" className="w-full bg-transparent px-3 py-2 text-xs sm:text-sm text-ink outline-none placeholder:text-ink-3/50" />
+              </div>
+            </div>
 
-      {/* Footer link to Register */}
-      <div className="mt-8 border-t border-line/80 pt-6 text-center text-xs sm:text-sm text-body">
-        <span>New to Dev Creation? </span>
-        <Link href="/register" className="font-semibold text-gold-dk hover:text-ink underline transition-colors">
-          Create an artisanal account
-        </Link>
+            {/* Email */}
+            <div>
+              <label className="util-label mb-1 block text-copper text-[0.68rem]">Email Address <span className="text-gold-dk">*</span></label>
+              <div className="relative flex items-center rounded-xl border border-line bg-surface transition-all focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/15 shadow-xs hover:border-gold/50">
+                <span className="pl-3.5 text-ink-3">
+                  <svg className="h-3.5 w-3.5 text-gold-dk" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
+                </span>
+                <input type="email" required autoComplete="email" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="name@example.com" className="w-full bg-transparent px-3 py-2 text-xs sm:text-sm text-ink outline-none placeholder:text-ink-3/50" />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="util-label mb-1 block text-copper text-[0.68rem]">Password <span className="text-gold-dk">*</span></label>
+              <div className="relative flex items-center rounded-xl border border-line bg-surface transition-all focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/15 shadow-xs hover:border-gold/50">
+                <span className="pl-3.5 text-ink-3">
+                  <svg className="h-3.5 w-3.5 text-gold-dk" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                </span>
+                <input type={showRegPassword ? 'text' : 'password'} required autoComplete="new-password" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} placeholder="Min. 8 characters" className="w-full bg-transparent px-3 py-2 pr-9 text-xs sm:text-sm text-ink outline-none placeholder:text-ink-3/50" />
+                <button type="button" onClick={() => setShowRegPassword((v) => !v)} className="absolute right-3 p-1 text-ink-3 hover:text-gold-dk" aria-label={showRegPassword ? 'Hide' : 'Show'}>
+                  {showRegPassword ? <EyeOffIcon className="h-3.5 w-3.5" /> : <EyeIcon className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              {/* Strength meter */}
+              {regPassword && (
+                <div className="mt-1">
+                  <div className="flex gap-1">
+                    {[0,1,2,3].map((i) => (
+                      <div key={i} className={cn('h-1 flex-1 rounded-full transition-all duration-300', i < regScore ? ['bg-red-400','bg-red-400','bg-amber-400','bg-lime-500','bg-emerald-500'][regScore] : 'bg-surface-3')} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <p className="text-[0.62rem] leading-tight text-ink-3">
+              By creating an account you agree to our <Link href="/terms" className="text-gold-dk underline hover:text-ink">Terms</Link> &amp; <Link href="/privacy-policy" className="text-gold-dk underline hover:text-ink">Privacy Policy</Link>.
+            </p>
+
+            <Button type="submit" loading={loadingReg} className="btn-primary w-full py-2.5 text-xs shadow-md hover:shadow-lg">
+              {loadingReg ? 'Creating your account…' : 'Create Free Account →'}
+            </Button>
+          </form>
+        )
+      ) : null}
       </div>
 
-      <div className="mt-4 text-center">
+      {/* Footer Switcher */}
+      {mode === 'register' ? (
+        <div className="mt-3.5 border-t border-line/70 pt-2 text-center text-xs text-body animate-in fade-in duration-200">
+          <span>Already have an account? </span>
+          <button
+            type="button"
+            onClick={() => setMode('otp')}
+            className="font-semibold text-gold-dk hover:text-ink underline transition-colors"
+          >
+            Sign in with OTP or Email
+          </button>
+        </div>
+      ) : (
+        <div className="mt-3.5 border-t border-line/70 pt-2 text-center text-xs text-body animate-in fade-in duration-200">
+          <span>New to Dev Creation? </span>
+          <button
+            type="button"
+            onClick={() => setMode('register')}
+            className="font-semibold text-gold-dk hover:text-ink underline transition-colors"
+          >
+            Create a free account
+          </button>
+        </div>
+      )}
+
+      <div className="mt-1.5 text-center">
         <Link
           href="/products"
-          className="font-util text-[0.68rem] uppercase tracking-widest text-ink-3 transition-colors hover:text-gold-dk"
+          className="font-util text-[0.62rem] uppercase tracking-widest text-ink-3 transition-colors hover:text-gold-dk"
         >
           &larr; Skip and browse collection as guest
         </Link>
       </div>
 
       {/* Trust Badges */}
-      <div className="mt-8 flex items-center justify-center gap-4 border-t border-line/60 pt-5 text-[0.68rem] text-ink-3 font-util tracking-wider uppercase">
+      <div className="mt-2.5 flex items-center justify-center gap-3 border-t border-line/50 pt-2 text-[0.62rem] text-ink-3 font-util tracking-wider uppercase">
         <span className="flex items-center gap-1">
           <span>🌿</span> 100% Soy Wax
         </span>
@@ -584,11 +775,11 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen w-full flex bg-[#FAF7F2] text-ink selection:bg-gold/20 selection:text-gold-dk">
+    <main className="h-screen w-full flex bg-[#FAF7F2] text-ink selection:bg-gold/20 selection:text-gold-dk overflow-hidden">
       {/* ======================================================== */}
       {/* Left Column: Editorial Atmospheric Brand Showcase (Desktop) */}
       {/* ======================================================== */}
-      <section className="hidden lg:flex lg:w-1/2 xl:w-5/12 relative overflow-hidden flex-col justify-between p-10 xl:p-14 text-white">
+      <section className="hidden lg:flex lg:w-1/2 xl:w-5/12 relative overflow-hidden flex-col justify-between p-6 xl:p-8 text-white h-screen">
         {/* Background Visual */}
         <div className="absolute inset-0 z-0">
           <Image
@@ -607,7 +798,7 @@ export default function LoginPage() {
         <div className="relative z-10 flex items-center justify-between">
           <Link
             href="/products"
-            className="group inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 font-util text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/90 backdrop-blur-md transition-all hover:border-gold hover:bg-gold/20 hover:text-white"
+            className="group inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 font-util text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/90 backdrop-blur-md transition-all hover:border-gold hover:bg-gold/20 hover:text-white"
           >
             <span className="transition-transform group-hover:-translate-x-1">&larr;</span>
             <span>Return to Shop</span>
@@ -619,23 +810,23 @@ export default function LoginPage() {
         </div>
 
         {/* Center Editorial Storytelling */}
-        <div className="relative z-10 my-auto py-12">
-          <span className="inline-flex items-center gap-2 font-util text-[0.65rem] font-bold uppercase tracking-[0.24em] text-gold-lt">
-            <span className="inline-block h-2 w-2 rounded-full bg-gold-lt animate-pulse" />
+        <div className="relative z-10 my-auto py-2">
+          <span className="inline-flex items-center gap-2 font-util text-[0.62rem] font-bold uppercase tracking-[0.24em] text-gold-lt">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-gold-lt animate-pulse" />
             Handcrafted Luxury Scent Bar
           </span>
 
-          <h2 className="mt-4 font-display-alt text-3xl xl:text-4xl 2xl:text-5xl font-medium leading-[1.12] text-white">
+          <h2 className="mt-2 font-display-alt text-2xl xl:text-3xl font-medium leading-[1.15] text-white">
             Handcrafted with love, <br />
             <span className="italic text-gold-lt">Scented with care.</span>
           </h2>
 
-          <p className="mt-4 max-w-md text-sm font-light leading-relaxed text-white/80">
+          <p className="mt-2 max-w-md text-xs font-light leading-relaxed text-white/80">
             Step into an olfactory sanctuary where master perfumer oils and pure unbleached botanical soy wax harmonize to elevate your daily atmosphere.
           </p>
 
           {/* Member Privileges Highlight Cards */}
-          <div className="mt-8 space-y-3 max-w-md">
+          <div className="mt-3.5 space-y-2 max-w-md">
             {[
               {
                 icon: '✧',
@@ -655,16 +846,16 @@ export default function LoginPage() {
             ].map((perk, i) => (
               <div
                 key={i}
-                className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-3.5 backdrop-blur-md transition-all duration-300 hover:border-gold/40 hover:bg-white/10"
+                className="flex items-start gap-2.5 rounded-xl border border-white/10 bg-white/5 p-2.5 backdrop-blur-md transition-all duration-300 hover:border-gold/40 hover:bg-white/10"
               >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gold/20 font-serif text-xs text-gold-lt">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-gold/20 font-serif text-xs text-gold-lt">
                   {perk.icon}
                 </span>
                 <div>
-                  <h4 className="font-util text-xs font-semibold uppercase tracking-wider text-white">
+                  <h4 className="font-util text-[0.72rem] font-semibold uppercase tracking-wider text-white">
                     {perk.title}
                   </h4>
-                  <p className="mt-0.5 text-[0.72rem] text-white/70">
+                  <p className="text-[0.68rem] text-white/70 leading-snug">
                     {perk.desc}
                   </p>
                 </div>
@@ -674,23 +865,23 @@ export default function LoginPage() {
         </div>
 
         {/* Bottom Craft Mark */}
-        <div className="relative z-10 border-t border-white/15 pt-5 flex items-center justify-between text-[0.68rem] text-white/70 font-util tracking-widest uppercase">
+        <div className="relative z-10 border-t border-white/15 pt-3 flex items-center justify-between text-[0.65rem] text-white/70 font-util tracking-widest uppercase">
           <span>Pure Soy Wax • IFRA Certified</span>
           <span className="text-gold-lt">Hand-Poured in India</span>
         </div>
       </section>
 
       {/* ======================================================== */}
-      {/* Right Column: Luxury Authentication Form */}
+      {/* Right Column: Luxury Authentication Form (Fit 100% No Scroll) */}
       {/* ======================================================== */}
-      <section className="w-full lg:w-1/2 xl:w-7/12 flex items-center justify-center p-6 sm:p-10 lg:p-12 relative overflow-hidden">
+      <section className="w-full lg:w-1/2 xl:w-7/12 flex flex-col justify-center items-center p-3 sm:p-5 lg:p-6 relative h-screen overflow-hidden">
         {/* Soft Ambient Background Glows */}
         <div className="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-gold/10 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-amber-600/5 blur-3xl" />
 
-        <div className="w-full max-w-md mx-auto relative z-10">
+        <div className="w-full max-w-[420px] mx-auto relative z-10">
           {/* Mobile Back Button */}
-          <div className="lg:hidden mb-6 flex items-center justify-between">
+          <div className="lg:hidden mb-2.5 flex items-center justify-between">
             <Link
               href="/products"
               className="inline-flex items-center gap-1.5 font-util text-xs tracking-wider uppercase text-ink-3 hover:text-gold-dk transition-colors"
@@ -704,9 +895,9 @@ export default function LoginPage() {
           </div>
 
           {/* Luxury Card Container */}
-          <div className="rounded-3xl border border-gold/30 bg-white/95 p-6 sm:p-9 shadow-[0_20px_50px_-15px_rgba(44,24,16,0.08)] backdrop-blur-md transition-all">
+          <div className="rounded-3xl border border-gold/30 bg-white/95 p-4 sm:p-5 shadow-[0_16px_40px_-15px_rgba(44,24,16,0.08)] backdrop-blur-md transition-all">
             {/* Mobile Visual Header Accent */}
-            <div className="lg:hidden mb-6 overflow-hidden rounded-2xl border border-gold/25 relative h-28 sm:h-36 w-full shadow-xs">
+            <div className="lg:hidden mb-2.5 overflow-hidden rounded-xl border border-gold/25 relative h-16 w-full shadow-xs">
               <Image
                 src="/assets/login-page.jpg"
                 alt="Dev Creation Artisanal Wax Sanctuary"
@@ -714,38 +905,38 @@ export default function LoginPage() {
                 priority
                 className="object-cover object-center"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-deep/85 via-deep/30 to-transparent flex items-end p-3.5">
-                <span className="font-display-alt text-xs sm:text-sm italic text-gold-lt drop-shadow-sm">
+              <div className="absolute inset-0 bg-gradient-to-t from-deep/85 via-deep/30 to-transparent flex items-end p-2.5">
+                <span className="font-display-alt text-xs italic text-gold-lt drop-shadow-sm">
                   Handcrafted with love, Scented with care.
                 </span>
               </div>
             </div>
 
             {/* Brand Header */}
-            <div className="text-center mb-7">
+            <div className="text-center mb-3">
               <Link href="/" className="inline-block transition-transform hover:scale-105 duration-200">
                 <Image
                   src="/assets/Logos/Logo2.png"
                   alt="Dev Creation"
-                  width={80}
-                  height={80}
+                  width={48}
+                  height={48}
                   unoptimized
-                  className="h-16 w-16 object-contain rounded-full mx-auto shadow-sm"
+                  className="h-10 w-10 object-contain rounded-full mx-auto shadow-sm"
                   priority
                 />
               </Link>
-              <h1 className="mt-4 font-display-alt text-2xl sm:text-3xl font-medium text-ink">
+              <h1 className="mt-1 font-display-alt text-lg sm:text-xl font-medium text-ink">
                 Welcome to Dev Creation
               </h1>
-              <p className="mt-1.5 text-xs text-body leading-relaxed max-w-xs mx-auto">
-                Sign in to access your bespoke fragrances, wishlist, and private circle privileges.
+              <p className="mt-0.5 text-[0.72rem] text-body leading-tight max-w-xs mx-auto">
+                Sign in to access your fragrances &amp; wishlist.
               </p>
             </div>
 
             {/* Form */}
             <Suspense fallback={
-              <div className="flex justify-center py-12">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+              <div className="flex justify-center py-8">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-gold border-t-transparent" />
               </div>
             }>
               <LoginForm />

@@ -287,17 +287,25 @@ export default function ContactPage() {
                   <label className="font-util text-[0.65rem] uppercase tracking-wider text-ink-3 block mb-1.5">
                     Inquiry Topic
                   </label>
-                  <select
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    className="w-full rounded-xl border border-line bg-surface-2 px-3.5 py-2.5 text-xs text-ink outline-none transition-colors focus:border-gold"
-                  >
-                    <option value="general">General Inquiry & Fragrance Guidance</option>
-                    <option value="order_status">Order Status & Tracking</option>
-                    <option value="payment">Payment & Checkout Assistance (Razorpay / UPI)</option>
-                    <option value="refund_return">Cancellation, Return & Refund</option>
-                    <option value="corporate_gifting">Custom Corporate Gifting & Wedding Favors</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={formData.subject}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                      className="luxury-select w-full rounded-xl border border-line bg-surface-2 px-3.5 py-2.5 pr-10 text-xs text-ink outline-none transition-all duration-200 hover:border-gold/70 focus:border-gold focus:ring-2 focus:ring-gold/20 cursor-pointer"
+                    >
+                      <option value="general">General Inquiry &amp; Fragrance Guidance</option>
+                      <option value="order_status">Order Status &amp; Tracking</option>
+                      <option value="payment">Payment &amp; Checkout Assistance (Razorpay / UPI)</option>
+                      <option value="refund_return">Cancellation, Return &amp; Refund</option>
+                      <option value="corporate_gifting">Custom Corporate Gifting &amp; Wedding Favors</option>
+                    </select>
+                    <svg
+                      className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3"
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </div>
                 </div>
 
                 <div>

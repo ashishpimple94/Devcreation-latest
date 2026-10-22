@@ -53,7 +53,7 @@ const schema = z.object({
     .default('true')
     .transform((v) => v === true || v === 'true' || v === '1'),
   SMTP_USER: z.string().default('support@devcreation24.in'),
-  SMTP_PASS: z.string().default('Devcreation@890*'),
+  SMTP_PASS: z.string().default('Devcreation@7007'),
   EMAIL_FROM: z.string().default('Dev Creation <support@devcreation24.in>'),
   ADMIN_NOTIFY_EMAIL: z.string().default('support@devcreation24.in'),
   STORE_URL: z.string().default('https://devcreation24.in'),

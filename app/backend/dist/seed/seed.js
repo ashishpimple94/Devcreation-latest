@@ -56,7 +56,7 @@ var schema = import_zod.z.object({
   SMTP_PORT: import_zod.z.coerce.number().default(465),
   SMTP_SECURE: import_zod.z.union([import_zod.z.boolean(), import_zod.z.enum(["true", "false", "1", "0"])]).default("true").transform((v) => v === true || v === "true" || v === "1"),
   SMTP_USER: import_zod.z.string().default("support@devcreation24.in"),
-  SMTP_PASS: import_zod.z.string().default("Devcreation@890*"),
+  SMTP_PASS: import_zod.z.string().default("Devcreation@7007"),
   EMAIL_FROM: import_zod.z.string().default("Dev Creation <support@devcreation24.in>"),
   ADMIN_NOTIFY_EMAIL: import_zod.z.string().default("support@devcreation24.in"),
   STORE_URL: import_zod.z.string().default("https://devcreation24.in"),

@@ -190,23 +190,6 @@ export const orderService = {
     await cache.del(CACHE.KEY.dashboard());
     await this.invalidateProductCaches();
 
-    // Notify staff of the new order + confirm to the customer.
-    await notificationService.create({
-      type: 'new_order',
-      title: 'New order received',
-      message: `Order ${created.orderNumber} · ₹${created.total.toLocaleString('en-IN')}`,
-      forStaff: true,
-      relatedEntity: { kind: 'order', id: created._id.toString(), ref: created.orderNumber },
-      dashboardDirty: true,
-    });
-    await notificationService.create({
-      type: 'order_status',
-      title: 'Order placed',
-      message: STATUS_MESSAGE[ORDER_STATUS.PENDING](created.orderNumber),
-      userId,
-      relatedEntity: { kind: 'order', id: created._id.toString(), ref: created.orderNumber },
-    });
-
     for (const lp of lowStockProducts) {
       await notificationService.create({
         type: 'low_stock',
@@ -218,10 +201,36 @@ export const orderService = {
       });
     }
 
-    // For online payments (UPI or Card), initialize Razorpay order.
-    // For COD, dispatch confirmation emails immediately.
     let razorpayOrder: any = undefined;
-    if (input.paymentMethod === 'upi' || input.paymentMethod === 'card') {
+
+    if (input.paymentMethod === 'cod') {
+      // ── Cash on Delivery (COD) ──────────────────────────────
+      // COD orders are confirmed immediately on placement.
+      await notificationService.create({
+        type: 'new_order',
+        title: 'New COD order received',
+        message: `Order ${created.orderNumber} · ₹${created.total.toLocaleString('en-IN')} (COD)`,
+        forStaff: true,
+        relatedEntity: { kind: 'order', id: created._id.toString(), ref: created.orderNumber },
+        dashboardDirty: true,
+      });
+
+      await notificationService.create({
+        type: 'order_status',
+        title: 'Order placed (COD)',
+        message: STATUS_MESSAGE[ORDER_STATUS.PENDING](created.orderNumber),
+        userId,
+        relatedEntity: { kind: 'order', id: created._id.toString(), ref: created.orderNumber },
+      });
+
+      // Dispatch confirmation email with invoice for COD
+      void emailService.sendOrderPlaced(created).catch((err) =>
+        logger.warn('Order-placed email failed for COD', { orderId: created!._id.toString(), err: (err as Error).message }),
+      );
+    } else {
+      // ── Online Payment (UPI / Card via Razorpay) ────────────
+      // DO NOT send confirmation emails or staff order-alerts yet!
+      // The order remains in PENDING payment state until Razorpay payment succeeds.
       try {
         const rzp = await razorpayService.createOrder({
           amount: created.total,
@@ -236,17 +245,28 @@ export const orderService = {
         razorpayOrder = rzp;
       } catch (err) {
         logger.error('Failed to create Razorpay order', { err: (err as Error).message });
+        // Rollback stock and mark cancelled if payment gateway order creation fails
+        await Order.findByIdAndUpdate(created._id, {
+          status: ORDER_STATUS.CANCELLED,
+          'statusHistory': [
+            ...created.statusHistory,
+            { status: ORDER_STATUS.CANCELLED, note: 'Failed to initialize payment gateway', changedAt: new Date() },
+          ],
+        });
+        await Promise.all(
+          created.items.map((item) =>
+            Product.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } }),
+          ),
+        );
+        throw ApiError.badRequest('Failed to initialize Razorpay payment gateway. Please try again.');
       }
-    } else {
-      // Fire-and-forget emails immediately for COD orders
-      void emailService.sendOrderPlaced(created).catch((err) =>
-        logger.warn('Order-placed email failed', { orderId: created!._id.toString(), err: (err as Error).message }),
-      );
     }
 
     const result: any = created.toObject();
     if (razorpayOrder) {
       result.razorpayOrder = razorpayOrder;
+    }
+    if (input.paymentMethod === 'upi' || input.paymentMethod === 'card') {
       result.razorpayKeyId = env.RAZORPAY_KEY_ID;
     }
     return result;
