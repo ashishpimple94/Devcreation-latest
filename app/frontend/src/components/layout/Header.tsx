@@ -127,10 +127,10 @@ export function Header() {
     <>
       <header
         className={cn(
-          'sticky top-0 z-[60] flex items-center justify-between gap-6 px-[var(--pad)] py-[10px] transition-all duration-300 ease-spring backdrop-blur-[16px]',
+          'sticky top-0 z-[60] flex items-center justify-between gap-6 px-[var(--pad)] py-[10px] transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)]',
           scrolled
-            ? 'border-b border-gold/25 bg-paper/95 shadow-[0_8px_30px_-10px_rgba(44,24,16,.08)]'
-            : 'border-b border-line bg-paper/95',
+            ? 'border-b border-gold/25 bg-paper/85 backdrop-blur-xl shadow-[0_10px_30px_-10px_rgba(44,24,16,0.1)]'
+            : 'border-b border-line/15 bg-paper/10 backdrop-blur-md shadow-none',
         )}
       >
         {/* Logo */}
