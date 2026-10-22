@@ -100,12 +100,7 @@ export default function CheckoutPage() {
         return;
       }
 
-      const rzpKey =
-        (rzpData.razorpayKeyId && !rzpData.razorpayKeyId.startsWith('rzp_test_') ? rzpData.razorpayKeyId : null) ||
-        (process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID && !process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID.startsWith('rzp_test_')
-          ? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
-          : null) ||
-        'rzp_live_TqTj0qfXniY39v';
+      const rzpKey = rzpData.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_TqTj0qfXniY39v';
 
       const options: any = {
         key: rzpKey,
@@ -113,7 +108,7 @@ export default function CheckoutPage() {
         currency: rzpData.currency || 'INR',
         name: 'Dev Creation',
         description: 'Luxury Fragrance Order',
-        image: '/assets/Logos/Logo2.png',
+        image: 'https://devcreation24.in/assets/Logos/Logo2.png',
         order_id: rzpData.razorpayOrderId,
         prefill: { name: address.fullName, contact: address.phone, email: user?.email || '' },
         theme: { color: '#2C1810' },
