@@ -111,7 +111,12 @@ export function ProductForm({ product }: { product?: Product }) {
         type: product.type,
         fragrance: product.fragrance ?? '',
         description: product.description ?? '',
-        category: typeof product.category === 'object' && product.category ? product.category._id : '',
+        category:
+          typeof product.category === 'object' && product.category
+            ? product.category._id
+            : typeof product.category === 'string'
+              ? product.category
+              : '',
         price: String(product.price),
         compareAtPrice: product.compareAtPrice ? String(product.compareAtPrice) : '',
         discountPercent: String(product.discountPercent ?? 0),

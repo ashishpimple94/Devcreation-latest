@@ -87,7 +87,7 @@ export default function AdminProductsPage() {
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-xs text-ink hover:text-gold cursor-pointer" onClick={() => router.push(`/products/${p._id}`)}>
+                <span className="font-medium text-xs text-ink hover:text-gold cursor-pointer" onClick={() => router.push(`/products/edit?id=${p._id}`)}>
                   {p.name}
                 </span>
                 {isPack && (
@@ -166,7 +166,7 @@ export default function AdminProductsPage() {
       render: (p) => (
         <div className="flex items-center gap-2">
           <button
-            onClick={() => router.push(`/products/${p._id}`)}
+            onClick={() => router.push(`/products/edit?id=${p._id}`)}
             className="rounded-lg border border-line bg-white px-2.5 py-1 font-util text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-ink hover:border-gold hover:text-gold-dk"
           >
             Edit
