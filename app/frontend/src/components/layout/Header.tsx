@@ -64,7 +64,6 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -79,12 +78,6 @@ export function Header() {
   const initials = user?.name
     ? user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()
     : '';
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 24);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   /* Close avatar menu on outside click or Escape */
   useEffect(() => {
@@ -126,12 +119,7 @@ export function Header() {
   return (
     <>
       <header
-        className={cn(
-          'sticky top-0 z-[60] flex items-center justify-between gap-6 px-[var(--pad)] py-[10px] transition-all duration-350 ease-[cubic-bezier(0.16,1,0.3,1)]',
-          scrolled
-            ? 'border-b border-gold/25 bg-paper/85 backdrop-blur-xl shadow-[0_10px_30px_-10px_rgba(44,24,16,0.1)]'
-            : 'border-b border-line/15 bg-paper/10 backdrop-blur-md shadow-none',
-        )}
+        className="sticky top-0 z-[60] flex items-center justify-between gap-6 px-[var(--pad)] py-[10px] bg-transparent border-none shadow-none"
       >
         {/* Logo */}
         <Link href="/" prefetch aria-label="Dev Creation Home" className="flex flex-shrink-0 items-center leading-none">
