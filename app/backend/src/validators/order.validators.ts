@@ -17,6 +17,9 @@ export const checkoutSchema = {
     shippingAddress: shippingAddressSchema,
     paymentMethod: z.enum([PAYMENT_METHOD.COD, PAYMENT_METHOD.CARD, PAYMENT_METHOD.UPI]).default(PAYMENT_METHOD.COD),
     promoCode: z.string().trim().optional(),
+    razorpayOrderId: z.string().optional(),
+    razorpayPaymentId: z.string().optional(),
+    razorpaySignature: z.string().optional(),
   }),
 };
 

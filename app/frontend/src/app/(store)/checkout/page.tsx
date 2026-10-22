@@ -77,85 +77,79 @@ export default function CheckoutPage() {
   const placeOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setPlacing(true);
-    try {
-      const order = await orderService.checkout(address, payment, appliedGiftCard?.code);
 
-      // COD: order confirmed immediately — no payment gateway needed.
+    try {
+      // ── 1. Cash on Delivery (COD) ───────────────────────────
+      // Places order directly without online payment gateway.
       if (payment === 'cod') {
+        const order = await orderService.checkout(address, payment, appliedGiftCard?.code);
         await clear();
         success(`Order ${order.orderNumber} placed successfully`);
         router.push(`/account/orders/${order._id}`);
         return;
       }
 
-      // UPI / Card: open Razorpay payment modal.
-      // Order stays PENDING until payment is verified — it is NOT confirmed yet.
+      // ── 2. Online Payment (UPI / Netbanking / Card via Razorpay) ──
+      // Step A: Request Razorpay Order ID from server (No MongoDB order created yet!)
+      const rzpData = await orderService.createRazorpayOrder(appliedGiftCard?.code);
+
       const loaded = await loadRazorpayScript();
       if (!loaded || typeof (window as any).Razorpay === 'undefined') {
-        error('Could not load payment gateway. Your order is saved as pending.');
-        router.push(`/account/orders/${order._id}`);
+        error('Could not load payment gateway. Please check your internet connection.');
+        setPlacing(false);
         return;
       }
 
-      const rzpKey = order.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      const rzpKey = rzpData.razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
       if (!rzpKey) {
-        error('Payment gateway key not found. Your order is pending — our team will contact you.');
-        router.push(`/account/orders/${order._id}`);
+        error('Payment gateway key not found. Please contact support.');
+        setPlacing(false);
         return;
       }
 
       const options: any = {
         key: rzpKey,
-        amount: order.razorpayOrder?.amount || Math.round(Number(order.total || finalTotal) * 100),
-        currency: order.razorpayOrder?.currency || 'INR',
+        amount: rzpData.amountPaise,
+        currency: rzpData.currency || 'INR',
         name: 'Dev Creation',
-        description: `Order #${order.orderNumber}`,
+        description: 'Luxury Fragrance Order',
         image: '/assets/Logos/Logo2.png',
-        order_id: order.razorpayOrder?.id,
+        order_id: rzpData.razorpayOrderId,
         prefill: { name: address.fullName, contact: address.phone, email: user?.email || '' },
         theme: { color: '#2C1810' },
 
-        // Payment succeeded in the modal — NOW verify with backend.
-        // Only confirm the order if verification passes.
+        // Step B: Payment succeeded in Razorpay modal -> NOW create and confirm the order!
         handler: async (response: any) => {
           try {
-            await orderService.verifyPayment({
-              orderId: order._id,
-              razorpayOrderId: response.razorpay_order_id || order.razorpayOrderId || '',
+            const order = await orderService.checkout(address, payment, appliedGiftCard?.code, {
+              razorpayOrderId: response.razorpay_order_id || rzpData.razorpayOrderId,
               razorpayPaymentId: response.razorpay_payment_id || '',
               razorpaySignature: response.razorpay_signature || '',
             });
-            // Verification SUCCEEDED — order is now CONFIRMED + PAID.
             await clear();
             success(`Payment successful! Order #${order.orderNumber} confirmed.`);
             router.push(`/account/orders/${order._id}`);
-          } catch (verifyErr) {
-            // Verification FAILED — order stays PENDING, NOT confirmed.
+          } catch (err: any) {
             setPlacing(false);
-            error(
-              verifyErr instanceof Error
-                ? `Payment verification failed: ${verifyErr.message}`
-                : 'Payment verification failed. Your order is pending.'
-            );
-            router.push(`/account/orders/${order._id}`);
+            error(err.message || 'Payment verification failed. Please contact support.');
           }
         },
 
         modal: {
           ondismiss: () => {
-            // User closed the modal without paying — order stays PENDING.
+            // User closed the modal without paying -> NOTHING is saved!
+            // No order created, no email sent, nothing in admin panel!
             setPlacing(false);
-            error('Payment was not completed. Your order is saved as pending.');
-            router.push(`/account/orders/${order._id}`);
+            error('Payment cancelled. Your order was not placed.');
           },
         },
       };
 
       const rzp = new (window as any).Razorpay(options);
       rzp.on('payment.failed', (resp: any) => {
-        // Payment was declined — order stays PENDING.
+        // Payment was declined -> NOTHING is saved!
         setPlacing(false);
-        error(`Payment failed: ${resp.error?.description || 'Transaction declined'}. Order is pending.`);
+        error(`Payment failed: ${resp.error?.description || 'Transaction declined'}. Order was not placed.`);
       });
       rzp.open();
     } catch (err) {

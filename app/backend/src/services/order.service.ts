@@ -27,6 +27,9 @@ interface CheckoutInput {
   shippingAddress: IOrder['shippingAddress'];
   paymentMethod: PaymentMethod;
   promoCode?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
 }
 
 const STATUS_MESSAGE: Record<OrderStatus, (n: string) => string> = {
@@ -57,11 +60,86 @@ function buildOrderFilter(orderId: string, extraFilter: Record<string, unknown> 
 
 export const orderService = {
   /**
-   * Creates an order from the user's cart inside a transaction: validates stock,
-   * snapshots line items, atomically decrements inventory, clears the cart and
-   * notifies staff of the new order. MongoDB remains the source of truth.
+   * Initializes a Razorpay order from the user's active cart.
+   * DOES NOT create an Order document in MongoDB, so no emails or admin alerts are sent.
+   */
+  async createRazorpayOrder(userId: string, promoCode?: string) {
+    const cart = await Cart.findOne({ user: userId }).populate(
+      'items.product',
+      'name sku price images stock variants isActive',
+    );
+    if (!cart || cart.items.length === 0) throw ApiError.badRequest('Your cart is empty');
+
+    let itemsTotal = 0;
+    for (const cartItem of cart.items) {
+      const product = cartItem.product as any;
+      if (!product || !product.isActive) {
+        throw ApiError.badRequest('A product in your cart is no longer available');
+      }
+      const variant = cartItem.variantSku
+        ? product.variants?.find((v: any) => v.sku === cartItem.variantSku)
+        : undefined;
+      const unitPrice = variant ? variant.price : product.price;
+      if (product.stock < cartItem.quantity) {
+        throw ApiError.badRequest(`Not enough stock for ${product.name}`);
+      }
+      itemsTotal += unitPrice * cartItem.quantity;
+    }
+
+    let discount = 0;
+    if (promoCode) {
+      const promo = await giftCardService.validate(promoCode, itemsTotal);
+      discount = promo.discount;
+    }
+
+    const shippingFee = itemsTotal >= 999 ? 0 : 99;
+    const finalTotal = Math.max(0, itemsTotal - discount) + shippingFee;
+
+    const receipt = `RCT-${Date.now().toString().slice(-8)}`;
+    const rzp = await razorpayService.createOrder({
+      amount: finalTotal,
+      receipt,
+      notes: {
+        userId,
+        promoCode: promoCode || '',
+      },
+    });
+
+    return {
+      razorpayOrderId: rzp.id,
+      amountPaise: rzp.amount,
+      currency: rzp.currency || 'INR',
+      finalTotal,
+      razorpayKeyId: env.RAZORPAY_KEY_ID,
+    };
+  },
+
+  /**
+   * Creates an order from the user's cart:
+   * - For COD: order is placed directly with pending payment status.
+   * - For UPI/Card: payment MUST already be verified via Razorpay HMAC signature.
+   *   If payment is not verified, NO order is placed, NO email is sent, and admin gets nothing!
    */
   async checkout(userId: string, input: CheckoutInput) {
+    const isOnline = input.paymentMethod === 'upi' || input.paymentMethod === 'card';
+
+    // Guard: Online payments MUST have a verified Razorpay signature BEFORE order is created!
+    if (isOnline) {
+      if (!input.razorpayOrderId || !input.razorpayPaymentId || !input.razorpaySignature) {
+        throw ApiError.badRequest('Payment was not completed. Order was not placed.');
+      }
+
+      const isValid = razorpayService.verifySignature({
+        razorpayOrderId: input.razorpayOrderId,
+        razorpayPaymentId: input.razorpayPaymentId,
+        razorpaySignature: input.razorpaySignature,
+      });
+
+      if (!isValid) {
+        throw ApiError.badRequest('Payment verification failed. Invalid signature.');
+      }
+    }
+
     const cart = await Cart.findOne({ user: userId }).populate(
       'items.product',
       'name sku price images stock variants isActive',
@@ -138,6 +216,12 @@ export const orderService = {
       const finalTotal = Math.max(0, itemsTotal - discount) + shippingFee;
       const orderNumber = generateOrderNumber();
 
+      const initialStatus = isOnline ? ORDER_STATUS.CONFIRMED : ORDER_STATUS.PENDING;
+      const initialPaymentStatus = isOnline ? PAYMENT_STATUS.PAID : PAYMENT_STATUS.PENDING;
+      const initialNote = isOnline
+        ? `Order placed & verified via Razorpay (Payment ID: ${input.razorpayPaymentId})`
+        : 'Order placed (COD)';
+
       const [order] = await Order.create(
         [
           {
@@ -150,11 +234,14 @@ export const orderService = {
             discount,
             promoCode: appliedPromoCode,
             total: finalTotal,
-            status: ORDER_STATUS.PENDING,
+            status: initialStatus,
             paymentMethod: input.paymentMethod,
-            paymentStatus: PAYMENT_STATUS.PENDING,
+            paymentStatus: initialPaymentStatus,
+            razorpayOrderId: input.razorpayOrderId,
+            razorpayPaymentId: input.razorpayPaymentId,
+            razorpaySignature: input.razorpaySignature,
             statusHistory: [
-              { status: ORDER_STATUS.PENDING, note: 'Order placed', changedAt: new Date() },
+              { status: initialStatus, note: initialNote, changedAt: new Date() },
             ],
           },
         ],
@@ -201,11 +288,8 @@ export const orderService = {
       });
     }
 
-    let razorpayOrder: any = undefined;
-
     if (input.paymentMethod === 'cod') {
       // ── Cash on Delivery (COD) ──────────────────────────────
-      // COD orders are confirmed immediately on placement.
       await notificationService.create({
         type: 'new_order',
         title: 'New COD order received',
@@ -229,47 +313,31 @@ export const orderService = {
       );
     } else {
       // ── Online Payment (UPI / Card via Razorpay) ────────────
-      // DO NOT send confirmation emails or staff order-alerts yet!
-      // The order remains in PENDING payment state until Razorpay payment succeeds.
-      try {
-        const rzp = await razorpayService.createOrder({
-          amount: created.total,
-          receipt: created.orderNumber,
-          notes: {
-            orderId: created._id.toString(),
-            orderNumber: created.orderNumber,
-          },
-        });
-        created.razorpayOrderId = rzp.id;
-        await Order.findByIdAndUpdate(created._id, { razorpayOrderId: rzp.id });
-        razorpayOrder = rzp;
-      } catch (err) {
-        logger.error('Failed to create Razorpay order', { err: (err as Error).message });
-        // Rollback stock and mark cancelled if payment gateway order creation fails
-        await Order.findByIdAndUpdate(created._id, {
-          status: ORDER_STATUS.CANCELLED,
-          'statusHistory': [
-            ...created.statusHistory,
-            { status: ORDER_STATUS.CANCELLED, note: 'Failed to initialize payment gateway', changedAt: new Date() },
-          ],
-        });
-        await Promise.all(
-          created.items.map((item) =>
-            Product.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } }),
-          ),
-        );
-        throw ApiError.badRequest('Failed to initialize Razorpay payment gateway. Please try again.');
-      }
+      // Payment has been verified! Order is confirmed & paid.
+      await notificationService.create({
+        type: 'new_order',
+        title: 'Payment received',
+        message: `Order ${created.orderNumber} paid online via Razorpay (₹${created.total.toLocaleString('en-IN')})`,
+        forStaff: true,
+        relatedEntity: { kind: 'order', id: created._id.toString(), ref: created.orderNumber },
+        dashboardDirty: true,
+      });
+
+      await notificationService.create({
+        type: 'order_status',
+        title: 'Payment successful',
+        message: `Your payment of ₹${created.total.toLocaleString('en-IN')} for order #${created.orderNumber} is confirmed!`,
+        userId,
+        relatedEntity: { kind: 'order', id: created._id.toString(), ref: created.orderNumber },
+      });
+
+      // Dispatch confirmation email with invoice for Paid Online Order
+      void emailService.sendOrderPlaced(created).catch((err) =>
+        logger.warn('Order-placed email failed for Paid order', { orderId: created!._id.toString(), err: (err as Error).message }),
+      );
     }
 
-    const result: any = created.toObject();
-    if (razorpayOrder) {
-      result.razorpayOrder = razorpayOrder;
-    }
-    if (input.paymentMethod === 'upi' || input.paymentMethod === 'card') {
-      result.razorpayKeyId = env.RAZORPAY_KEY_ID;
-    }
-    return result;
+    return created.toObject();
   },
 
   /**

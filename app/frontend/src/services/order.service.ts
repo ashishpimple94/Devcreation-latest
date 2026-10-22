@@ -12,8 +12,39 @@ export const orderService = {
     return res.data;
   },
 
-  async checkout(shippingAddress: ShippingAddress, paymentMethod: PaymentMethod, promoCode?: string): Promise<Order> {
-    const res = await api.post<Order>('/orders/checkout', { shippingAddress, paymentMethod, promoCode });
+  async createRazorpayOrder(promoCode?: string): Promise<{
+    razorpayOrderId: string;
+    amountPaise: number;
+    currency: string;
+    finalTotal: number;
+    razorpayKeyId: string;
+  }> {
+    const res = await api.post<{
+      razorpayOrderId: string;
+      amountPaise: number;
+      currency: string;
+      finalTotal: number;
+      razorpayKeyId: string;
+    }>('/orders/create-razorpay-order', { promoCode });
+    return res.data;
+  },
+
+  async checkout(
+    shippingAddress: ShippingAddress,
+    paymentMethod: PaymentMethod,
+    promoCode?: string,
+    paymentDetails?: {
+      razorpayOrderId?: string;
+      razorpayPaymentId?: string;
+      razorpaySignature?: string;
+    },
+  ): Promise<Order> {
+    const res = await api.post<Order>('/orders/checkout', {
+      shippingAddress,
+      paymentMethod,
+      promoCode,
+      ...paymentDetails,
+    });
     return res.data;
   },
 

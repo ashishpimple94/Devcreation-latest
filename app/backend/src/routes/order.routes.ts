@@ -8,6 +8,7 @@ import { checkoutSchema } from '@/validators/order.validators';
 const router = Router();
 router.use(authenticate);
 
+router.post('/create-razorpay-order', orderController.createRazorpayOrder);
 router.post('/checkout', validate(checkoutSchema), orderController.checkout);
 router.post('/verify-payment', orderController.verifyPayment);
 router.get('/:id/razorpay-order', orderController.getRazorpayOrder);

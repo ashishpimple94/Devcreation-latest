@@ -5,6 +5,11 @@ import { asyncHandler } from '@/utils/asyncHandler';
 
 export const orderController = {
   // ---- Customer ----
+  createRazorpayOrder: asyncHandler(async (req: Request, res: Response) => {
+    const result = await orderService.createRazorpayOrder(req.user!.id, req.body?.promoCode);
+    return sendSuccess(res, result, 'Razorpay order created');
+  }),
+
   checkout: asyncHandler(async (req: Request, res: Response) => {
     const order = await orderService.checkout(req.user!.id, req.body);
     return sendSuccess(res, order, 'Order placed successfully', 201);
