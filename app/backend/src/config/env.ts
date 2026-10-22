@@ -70,8 +70,8 @@ const schema = z.object({
     .transform((v) => v === true || v === 'true' || v === '1'),
 
   // ── Razorpay Payment Gateway ────────────────────────
-  RAZORPAY_KEY_ID: z.string().default('rzp_test_TpP4B9vNcQoDGs'),
-  RAZORPAY_KEY_SECRET: z.string().default('mmxCQsLOJxa0eH17Q7tm3dJH'),
+  RAZORPAY_KEY_ID: z.string().default('rzp_live_TqTj0qfXniY39v'),
+  RAZORPAY_KEY_SECRET: z.string().default('VrMl60kcYsZwxQYtY30L0IAT'),
 });
 
 const parsed = schema.safeParse(process.env);

@@ -105,7 +105,7 @@ export function OrderDetailClient() {
       }
 
       let rzpOrder: any = null;
-      let rzpKey: string = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TpP4B9vNcQoDGs';
+      let rzpKey: string = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_TqTj0qfXniY39v';
       try {
         const res = await orderService.getRazorpayOrder(order._id);
         rzpOrder = res.razorpayOrder;
