@@ -167,8 +167,8 @@ export function ProductCard({
                 )}
                 onError={(e) => {
                   const el = e.currentTarget;
-                  if (!el.src.includes('/assets/Logos/Logo2.png')) {
-                    el.src = '/assets/Logos/Logo2.png';
+                  if (!el.src.includes('/assets/Logos/Logo2.')) {
+                    el.src = '/assets/Logos/Logo2.webp';
                   }
                 }}
               />
@@ -185,8 +185,8 @@ export function ProductCard({
               className="h-full w-full object-contain p-2 sm:p-6 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.06]"
               onError={(e) => {
                 const el = e.currentTarget;
-                if (!el.src.includes('/assets/Logos/Logo2.png')) {
-                  el.src = '/assets/Logos/Logo2.png';
+                if (!el.src.includes('/assets/Logos/Logo2.')) {
+                  el.src = '/assets/Logos/Logo2.webp';
                 }
               }}
             />

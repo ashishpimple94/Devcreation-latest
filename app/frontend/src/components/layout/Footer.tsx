@@ -104,7 +104,7 @@ export function Footer() {
           <div className="md:col-span-6 lg:col-span-3">
             <Link href="/" aria-label="Dev Creation Home" className="inline-block transition-transform duration-200 hover:scale-105">
               <Image
-                src="/assets/Logos/Logo2.png"
+                src="/assets/Logos/Logo2.webp"
                 alt=""
                 aria-hidden="true"
                 width={80}

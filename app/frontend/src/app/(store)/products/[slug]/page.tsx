@@ -26,7 +26,7 @@ const FALLBACK_PRODUCTS: Record<string, Partial<Product>> = {
     stock: 20,
     ratingAverage: 4.9,
     ratingCount: 56,
-    images: [{ url: '/assets/Gifting/Waxset.png', alt: 'Wax Melt Gift Set' }],
+    images: [{ url: '/assets/Gifting/Waxset.webp', alt: 'Wax Melt Gift Set' }],
   },
   'chocolate-candle-gift-set': {
     name: 'Chocolate Candle Gift Set',
@@ -37,7 +37,7 @@ const FALLBACK_PRODUCTS: Record<string, Partial<Product>> = {
     stock: 25,
     ratingAverage: 4.8,
     ratingCount: 29,
-    images: [{ url: '/assets/Gifting/Pasted image (3).png', alt: 'Chocolate Candle Gift Set' }],
+    images: [{ url: '/assets/Gifting/Pasted image (3).webp', alt: 'Chocolate Candle Gift Set' }],
   },
   'aroma-stone-gift-set': {
     name: 'Aroma Stone Gift Set',
@@ -48,7 +48,7 @@ const FALLBACK_PRODUCTS: Record<string, Partial<Product>> = {
     stock: 30,
     ratingAverage: 5.0,
     ratingCount: 42,
-    images: [{ url: '/assets/Gifting/Pasted image (2).png', alt: 'Aroma Stone Gift Set' }],
+    images: [{ url: '/assets/Gifting/Pasted image (2).webp', alt: 'Aroma Stone Gift Set' }],
   },
   'ocean-breeze': {
     name: 'Ocean Breeze',
@@ -59,7 +59,7 @@ const FALLBACK_PRODUCTS: Record<string, Partial<Product>> = {
     stock: 40,
     ratingAverage: 4.9,
     ratingCount: 38,
-    images: [{ url: '/assets/Gifting/Pasted image.png', alt: 'Ocean Breeze' }],
+    images: [{ url: '/assets/Gifting/Pasted image.webp', alt: 'Ocean Breeze' }],
   },
 };
 

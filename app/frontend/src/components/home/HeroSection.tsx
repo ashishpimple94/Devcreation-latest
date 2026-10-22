@@ -381,6 +381,10 @@ export function HeroSection() {
                 <img
                   src="/assets/elegant-display-lit-candles-with-golden-holders-marble-table-featuring-decorative-plant_93675-335471.avif"
                   alt="Artisanal Wax Sachets"
+                  width={600}
+                  height={400}
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover transition-transform duration-700 ease-spring group-hover:scale-108"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-deep/90 via-deep/45 to-transparent" />
@@ -423,8 +427,12 @@ export function HeroSection() {
               <div className="absolute inset-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/assets/Gifting/Pasted image (2).png"
+                  src="/assets/Gifting/Pasted image (2).webp"
                   alt="Aroma Stone and Candle Gift Sets"
+                  width={600}
+                  height={400}
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover transition-transform duration-700 ease-spring group-hover:scale-108"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-deep/90 via-deep/45 to-transparent" />
